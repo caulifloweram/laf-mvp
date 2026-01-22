@@ -1,0 +1,18 @@
+{
+  "name": "@laf/broadcaster-web",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "npx serve dist -p $PORT"
+  },
+  "dependencies": {
+    "opus-decoder": "^0.7.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "typescript": "^5.6.0"
+  }
+}

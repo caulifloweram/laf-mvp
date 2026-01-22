@@ -1,0 +1,25 @@
+{
+  "name": "laf-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev:relay": "pnpm --filter @laf/relay run dev",
+    "dev:api": "pnpm --filter @laf/api run dev",
+    "dev:client-web": "pnpm --filter @laf/client-web run dev",
+    "dev:broadcaster-web": "pnpm --filter @laf/broadcaster-web run dev",
+    "dev:broadcaster": "pnpm --filter @laf/broadcaster run dev",
+    "test": "pnpm -r test"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1"
+  }
+}
