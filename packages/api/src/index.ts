@@ -50,23 +50,21 @@ const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 
 // Health check endpoint - put it early so we can test if API is running
 // Railway uses this to check if the service is healthy
-app.get("/health", (_req, res) => {
-  try {
-    console.log("Health check called");
-    const response = { 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      port: PORT,
-      cors: "enabled",
-      uptime: process.uptime()
-    };
-    console.log("Sending health check response:", response);
-    res.status(200).json(response);
-    console.log("Health check response sent");
-  } catch (error) {
-    console.error("Health check error:", error);
-    res.status(500).json({ status: "error", error: String(error) });
-  }
+// This MUST respond quickly and reliably
+app.get("/health", (req, res) => {
+  console.log("🏥 Health check called");
+  console.log("   Request headers:", JSON.stringify(req.headers));
+  
+  // Send response immediately - no async operations
+  res.status(200).json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    cors: "enabled",
+    uptime: process.uptime()
+  });
+  
+  console.log("✅ Health check response sent - Status: 200");
 });
 
 // Initialize database on startup (non-blocking)
