@@ -176,7 +176,7 @@ app.get("/api/channels/live", async (_req, res) => {
       clearTimeout(timeoutId);
       
       if (relayResponse.ok) {
-        const relayData = await relayResponse.json();
+        const relayData = await relayResponse.json() as { activeStreamIds?: number[]; count?: number };
         activeStreamIdsFromRelay = relayData.activeStreamIds || [];
         console.log(`📡 Relay reports ${activeStreamIdsFromRelay.length} active stream(s): ${activeStreamIdsFromRelay.join(", ")}`);
       } else {
