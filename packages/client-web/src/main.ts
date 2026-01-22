@@ -759,6 +759,6 @@ btnStop.onclick = () => {
   }
 };
 
-// Load channels on startup and refresh every 5s
+// Load channels on startup and refresh every 3s (more frequent to catch stream stops)
 loadChannels();
-setInterval(loadChannels, 5000);
+setInterval(loadChannels, 3000);
