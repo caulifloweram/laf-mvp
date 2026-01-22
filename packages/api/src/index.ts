@@ -45,13 +45,20 @@ const PORT = Number(process.env.PORT ?? 4000);
 const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 
 // Health check endpoint - put it early so we can test if API is running
+// Railway uses this to check if the service is healthy
 app.get("/health", (_req, res) => {
-  res.json({ 
-    status: "ok", 
-    timestamp: new Date().toISOString(),
-    port: PORT,
-    cors: "enabled"
-  });
+  try {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      cors: "enabled",
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    console.error("Health check error:", error);
+    res.status(500).json({ status: "error", error: String(error) });
+  }
 });
 
 // Initialize database on startup (non-blocking)
@@ -190,6 +197,10 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
 });
 
 // Start server with error handling
+console.log(`🚀 Starting API server...`);
+console.log(`   PORT: ${PORT}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? "✅ Set" : "❌ Not set"}`);
+
 try {
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
@@ -198,6 +209,7 @@ try {
     console.log(`   CORS: ✅ Enabled (allowing all origins)`);
     console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
     console.log(`   ✅ Server started successfully!`);
+    console.log(`   Process PID: ${process.pid}`);
   });
 
   // Handle server errors
@@ -206,19 +218,35 @@ try {
     if (err.code === "EADDRINUSE") {
       console.error(`   Port ${PORT} is already in use`);
     }
-    process.exit(1);
+    // Don't exit immediately - let Railway handle it
+    console.error("   Server will continue running...");
+  });
+
+  // Keep the process alive
+  server.on("close", () => {
+    console.log("⚠️ Server closed");
   });
 
   // Graceful shutdown
   process.on("SIGTERM", () => {
-    console.log("SIGTERM received, shutting down gracefully...");
+    console.log("📴 SIGTERM received, shutting down gracefully...");
     server.close(() => {
-      console.log("Server closed");
+      console.log("✅ Server closed gracefully");
+      process.exit(0);
+    });
+  });
+
+  process.on("SIGINT", () => {
+    console.log("📴 SIGINT received, shutting down gracefully...");
+    server.close(() => {
+      console.log("✅ Server closed gracefully");
       process.exit(0);
     });
   });
 } catch (error) {
   console.error("❌ Failed to start server:", error);
+  console.error("   Error details:", error);
+  // Exit with error code so Railway knows it failed
   process.exit(1);
 }
 
