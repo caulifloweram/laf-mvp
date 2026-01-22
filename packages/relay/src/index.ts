@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import http from "http";
 
 type Role = "broadcaster" | "listener";
 
@@ -22,13 +23,30 @@ console.log(`🚀 Starting WebSocket relay server...`);
 console.log(`   PORT: ${PORT}`);
 console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
 
-const wss = new WebSocketServer({ 
-  port: PORT,
-  host: "0.0.0.0" // Listen on all interfaces for Railway
+// Create HTTP server for health checks (Railway needs this)
+const httpServer = http.createServer((req, res) => {
+  if (req.url === "/health" || req.url === "/") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ 
+      status: "ok", 
+      service: "relay",
+      uptime: process.uptime(),
+      rooms: rooms.size
+    }));
+  } else {
+    res.writeHead(404);
+    res.end("Not found");
+  }
 });
 
-wss.on("listening", () => {
+// Create WebSocket server attached to HTTP server
+const wss = new WebSocketServer({ server: httpServer });
+
+// Start HTTP server (which also handles WebSocket upgrades)
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 HTTP server listening on http://0.0.0.0:${PORT}`);
   console.log(`🌐 WebSocket relay server listening on ws://0.0.0.0:${PORT}`);
+  console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`   ✅ Relay server started successfully!`);
 });
 
@@ -137,10 +155,36 @@ wss.on("connection", (ws, req) => {
   });
 });
 
+// Log connection info
 const HOST = process.env.RAILWAY_PUBLIC_DOMAIN 
   ? `wss://${process.env.RAILWAY_PUBLIC_DOMAIN}` 
   : `ws://localhost:${PORT}`;
 
-console.log(`🚀 Multi-stream relay listening on ${HOST}`);
+console.log(`📡 Multi-stream relay ready`);
 console.log(`   Connect as: ${HOST}/?role=broadcaster&streamId=123`);
 console.log(`   Or:        ${HOST}/?role=listener&streamId=123`);
+
+// Handle server errors
+httpServer.on("error", (err: any) => {
+  console.error("❌ HTTP server error:", err);
+  if (err.code === "EADDRINUSE") {
+    console.error(`   Port ${PORT} is already in use`);
+  }
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("📴 SIGTERM received, shutting down gracefully...");
+  httpServer.close(() => {
+    console.log("✅ Server closed gracefully");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("📴 SIGINT received, shutting down gracefully...");
+  httpServer.close(() => {
+    console.log("✅ Server closed gracefully");
+    process.exit(0);
+  });
+});
