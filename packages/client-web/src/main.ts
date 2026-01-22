@@ -396,8 +396,6 @@ async function loadChannels() {
       cache: "no-store",
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
         "Accept": "application/json"
       }
     });
