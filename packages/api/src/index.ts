@@ -146,30 +146,60 @@ app.post("/api/register", async (req, res) => {
 // Public: Get live channels
 app.get("/api/channels/live", async (_req, res) => {
   try {
+    // First, let's check all streams to debug
+    const allStreams = await pool.query(`
+      SELECT s.id, s.channel_id, s.stream_id, s.started_at, s.ended_at
+      FROM streams s
+      ORDER BY s.started_at DESC
+      LIMIT 10
+    `);
+    console.log(`Total streams in DB: ${allStreams.rows.length}`);
+    console.log("Recent streams:", allStreams.rows.map((r: any) => ({
+      channel_id: r.channel_id,
+      stream_id: r.stream_id,
+      ended_at: r.ended_at
+    })));
+
     const result = await pool.query(`
       SELECT 
         c.id,
         c.title,
         c.description,
-        s.stream_id as "streamId"
+        s.stream_id as "streamId",
+        s.started_at,
+        s.ended_at
       FROM channels c
       INNER JOIN streams s ON s.channel_id = c.id
       WHERE s.ended_at IS NULL
       ORDER BY s.started_at DESC
     `);
-    console.log(`Live channels query returned ${result.rows.length} channels`);
+    console.log(`Live channels query returned ${result.rows.length} raw channels`);
+    console.log("Raw channels:", result.rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      streamId: r.streamId,
+      ended_at: r.ended_at
+    })));
+    
     // Remove duplicates by channel id (keep the most recent stream per channel)
     const uniqueChannels = new Map();
     result.rows.forEach((row: any) => {
       if (!uniqueChannels.has(row.id)) {
-        uniqueChannels.set(row.id, row);
+        uniqueChannels.set(row.id, {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          streamId: row.streamId
+        });
       }
     });
     const channels = Array.from(uniqueChannels.values());
     console.log(`After deduplication: ${channels.length} unique live channels`);
+    console.log("Final channels:", channels);
     res.json(channels);
   } catch (err: any) {
     console.error("Error fetching live channels:", err);
+    console.error("Error stack:", err.stack);
     res.status(500).json({ error: "Failed to fetch live channels", details: err.message });
   }
 });

@@ -276,20 +276,30 @@ let loopRunning = false;
 
 async function loadChannels() {
   try {
-    console.log(`Fetching live channels from ${API_URL}/api/channels/live`);
-    const res = await fetch(`${API_URL}/api/channels/live`, {
+    const url = `${API_URL}/api/channels/live`;
+    console.log(`[loadChannels] Fetching live channels from ${url}`);
+    console.log(`[loadChannels] API_URL is: ${API_URL}`);
+    
+    const res = await fetch(url, {
       cache: "no-cache",
       headers: {
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
+        "Accept": "application/json"
       }
     });
+    
+    console.log(`[loadChannels] Response status: ${res.status} ${res.statusText}`);
+    console.log(`[loadChannels] Response headers:`, Object.fromEntries(res.headers.entries()));
+    
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`Failed to fetch live channels: HTTP ${res.status}`, errorText);
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      console.error(`[loadChannels] Failed to fetch live channels: HTTP ${res.status}`, errorText);
+      channelsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error loading channels: HTTP ${res.status}</p>`;
+      return;
     }
+    
     const channels: LiveChannel[] = await res.json();
-    console.log(`Loaded ${channels.length} live channels:`, channels);
+    console.log(`[loadChannels] Loaded ${channels.length} live channels:`, channels);
     
     channelsGrid.innerHTML = "";
     if (channels.length === 0) {
@@ -312,16 +322,25 @@ async function loadChannels() {
       return;
     }
     channels.forEach((c) => {
+      console.log(`[loadChannels] Creating card for channel:`, c);
+      if (!c.id || !c.streamId) {
+        console.warn(`[loadChannels] Invalid channel data:`, c);
+        return;
+      }
       const card = document.createElement("div");
       card.className = "channel-card";
       card.innerHTML = `
-        <div class="channel-title">${escapeHtml(c.title)}</div>
+        <div class="channel-title">${escapeHtml(c.title || "Untitled")}</div>
         <div class="channel-desc">${escapeHtml(c.description || "")}</div>
         <span class="live-badge">LIVE</span>
       `;
-      card.onclick = () => selectChannel(c);
+      card.onclick = () => {
+        console.log(`[loadChannels] Channel clicked:`, c);
+        selectChannel(c);
+      };
       channelsGrid.appendChild(card);
     });
+    console.log(`[loadChannels] Added ${channels.length} channel cards to grid`);
     
     // If current channel is no longer in the list, stop listening
     if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
@@ -339,8 +358,10 @@ async function loadChannels() {
       playText.textContent = "Start";
       currentChannel = null;
     }
-  } catch (err) {
-    console.error("Failed to load channels:", err);
+  } catch (err: any) {
+    console.error("[loadChannels] Exception caught:", err);
+    console.error("[loadChannels] Error details:", err.message, err.stack);
+    channelsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error: ${err.message || "Failed to load channels"}</p>`;
   }
 }
 
