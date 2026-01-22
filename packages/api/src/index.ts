@@ -214,16 +214,40 @@ app.get("/api/channels/live", async (_req, res) => {
     // CRITICAL: Filter to only include streams that have active broadcasters on relay
     // This ensures we only show streams that are actually broadcasting
     // If relay check failed (null), fall back to database (show all active streams from DB)
+    // If relay check succeeded but returned empty array, show recently created streams (grace period for connection timing)
     const filteredChannels = result.rows.filter((row: any) => {
       if (activeStreamIdsFromRelay === null) {
         // Relay check failed - fall back to database (show all active streams)
         console.log(`   ⚠️ Relay check failed, using DB fallback for channel ${row.id} (streamId=${row.streamId})`);
         return true; // Include all streams from DB when relay check fails
+      } else if (activeStreamIdsFromRelay.length === 0) {
+        // Relay check succeeded but returned empty array - this could mean:
+        // 1. No streams are active (correct - filter them out)
+        // 2. Broadcaster just connected but relay hasn't updated yet (timing issue)
+        // Solution: Show streams created in the last 30 seconds as a grace period
+        const streamAge = row.started_at ? (Date.now() - new Date(row.started_at).getTime()) : Infinity;
+        const GRACE_PERIOD_MS = 30000; // 30 seconds grace period for connection timing
+        if (streamAge < GRACE_PERIOD_MS) {
+          console.log(`   ⏳ Relay returned empty, but stream ${row.streamId} is recent (${Math.round(streamAge/1000)}s old) - showing as grace period`);
+          return true; // Include recent streams during grace period
+        } else {
+          console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay and too old (${Math.round(streamAge/1000)}s)`);
+          return false; // Filter out old streams that aren't on relay
+        }
       } else {
-        // Relay check succeeded - only include streams that are active on relay
+        // Relay check succeeded and returned active streams - only include streams that are active on relay
         const isActiveOnRelay = activeStreamIdsFromRelay.includes(row.streamId);
         if (!isActiveOnRelay) {
-          console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
+          // Check if stream is very recent (grace period for timing)
+          const streamAge = row.started_at ? (Date.now() - new Date(row.started_at).getTime()) : Infinity;
+          const GRACE_PERIOD_MS = 30000; // 30 seconds grace period
+          if (streamAge < GRACE_PERIOD_MS) {
+            console.log(`   ⏳ Stream ${row.streamId} not on relay yet but recent (${Math.round(streamAge/1000)}s old) - showing as grace period`);
+            return true; // Include recent streams during grace period
+          } else {
+            console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
+            return false;
+          }
         }
         return isActiveOnRelay;
       }
