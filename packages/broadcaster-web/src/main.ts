@@ -933,20 +933,41 @@ async function stopBroadcast() {
   processCount = 0;
   lastProcessTime = 0;
   
-  // Stop the stream on server
+  // CRITICAL: Stop the stream on server - this marks it as ended in the database
+  // The client polls every 3 seconds and will see the stream is no longer live
   if (currentChannel) {
     try {
+      console.log(`🔄 Calling stop-live API for channel ${currentChannel.id}...`);
       const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
         method: "POST",
       });
-      console.log("Stop-live result:", result);
-      updateBroadcastStatus("ready", "Stream stopped - click 'Go Live' to start again");
+      console.log("✅ Stop-live API response:", result);
+      
+      // Verify the response indicates success
+      if (result && (result.success || result.stoppedStreamIds)) {
+        const stoppedCount = result.stoppedStreamIds?.length || 0;
+        console.log(`✅ Successfully stopped ${stoppedCount} stream(s) on server`);
+        console.log(`   Stopped stream IDs: ${result.stoppedStreamIds?.join(", ") || "N/A"}`);
+        updateBroadcastStatus("ready", "Stream stopped - click 'Go Live' to start again");
+      } else {
+        console.warn("⚠️ Stop-live API returned unexpected response:", result);
+        updateBroadcastStatus("ready", "Stream stopped (server response unclear)");
+      }
     } catch (err: any) {
-      console.error("Failed to stop stream:", err);
-      alert(`Failed to stop stream: ${err.message || "Unknown error"}`);
-      updateBroadcastStatus("ready", "Ready to go live (server stop failed)");
+      console.error("❌ Failed to stop stream on server:", err);
+      console.error("   Error details:", {
+        message: err.message,
+        status: err.status,
+        response: err.response
+      });
+      
+      // Show user-friendly error
+      const errorMsg = err.message || "Unknown error";
+      alert(`Failed to stop stream on server: ${errorMsg}\n\nThe stream may still appear as live. You may need to refresh the client page.`);
+      updateBroadcastStatus("ready", "Ready to go live (server stop failed - stream may still show as live)");
     }
   } else {
+    console.warn("⚠️ No currentChannel set, cannot call stop-live API");
     updateBroadcastStatus("ready", "Ready to go live");
   }
   
