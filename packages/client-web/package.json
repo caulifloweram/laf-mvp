@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "serve": "npx serve dist -p $PORT"
+    "serve": "npx --yes serve dist -p $PORT"
   },
   "dependencies": {
     "opus-decoder": "^0.7.0"
