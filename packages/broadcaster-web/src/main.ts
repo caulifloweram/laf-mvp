@@ -49,6 +49,7 @@ let mediaStream: MediaStream | null = null;
 let streamId: number | null = null;
 let seq = 0;
 let startTime = 0;
+let processingActive = false; // Track if audio processing is active
 
 // Note: @wasm-audio-decoders/opus doesn't have an encoder
 // For MVP, we'll use a simple approach: encode via Web Audio and send raw PCM
