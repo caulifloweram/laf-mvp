@@ -179,6 +179,7 @@ app.get("/api/channels/live", async (_req, res) => {
         const relayData = await relayResponse.json() as { activeStreamIds?: number[]; count?: number };
         activeStreamIdsFromRelay = Array.isArray(relayData.activeStreamIds) ? relayData.activeStreamIds : [];
         console.log(`📡 Relay reports ${activeStreamIdsFromRelay.length} active stream(s): ${activeStreamIdsFromRelay.join(", ")}`);
+        console.log(`📡 Relay activeStreamIds type check:`, activeStreamIdsFromRelay.map(id => ({ id, type: typeof id })));
       } else {
         console.warn(`⚠️ Failed to check relay for active streams: HTTP ${relayResponse.status} - falling back to database`);
         activeStreamIdsFromRelay = null; // Use DB fallback
@@ -236,8 +237,12 @@ app.get("/api/channels/live", async (_req, res) => {
         }
       } else {
         // Relay check succeeded and returned active streams
-        // CRITICAL: If stream is in relay's active list, always show it (regardless of age)
-        const isActiveOnRelay = activeStreamIdsFromRelay.includes(row.streamId);
+        // CRITICAL: Ensure type matching for streamId comparison (database might return bigint/string)
+        const streamIdNum = typeof row.streamId === 'string' ? parseInt(row.streamId, 10) : Number(row.streamId);
+        const isActiveOnRelay = activeStreamIdsFromRelay.includes(streamIdNum);
+        
+        console.log(`   🔍 Checking stream ${row.streamId} (as number: ${streamIdNum}, type: ${typeof row.streamId}): active=${isActiveOnRelay}, relay has: [${activeStreamIdsFromRelay.join(", ")}]`);
+        
         if (isActiveOnRelay) {
           console.log(`   ✅ Stream ${row.streamId} is active on relay - showing`);
           return true; // Always show streams that are active on relay
