@@ -4,8 +4,10 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd packages/relay && node dist/index.js",
+    "startCommand": "cd /app/packages/relay && node dist/index.js",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 10,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 100
   }
 }

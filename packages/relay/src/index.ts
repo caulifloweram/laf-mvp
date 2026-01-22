@@ -23,6 +23,9 @@ console.log(`🚀 Starting WebSocket relay server...`);
 console.log(`   PORT: ${PORT}`);
 console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
 
+// Initialize rooms map before HTTP server (needed for health check)
+const rooms = new Map<number, StreamRoom>();
+
 // Create HTTP server for health checks (Railway needs this)
 const httpServer = http.createServer((req, res) => {
   if (req.url === "/health" || req.url === "/") {
@@ -49,8 +52,6 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`   ✅ Relay server started successfully!`);
 });
-
-const rooms = new Map<number, StreamRoom>();
 
 function parseUrl(url?: string): {
   role: Role;
