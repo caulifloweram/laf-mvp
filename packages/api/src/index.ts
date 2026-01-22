@@ -242,23 +242,30 @@ app.post("/api/me/channels/:channelId/go-live", authMiddleware, async (req, res)
     return res.status(404).json({ error: "Channel not found" });
   }
 
-  // Check if already live
+  // IMPORTANT: Each "go-live" creates a NEW stream - streams cannot be resumed once stopped
+  // If there's an existing active stream, mark it as ended first
   const existingStream = await pool.query(
     "SELECT stream_id FROM streams WHERE channel_id = $1 AND ended_at IS NULL",
     [channelId]
   );
   if (existingStream.rows.length > 0) {
-    const streamId = existingStream.rows[0].stream_id;
-    const wsUrl = `${RELAY_WS_URL}/?role=broadcaster&streamId=${streamId}`;
-    return res.json({ streamId, wsUrl });
+    const oldStreamId = existingStream.rows[0].stream_id;
+    console.log(`Ending existing stream ${oldStreamId} for channel ${channelId} before creating new one`);
+    await pool.query(
+      "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL",
+      [channelId]
+    );
   }
 
-  // Create new stream
-  const streamId = Date.now(); // Simple unique ID
+  // Always create a NEW stream with a unique streamId
+  // Use timestamp + random to ensure uniqueness even if called multiple times in the same millisecond
+  const streamId = Date.now() + Math.floor(Math.random() * 1000);
   await pool.query(
     "INSERT INTO streams (channel_id, stream_id) VALUES ($1, $2)",
     [channelId, streamId]
   );
+  
+  console.log(`Created new stream ${streamId} for channel ${channelId}`);
 
   const wsUrl = `${RELAY_WS_URL}/?role=broadcaster&streamId=${streamId}`;
   res.json({ streamId, wsUrl });
