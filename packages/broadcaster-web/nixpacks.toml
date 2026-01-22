@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_20", "pnpm"]
 cmds = ["cd ../.. && pnpm install"]
 
 [phases.build]
-cmds = ["cd ../.. && pnpm build"]
+cmds = ["cd ../.. && pnpm build --omit=dev"]
 
 [start]
-cmd = "cd packages/broadcaster-web && npx serve dist -p $PORT"
+cmd = "cd packages/broadcaster-web && npx --yes serve dist -p $PORT"
