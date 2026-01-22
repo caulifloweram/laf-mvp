@@ -456,13 +456,24 @@ function buildLafPacket(opts: {
 
 // Improved PCM to Int16 encoding with subtle dithering
 // TODO: Replace with real Opus encoding for production
-function encodePcmToInt16(pcm: Float32Array): Int16Array {
-  const pcm16 = new Int16Array(pcm.length);
+// For now, we can optionally downsample to reduce bandwidth
+function encodePcmToInt16(pcm: Float32Array, downsampleFactor: number = 1): Int16Array {
+  // Downsample if needed to reduce bandwidth (temporary workaround)
+  let processedPcm = pcm;
+  if (downsampleFactor > 1) {
+    const downsampledLength = Math.floor(pcm.length / downsampleFactor);
+    processedPcm = new Float32Array(downsampledLength);
+    for (let i = 0; i < downsampledLength; i++) {
+      processedPcm[i] = pcm[i * downsampleFactor];
+    }
+  }
+  
+  const pcm16 = new Int16Array(processedPcm.length);
   const scale = 0x7fff;
   
-  for (let i = 0; i < pcm.length; i++) {
+  for (let i = 0; i < processedPcm.length; i++) {
     // Clamp to [-1, 1] range
-    let sample = Math.max(-1, Math.min(1, pcm[i]));
+    let sample = Math.max(-1, Math.min(1, processedPcm[i]));
     
     // Subtle dithering - reduced to prevent muffling
     // Only add minimal dithering to reduce quantization artifacts without affecting sound quality
@@ -482,8 +493,10 @@ function encodePcmToInt16(pcm: Float32Array): Int16Array {
 }
 
 // Encode PCM to "fake Opus" (raw PCM for now, will be replaced with real Opus)
-function encodePcmToFakeOpus(pcm: Float32Array): Uint8Array {
-  const pcm16 = encodePcmToInt16(pcm);
+// Use downsampling factor of 2 to reduce bandwidth from ~768 kbps to ~384 kbps
+// This is a temporary workaround until Opus encoding is implemented
+function encodePcmToFakeOpus(pcm: Float32Array, downsampleFactor: number = 2): Uint8Array {
+  const pcm16 = encodePcmToInt16(pcm, downsampleFactor);
   // Return as Uint8Array for compatibility
   return new Uint8Array(pcm16.buffer);
 }
