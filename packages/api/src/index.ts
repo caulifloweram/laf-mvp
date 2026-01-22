@@ -5,15 +5,25 @@ import { authMiddleware, login, register } from "./auth";
 
 const app = express();
 
-// SIMPLIFIED CORS - Allow all origins for now to get it working
-// This is the most permissive configuration that will definitely work
+// CORS - Allow all origins
 app.use(cors({
   origin: true, // Allow all origins
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  exposedHeaders: ["Content-Type", "Authorization"]
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  exposedHeaders: ["Content-Type", "Authorization"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Handle OPTIONS requests explicitly (preflight)
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(204);
+});
 
 // Parse JSON bodies
 app.use(express.json());
@@ -171,11 +181,29 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
 });
 
 // Start server
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
   console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Configured" : "⚠️ Not configured"}`);
   console.log(`   CORS: ✅ Enabled (allowing all origins)`);
+  console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+});
+
+// Handle server errors
+server.on("error", (err: any) => {
+  console.error("❌ Server error:", err);
+  if (err.code === "EADDRINUSE") {
+    console.error(`   Port ${PORT} is already in use`);
+  }
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully...");
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
 });
 
 // Handle errors
