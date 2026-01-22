@@ -256,7 +256,19 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 
   if (shouldDown) {
     const oldTier = next.currentTier;
-    next.currentTier = Math.max(next.currentTier - 1, next.minTier);
+    const newTier = Math.max(next.currentTier - 1, next.minTier);
+    
+    // CRITICAL: Double-check that the new tier actually has packets before switching
+    const newTierBuf = allTiers.get(newTier);
+    const newTierHasPackets = newTierBuf && ((newTierBuf as any).packets.size > 0 || (newTierBuf as any).playbackSeq !== null);
+    
+    if (!newTierHasPackets) {
+      // Target tier doesn't have packets, don't downgrade
+      console.warn(`⚠️ ABR wanted to downgrade to tier ${newTier} but it has no packets, staying on tier ${oldTier}`);
+      return next;
+    }
+    
+    next.currentTier = newTier;
     if (oldTier !== next.currentTier) {
       console.log(`⬇️ ABR downgrading: ${oldTier} → ${next.currentTier} (loss: ${inputs.lossPercent2s.toFixed(1)}%, buffer: ${inputs.bufferMs}ms, missing: ${next.consecutiveLateOrMissing})`);
     }
