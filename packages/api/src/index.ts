@@ -6,9 +6,12 @@ import { authMiddleware, login, register } from "./auth";
 const app = express();
 
 // CORS - Apply FIRST, before any other middleware
-// This ensures preflight OPTIONS requests are handled correctly
+// When credentials: true, we must use a function for origin, not "*"
 app.use(cors({
-  origin: "*", // Allow all origins explicitly
+  origin: (origin, callback) => {
+    // Allow all origins when credentials are needed
+    callback(null, true);
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
@@ -17,10 +20,11 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-// Explicit OPTIONS handler as backup (shouldn't be needed but ensures it works)
+// Explicit OPTIONS handler as backup - sets headers manually
 app.options("*", (req, res) => {
   console.log(`OPTIONS request from origin: ${req.headers.origin}`);
-  res.header("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "*";
+  res.header("Access-Control-Allow-Origin", origin);
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
   res.header("Access-Control-Allow-Credentials", "true");
