@@ -68,9 +68,9 @@ class JitterBuffer {
   lastSeq: number | null = null;
   bufferMs = 0;
 
-  constructor(targetDelayMs = 400, minBufferPackets = 15, maxBufferPackets = 100) {
+  constructor(targetDelayMs = 1000, minBufferPackets = 30, maxBufferPackets = 100) {
     this.targetDelayMs = targetDelayMs;
-    this.minBufferPackets = minBufferPackets; // ~300ms at 20ms per frame
+    this.minBufferPackets = minBufferPackets; // ~600ms at 20ms per frame - larger initial buffer
     this.maxBufferPackets = maxBufferPackets; // ~2 seconds max buffer to prevent memory overflow
   }
 
@@ -345,10 +345,12 @@ let audioCtx: AudioContext | null = null;
 let opusDecoder: OpusDecoder | null = null;
 
 const tiers = new Map<number, JitterBuffer>();
-// Create jitter buffers with max size limit to prevent memory overflow
-// Max 100 packets = ~2 seconds of audio at 20ms per packet
+// Create jitter buffers with larger initial delay and buffer for smooth streaming
+// Initial delay: 1000ms (1 second) to build up buffer before playback
+// Min buffer: 30 packets (~600ms) before starting playback
+// Max buffer: 100 packets (~2 seconds) to prevent memory overflow
 for (let t = MIN_TIER; t <= MAX_TIER_ALLOWED; t++) {
-  tiers.set(t, new JitterBuffer(400, 15, 100)); // 400ms delay, 15 packets minimum, 100 packets max
+  tiers.set(t, new JitterBuffer(1000, 30, 100)); // 1000ms delay, 30 packets minimum, 100 packets max
 }
 
 let abrState: AbrState = {
@@ -366,7 +368,7 @@ let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let playheadTime = 0;
 let loopRunning = false;
-const LOOKAHEAD_PACKETS = 5; // Schedule 5 packets (100ms) ahead for smooth playback
+const LOOKAHEAD_PACKETS = 10; // Schedule 10 packets (200ms) ahead for smooth playback - increased for better stability
 
 async function loadChannels() {
   try {
@@ -614,7 +616,7 @@ async function startListening() {
     
     // Log initialization
     if (playbackSeqBefore === null && playbackSeqAfter !== null) {
-      console.log("✅ Jitter buffer initialized! playbackSeq:", playbackSeqAfter, "playback starts in 400ms");
+      console.log("✅ Jitter buffer initialized! playbackSeq:", playbackSeqAfter, "playback starts in 1000ms (1s delay for smooth streaming)");
     }
     
     // Log first few packets and periodically
