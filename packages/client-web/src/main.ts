@@ -382,6 +382,7 @@ let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let playheadTime = 0;
 let loopRunning = false;
+let isStopping = false; // Flag to prevent audio scheduling during stop
 const LOOKAHEAD_PACKETS = 10; // Schedule 10 packets (200ms) ahead for smooth playback - increased for better stability
 
 async function loadChannels() {
@@ -500,6 +501,9 @@ async function startListening() {
   btnStart.disabled = true;
 
   console.log("▶️ Starting listening - initializing fresh state...");
+  
+  // CRITICAL: Reset stopping flag when starting a new stream
+  isStopping = false;
   
   // CRITICAL: Ensure all state is reset before starting
   // Reset playheadTime to current time (fresh start)
@@ -676,6 +680,11 @@ async function startListening() {
 }
 
 function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) {
+  // CRITICAL: Don't schedule audio if we're stopping or stopped
+  if (isStopping || !loopRunning) {
+    return;
+  }
+  
   if (ctx.state === "suspended") {
     console.warn("AudioContext is suspended, cannot play audio");
     return;
@@ -730,6 +739,11 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
 }
 
 function scheduleSilence(ctx: AudioContext) {
+  // CRITICAL: Don't schedule silence if we're stopping or stopped
+  if (isStopping || !loopRunning) {
+    return;
+  }
+  
   if (ctx.state === "suspended") {
     return;
   }
@@ -1080,8 +1094,18 @@ function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: st
 function stopListening() {
   console.log("🛑 Stopping listening and cleaning up gracefully...");
   
-  // Stop the loop FIRST to prevent any new audio scheduling
+  // CRITICAL: Set stopping flag FIRST to prevent any new audio scheduling
+  isStopping = true;
+  
+  // Stop the loop to prevent any new audio processing
   loopRunning = false;
+  
+  // CRITICAL: Clear all jitter buffers IMMEDIATELY to prevent processing old packets
+  // This must happen before suspending AudioContext to prevent glitchy sounds
+  for (const [tier, buf] of tiers.entries()) {
+    buf.reset(); // Use the reset method to clean up all state
+  }
+  console.log("🔇 Jitter buffers cleared");
   
   // Close WebSocket
   if (ws) {
@@ -1097,22 +1121,15 @@ function stopListening() {
   }
   
   // CRITICAL: Stop audio gracefully to prevent glitching
-  // Stop the loop first (already done above), then suspend AudioContext
-  // This ensures no new audio is scheduled and existing audio stops cleanly
+  // Suspend AudioContext immediately - this stops all scheduled audio
+  // Buffers are already cleared, so no new audio will be processed
   if (audioCtx && audioCtx.state === "running") {
     try {
-      // Suspend AudioContext immediately - this stops all scheduled audio
-      // The loop is already stopped, so no new audio will be scheduled
       audioCtx.suspend();
       console.log("🔇 AudioContext suspended - audio stopped gracefully");
     } catch (err) {
       console.warn("⚠️ Error suspending AudioContext:", err);
     }
-  }
-  
-  // Reset all jitter buffers - CRITICAL: clear old packets
-  for (const [tier, buf] of tiers.entries()) {
-    buf.reset(); // Use the reset method to clean up all state
   }
   
   // Reset playheadTime - CRITICAL: reset audio scheduling
@@ -1138,7 +1155,12 @@ function stopListening() {
   lastStatsTime = performance.now();
   lastLoopTime = performance.now();
   
-  console.log("✅ Cleanup complete - all state reset, audio faded out");
+  // Reset stopping flag after a brief delay to ensure all audio has stopped
+  setTimeout(() => {
+    isStopping = false;
+  }, 100);
+  
+  console.log("✅ Cleanup complete - all state reset, audio stopped cleanly");
   updatePlayerStatus("stopped", "Stream ended");
   btnStart.disabled = false;
   btnStart.classList.remove("hidden");
