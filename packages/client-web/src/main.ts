@@ -769,6 +769,13 @@ async function loop() {
     }
   }
   
+  // CRITICAL: Update ABR state to match the tier we're actually using
+  // This prevents ABR from making decisions based on the wrong tier's buffer
+  if (tierToUse !== abrState.currentTier) {
+    console.log(`🔄 ABR state updated: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
+    abrState.currentTier = tierToUse;
+  }
+  
   const pkt = tierBuf.popForPlayback(now);
 
   if (!pkt) {
