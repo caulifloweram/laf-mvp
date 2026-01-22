@@ -232,6 +232,10 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
   // 1. Current tier has packets in buffer AND buffer is initialized
   // 2. OR playback hasn't started yet (still in initial delay)
   // 3. OR target tier doesn't have packets (would cause silence)
+  // CRITICAL: Never downgrade to a tier that has no packets - this causes silence!
+  const targetTier = next.currentTier - 1;
+  const targetTierHasPackets = targetTier >= MIN_TIER && checkTierHasPackets(targetTier);
+  
   const shouldDown =
     (inputs.lossPercent2s > 5 ||
      (inputs.bufferMs < 80 && playbackStarted) ||
@@ -240,8 +244,8 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
     !(hasPackets && bufferInitialized) &&
     // Don't downgrade during initial delay
     playbackStarted &&
-    // Don't downgrade if target tier doesn't have packets
-    checkTierHasPackets(next.currentTier - 1);
+    // CRITICAL: Don't downgrade if target tier doesn't have packets (would cause silence)
+    targetTierHasPackets;
 
   if (shouldDown) {
     const oldTier = next.currentTier;
@@ -703,6 +707,8 @@ async function loop() {
         tierToUse = t;
         foundTier = true;
         console.log(`⬆️ Tier ${abrState.currentTier} has no packets, using tier ${t} instead (higher quality)`);
+        // Update ABR state to match the tier we're actually using
+        abrState.currentTier = t;
         break;
       }
     }
@@ -716,12 +722,14 @@ async function loop() {
           tierToUse = t;
           foundTier = true;
           console.log(`⬇️ Tier ${abrState.currentTier} has no packets, using tier ${t} instead (lower quality)`);
+          // Update ABR state to match the tier we're actually using
+          abrState.currentTier = t;
           break;
         }
       }
     }
     
-    // If still no tier found, log warning
+    // If still no tier found, log warning and keep using current tier (will play silence)
     if (!foundTier) {
       console.warn(`⚠️ No tier has packets available! Current tier: ${abrState.currentTier}`);
       for (const [t, buf] of tiers.entries()) {
