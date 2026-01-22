@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["cd ../.. && pnpm install"]
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = ["cd ../.. && pnpm build --omit=dev"]
+cmds = ["cd packages/broadcaster-web && pnpm build"]
 
 [start]
 cmd = "cd packages/broadcaster-web && npx --yes serve dist -p $PORT"
