@@ -547,14 +547,8 @@ async function stopBroadcast() {
   }
   
   streamId = null;
-  btnStopLive.disabled = false;
-}
   seq = 0;
-  meterBar.style.width = "0%";
-  broadcastStatus.className = "status info";
-  broadcastStatus.textContent = "Ready to go live";
-  btnGoLive.classList.remove("hidden");
-  btnStopLive.classList.add("hidden");
+  btnStopLive.disabled = false;
 }
 
 // Event handlers
