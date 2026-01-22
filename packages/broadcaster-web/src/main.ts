@@ -51,6 +51,10 @@ let seq = 0;
 let startTime = 0;
 let processingActive = false; // Track if audio processing is active
 let sampleBuffer: Float32Array = new Float32Array(0); // Module-level buffer for cleanup
+let packetsSent = 0; // Module-level packet counter
+let lastPacketTime = 0; // Module-level last packet timestamp
+let processCount = 0; // Module-level process counter
+let lastProcessTime = 0; // Module-level last process timestamp
 
 // Note: @wasm-audio-decoders/opus doesn't have an encoder
 // For MVP, we'll use a simple approach: encode via Web Audio and send raw PCM
@@ -692,21 +696,19 @@ async function startBroadcast() {
     console.log("📊 Stream ID:", streamId);
     
     sampleBuffer = new Float32Array(0); // Reset module-level buffer
-    let lastPacketTime = performance.now();
-    let packetsSent = 0;
     
     // SIMPLIFIED: Use ScriptProcessor (deprecated but simple and reliable)
     // Workaround for 2-second stop: reconnect processor periodically
     console.log("✅ Using ScriptProcessor (simple, reliable approach)");
-    let lastProcessTime = performance.now();
-    let processCount = 0;
     
-    // Reset state for fresh start
+    // Reset state for fresh start - use module-level variables
     seq = 0;
     startTime = performance.now();
     sampleBuffer = new Float32Array(0); // Reset module-level buffer
-    packetsSent = 0;
+    packetsSent = 0; // Reset module-level counter
     lastPacketTime = performance.now();
+    processCount = 0; // Reset module-level counter
+    lastProcessTime = performance.now();
     processingActive = true; // Use module-level variable
     
     function createProcessor() {
