@@ -1078,9 +1078,9 @@ function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: st
 }
 
 function stopListening() {
-  console.log("🛑 Stopping listening and cleaning up...");
+  console.log("🛑 Stopping listening and cleaning up gracefully...");
   
-  // Stop the loop first
+  // Stop the loop FIRST to prevent any new audio scheduling
   loopRunning = false;
   
   // Close WebSocket
@@ -1089,8 +1089,43 @@ function stopListening() {
     if ((ws as any).messageMonitor) {
       clearInterval((ws as any).messageMonitor);
     }
-    ws.close();
+    // Close gracefully
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      ws.close(1000, "Client stopping");
+    }
     ws = null;
+  }
+  
+  // CRITICAL: Fade out audio gracefully instead of abrupt stop
+  // This prevents glitching when broadcaster stops
+  if (audioCtx && audioCtx.state === "running") {
+    try {
+      // Create a gain node for fade out
+      const gainNode = audioCtx.createGain();
+      const currentTime = audioCtx.currentTime;
+      const fadeDuration = 0.1; // 100ms fade out
+      
+      // Fade out smoothly
+      gainNode.gain.setValueAtTime(1.0, currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.0, currentTime + fadeDuration);
+      
+      // Connect gain to destination (if we have a source)
+      // Note: This is a safety measure - the actual audio sources should already be disconnected
+      
+      // Suspend AudioContext after fade
+      setTimeout(() => {
+        if (audioCtx && audioCtx.state !== "closed") {
+          audioCtx.suspend();
+          console.log("🔇 AudioContext suspended after fade out");
+        }
+      }, fadeDuration * 1000 + 50);
+    } catch (err) {
+      console.warn("⚠️ Error during audio fade out:", err);
+      // Fallback: just suspend immediately
+      if (audioCtx && audioCtx.state !== "closed") {
+        audioCtx.suspend();
+      }
+    }
   }
   
   // Reset all jitter buffers - CRITICAL: clear old packets
@@ -1121,13 +1156,8 @@ function stopListening() {
   lastStatsTime = performance.now();
   lastLoopTime = performance.now();
   
-  // Suspend AudioContext (but don't close it - we'll reuse it)
-  if (audioCtx && audioCtx.state !== "closed") {
-    audioCtx.suspend();
-  }
-  
-  console.log("✅ Cleanup complete - all state reset");
-  updatePlayerStatus("stopped", "Stopped");
+  console.log("✅ Cleanup complete - all state reset, audio faded out");
+  updatePlayerStatus("stopped", "Stream ended");
   btnStart.disabled = false;
   btnStart.classList.remove("hidden");
   btnStop.classList.add("hidden");

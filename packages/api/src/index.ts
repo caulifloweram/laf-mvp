@@ -59,6 +59,8 @@ app.use((req, res, next) => {
 
 const PORT = Number(process.env.PORT ?? 4000);
 const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
+// Get HTTP URL for relay (for checking active streams)
+const RELAY_HTTP_URL = process.env.RELAY_HTTP_URL || process.env.RELAY_WS_URL?.replace("ws://", "http://").replace("wss://", "https://") || "http://localhost:9000";
 
 // Health check endpoint - put it early so we can test if API is running
 // Railway uses HEAD requests for health checks, so we need to handle both GET and HEAD
@@ -160,9 +162,28 @@ app.get("/api/channels/live", async (_req, res) => {
       ended_at: r.ended_at
     })));
 
+    // CRITICAL: Check relay for actually active streams (has broadcaster connected)
+    // This is the source of truth - database might be stale
+    let activeStreamIdsFromRelay: number[] = [];
+    try {
+      const relayResponse = await fetch(`${RELAY_HTTP_URL}/active-streams`, {
+        timeout: 2000,
+        signal: AbortSignal.timeout(2000)
+      } as any);
+      if (relayResponse.ok) {
+        const relayData = await relayResponse.json();
+        activeStreamIdsFromRelay = relayData.activeStreamIds || [];
+        console.log(`📡 Relay reports ${activeStreamIdsFromRelay.length} active stream(s): ${activeStreamIdsFromRelay.join(", ")}`);
+      } else {
+        console.warn(`⚠️ Failed to check relay for active streams: HTTP ${relayResponse.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ Could not check relay for active streams: ${err.message}`);
+      // Continue with database check as fallback
+    }
+
     // Only get streams that are actually active (ended_at IS NULL)
     // Use DISTINCT ON to ensure we only get the most recent active stream per channel
-    // IMPORTANT: Double-check that ended_at is actually NULL
     const result = await pool.query(`
       SELECT DISTINCT ON (c.id)
         c.id,
@@ -178,26 +199,23 @@ app.get("/api/channels/live", async (_req, res) => {
       ORDER BY c.id, s.started_at DESC
     `);
     
-    // Log for debugging
-    console.log(`Live channels query returned ${result.rows.length} raw channels`);
-    if (result.rows.length > 0) {
-      console.log(`🔍 Found ${result.rows.length} active stream(s):`);
-      result.rows.forEach((row: any) => {
-        console.log(`   - Channel ${row.id} (${row.title}): streamId=${row.streamId}, ended_at=${row.ended_at}`);
-      });
-    } else {
-      console.log(`✅ No active streams found - all channels are offline`);
-    }
-    console.log("Raw channels:", result.rows.map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      streamId: r.streamId,
-      ended_at: r.ended_at
-    })));
+    console.log(`📊 Database query returned ${result.rows.length} potential live channels`);
+    
+    // CRITICAL: Filter to only include streams that have active broadcasters on relay
+    // This ensures we only show streams that are actually broadcasting
+    const filteredChannels = result.rows.filter((row: any) => {
+      const isActiveOnRelay = activeStreamIdsFromRelay.length === 0 || activeStreamIdsFromRelay.includes(row.streamId);
+      if (!isActiveOnRelay) {
+        console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
+      }
+      return isActiveOnRelay;
+    });
+    
+    console.log(`✅ After relay filter: ${filteredChannels.length} actually live channels`);
     
     // Remove duplicates by channel id (keep the most recent stream per channel)
     const uniqueChannels = new Map();
-    result.rows.forEach((row: any) => {
+    filteredChannels.forEach((row: any) => {
       if (!uniqueChannels.has(row.id)) {
         uniqueChannels.set(row.id, {
           id: row.id,
@@ -208,8 +226,7 @@ app.get("/api/channels/live", async (_req, res) => {
       }
     });
     const channels = Array.from(uniqueChannels.values());
-    console.log(`After deduplication: ${channels.length} unique live channels`);
-    console.log("Final channels:", channels);
+    console.log(`📺 Final result: ${channels.length} unique live channels`);
     res.json(channels);
   } catch (err: any) {
     console.error("Error fetching live channels:", err);

@@ -28,6 +28,20 @@ const rooms = new Map<number, StreamRoom>();
 
 // Create HTTP server for health checks (Railway needs this)
 const httpServer = http.createServer((req, res) => {
+  // CORS headers for API access
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+  
   if (req.url === "/health" || req.url === "/") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ 
@@ -35,6 +49,19 @@ const httpServer = http.createServer((req, res) => {
       service: "relay",
       uptime: process.uptime(),
       rooms: rooms.size
+    }));
+  } else if (req.url === "/active-streams") {
+    // Return list of streamIds that have active broadcasters
+    const activeStreamIds: number[] = [];
+    for (const [streamId, room] of rooms.entries()) {
+      if (room.broadcaster && room.broadcaster.ws.readyState === 1) { // WebSocket.OPEN = 1
+        activeStreamIds.push(streamId);
+      }
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ 
+      activeStreamIds,
+      count: activeStreamIds.length
     }));
   } else {
     res.writeHead(404);
