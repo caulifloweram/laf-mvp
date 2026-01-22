@@ -639,6 +639,14 @@ async function startBroadcast() {
     let lastProcessTime = performance.now();
     let processCount = 0;
     
+    // Reset state for fresh start
+    seq = 0;
+    startTime = performance.now();
+    sampleBuffer = new Float32Array(0);
+    packetsSent = 0;
+    lastPacketTime = performance.now();
+    processingActive = true;
+    
     function createProcessor() {
       const processor = audioCtx!.createScriptProcessor(4096, CHANNELS, CHANNELS);
       
@@ -806,33 +814,44 @@ async function stopBroadcast() {
     return;
   }
 
+  console.log("🛑 Stopping broadcast and cleaning up...");
   btnStopLive.disabled = true;
   statusText.textContent = "Stopping broadcast...";
   
-  // Clean up MediaRecorder
-  const mediaRecorder = (audioCtx as any)?.mediaRecorder;
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
+  // Stop audio processing first
+  processingActive = false;
   
-  // Clean up processor if it exists (fallback)
+  // Clean up processor if it exists
   const processor = (audioCtx as any)?.processor;
   if (processor) {
-    if (processor.stop) {
-      processor.stop();
-    } else {
-      processor.disconnect();
+    try {
+      if (processor.stop) {
+        processor.stop();
+      } else {
+        processor.disconnect();
+      }
+      // Clean up processor keep-alive interval
+      if ((processor as any).keepAliveInterval) {
+        clearInterval((processor as any).keepAliveInterval);
+      }
+    } catch (err) {
+      console.error("Error cleaning up processor:", err);
     }
+    (audioCtx as any).processor = null;
   }
   
+  // Clean up keep-alive intervals
   if ((audioCtx as any)?.keepAliveInterval) {
     clearInterval((audioCtx as any).keepAliveInterval);
+    (audioCtx as any).keepAliveInterval = null;
   }
   
   if ((audioCtx as any)?.keepAliveMonitor) {
     clearInterval((audioCtx as any).keepAliveMonitor);
+    (audioCtx as any).keepAliveMonitor = null;
   }
   
+  // Close WebSocket connection
   if (ws) {
     // Clean up WebSocket health monitor
     if ((ws as any).healthMonitor) {
@@ -841,26 +860,36 @@ async function stopBroadcast() {
     ws.close();
     ws = null;
   }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach((t) => t.stop());
-    mediaStream = null;
-  }
-  if (audioCtx) {
-    await audioCtx.close();
-    audioCtx = null;
+  
+  // CRITICAL: Don't close AudioContext or stop mediaStream - keep them for restart
+  // This allows user to restart without re-requesting microphone permission
+  // Just suspend the AudioContext to stop processing
+  if (audioCtx && audioCtx.state !== "closed") {
+    await audioCtx.suspend();
+    console.log("✅ AudioContext suspended (kept alive for restart)");
   }
   
+  // Reset state variables
   meterBar.style.width = "0%";
   broadcastStartTime = null;
   broadcastPacketCount = 0;
+  streamId = null;
+  seq = 0;
+  startTime = 0;
+  sampleBuffer = new Float32Array(0);
+  packetsSent = 0;
+  lastPacketTime = 0;
+  processCount = 0;
+  lastProcessTime = 0;
   
+  // Stop the stream on server
   if (currentChannel) {
     try {
       const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
         method: "POST",
       });
       console.log("Stop-live result:", result);
-      updateBroadcastStatus("ready", "Stream stopped successfully");
+      updateBroadcastStatus("ready", "Stream stopped - click 'Go Live' to start again");
     } catch (err: any) {
       console.error("Failed to stop stream:", err);
       alert(`Failed to stop stream: ${err.message || "Unknown error"}`);
@@ -870,9 +899,10 @@ async function stopBroadcast() {
     updateBroadcastStatus("ready", "Ready to go live");
   }
   
-  streamId = null;
-  seq = 0;
   btnStopLive.disabled = false;
+  btnGoLive.disabled = false;
+  goLiveIcon.textContent = "▶️";
+  console.log("✅ Broadcast stopped - ready to restart");
 }
 
 // Event handlers
