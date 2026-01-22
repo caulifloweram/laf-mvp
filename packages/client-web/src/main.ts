@@ -211,7 +211,7 @@ interface AbrInputs {
   deltaMs: number;
 }
 
-function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer): AbrState {
+function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, allTiers: Map<number, JitterBuffer>): AbrState {
   const next = { ...state };
   next.stableMs += inputs.deltaMs;
 
@@ -221,9 +221,17 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer): A
   const playbackStarted = (tierBuf as any).playbackStartMs !== null && 
                           performance.now() >= (tierBuf as any).playbackStartMs;
 
+  // Check if target tier would have packets before switching
+  const checkTierHasPackets = (tier: number): boolean => {
+    const buf = allTiers.get(tier);
+    if (!buf) return false;
+    return (buf as any).packets.size > 0 || (buf as any).playbackSeq !== null;
+  };
+
   // Don't downgrade if:
   // 1. Current tier has packets in buffer AND buffer is initialized
   // 2. OR playback hasn't started yet (still in initial delay)
+  // 3. OR target tier doesn't have packets (would cause silence)
   const shouldDown =
     (inputs.lossPercent2s > 5 ||
      (inputs.bufferMs < 80 && playbackStarted) ||
@@ -231,7 +239,9 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer): A
     // Don't downgrade if current tier has packets and is initialized
     !(hasPackets && bufferInitialized) &&
     // Don't downgrade during initial delay
-    playbackStarted;
+    playbackStarted &&
+    // Don't downgrade if target tier doesn't have packets
+    checkTierHasPackets(next.currentTier - 1);
 
   if (shouldDown) {
     const oldTier = next.currentTier;
@@ -244,8 +254,12 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer): A
     return next;
   }
 
+  // Only upgrade if target tier has packets
   const canUp =
-    next.stableMs >= 15_000 && inputs.lossPercent2s < 1 && inputs.bufferMs > 250;
+    next.stableMs >= 15_000 && 
+    inputs.lossPercent2s < 1 && 
+    inputs.bufferMs > 250 &&
+    checkTierHasPackets(next.currentTier + 1);
 
   if (canUp) {
     const oldTier = next.currentTier;
@@ -672,17 +686,46 @@ async function loop() {
   let tierBuf = tiers.get(abrState.currentTier)!;
   let tierToUse = abrState.currentTier;
   
-  // If current tier has no packets, check if a lower tier has packets
-  if ((tierBuf as any).packets.size === 0 && (tierBuf as any).playbackSeq === null) {
-    for (let t = abrState.currentTier - 1; t >= MIN_TIER; t--) {
+  // CRITICAL: If current tier has no packets available for playback, find ANY tier with packets
+  // This prevents silence when ABR switches to a tier that doesn't have packets yet
+  const currentTierHasPackets = (tierBuf as any).packets.size > 0 || 
+                                 (tierBuf as any).playbackSeq !== null;
+  
+  if (!currentTierHasPackets) {
+    // Try to find ANY tier with packets (check higher tiers first, then lower)
+    let foundTier = false;
+    
+    // First check higher tiers (better quality)
+    for (let t = abrState.currentTier + 1; t <= MAX_TIER_ALLOWED; t++) {
       const buf = tiers.get(t);
-      if (buf && (buf as any).packets.size > 0) {
+      if (buf && ((buf as any).packets.size > 0 || (buf as any).playbackSeq !== null)) {
         tierBuf = buf;
         tierToUse = t;
-        if (t !== abrState.currentTier) {
-          console.log(`⚠️ Tier ${abrState.currentTier} has no packets, using tier ${t} instead`);
-        }
+        foundTier = true;
+        console.log(`⬆️ Tier ${abrState.currentTier} has no packets, using tier ${t} instead (higher quality)`);
         break;
+      }
+    }
+    
+    // If no higher tier, check lower tiers
+    if (!foundTier) {
+      for (let t = abrState.currentTier - 1; t >= MIN_TIER; t--) {
+        const buf = tiers.get(t);
+        if (buf && ((buf as any).packets.size > 0 || (buf as any).playbackSeq !== null)) {
+          tierBuf = buf;
+          tierToUse = t;
+          foundTier = true;
+          console.log(`⬇️ Tier ${abrState.currentTier} has no packets, using tier ${t} instead (lower quality)`);
+          break;
+        }
+      }
+    }
+    
+    // If still no tier found, log warning
+    if (!foundTier) {
+      console.warn(`⚠️ No tier has packets available! Current tier: ${abrState.currentTier}`);
+      for (const [t, buf] of tiers.entries()) {
+        console.warn(`  Tier ${t}: packets=${(buf as any).packets.size}, playbackSeq=${(buf as any).playbackSeq}`);
       }
     }
   }
@@ -807,7 +850,7 @@ async function loop() {
     bufferMs: stats.bufferMs,
     lateRate,
     deltaMs
-  }, tierBuf);
+  }, tierBuf, tiers);
   
   // Log tier changes
   if (abrState.currentTier !== oldTier) {
