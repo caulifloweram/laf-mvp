@@ -1,24 +1,16 @@
-// NEW APPROACH: Use 8-bit PCM instead of 16-bit to reduce bandwidth by 2x
-// 8-bit PCM = 384 kbps vs 16-bit PCM = 768 kbps
-// This is much simpler and more reliable than trying to encode Opus in the browser
-// The client can easily convert 8-bit back to 16-bit for playback
+// SIMPLIFIED APPROACH: Use ScriptProcessor with 16-bit PCM
+// This is the simplest, most reliable approach that works across all browsers
+// ScriptProcessor is deprecated but it works, and we can work around its limitations
 
-// Type declaration for MediaStreamTrackProcessor (modern API)
-declare global {
-  interface Window {
-    MediaStreamTrackProcessor?: any;
-  }
-}
-
-// Convert Float32 PCM to Int8 PCM (8-bit, reduces bandwidth by 2x)
-function floatToPCM8(pcm: Float32Array): Uint8Array {
-  const pcm8 = new Uint8Array(pcm.length);
+// Convert Float32 PCM to Int16 PCM (16-bit, standard format)
+function floatToPCM16(pcm: Float32Array): Int16Array {
+  const pcm16 = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) {
     let sample = Math.max(-1, Math.min(1, pcm[i]));
-    // Convert to 8-bit: -1.0 -> 0, 0.0 -> 128, 1.0 -> 255
-    pcm8[i] = Math.round((sample + 1) * 127.5);
+    // Convert to 16-bit: -1.0 -> -32768, 0.0 -> 0, 1.0 -> 32767
+    pcm16[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
   }
-  return pcm8;
+  return pcm16;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
@@ -641,190 +633,23 @@ async function startBroadcast() {
     let packetsSent = 0;
     let processingActive = true;
     
-    // CRITICAL FIX: ScriptProcessor is DEPRECATED and stops after 2 seconds
-    // Use MediaStreamTrackProcessor (modern API) which is reliable
-    // If not available, use a polling approach with MediaStream directly
-    
-    const audioTrack = mediaStream.getAudioTracks()[0];
+    // SIMPLIFIED: Use ScriptProcessor (deprecated but simple and reliable)
+    // Workaround for 2-second stop: reconnect processor periodically
+    console.log("✅ Using ScriptProcessor (simple, reliable approach)");
     let lastProcessTime = performance.now();
     let processCount = 0;
     
-    // Try MediaStreamTrackProcessor first (modern, reliable API)
-    if (audioTrack && typeof (window as any).MediaStreamTrackProcessor !== 'undefined') {
-      console.log("✅ Using MediaStreamTrackProcessor (modern, reliable API)");
-      const trackProcessor = new (window as any).MediaStreamTrackProcessor({ track: audioTrack });
-      const readable = trackProcessor.readable;
-      const reader = readable.getReader();
+    function createProcessor() {
+      const processor = audioCtx!.createScriptProcessor(4096, CHANNELS, CHANNELS);
       
-      async function processAudioChunk() {
-        try {
-          while (processingActive) {
-            // Check if track is still active before reading
-            if (audioTrack.readyState === 'ended') {
-              console.error("❌ Audio track ended unexpectedly! Track state:", audioTrack.readyState);
-              console.error("   Track enabled:", audioTrack.enabled, "muted:", audioTrack.muted);
-              processingActive = false;
-              break;
-            }
-            
-            const { done, value } = await reader.read();
-            if (done) {
-              console.warn("⚠️ Reader finished (done=true)");
-              console.warn("   Track state:", audioTrack.readyState, "enabled:", audioTrack.enabled);
-              console.warn("   Processing active:", processingActive, "WS state:", ws?.readyState);
-              
-              // If track is still active but reader finished, try to restart
-              if (audioTrack.readyState === 'live' && processingActive) {
-                console.log("🔄 Track still live but reader finished, attempting to restart reader...");
-                try {
-                  // Release old reader
-                  reader.releaseLock();
-                  // Get new reader
-                  const newReader = readable.getReader();
-                  reader = newReader;
-                  console.log("✅ Reader restarted successfully");
-                  continue; // Continue processing with new reader
-                } catch (restartErr) {
-                  console.error("❌ Failed to restart reader:", restartErr);
-                  processingActive = false;
-                  break;
-                }
-              } else {
-                // Track actually ended or we're stopping
-                console.log("Audio track ended");
-                break;
-              }
-            }
-            
-            if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
-              if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
-                console.error("WebSocket closed, stopping audio processing");
-                processingActive = false;
-                break;
-              }
-              await new Promise(r => setTimeout(r, 10));
-              continue;
-            }
-            
-            // value is an AudioData object
-            const audioData = value;
-            
-            // AudioData uses planar format (channels stored separately)
-            // Extract mono audio (first channel or mix all channels)
-            const numberOfFrames = audioData.numberOfFrames;
-            const numberOfChannels = audioData.numberOfChannels;
-            const monoFrame = new Float32Array(numberOfFrames);
-            
-            try {
-              // Try copying with planeIndex (planar format)
-              // For mono, copy plane 0
-              if (numberOfChannels === 1) {
-                audioData.copyTo(monoFrame, { planeIndex: 0 });
-              } else {
-                // Multi-channel: mix to mono by averaging all channels
-                const tempFrame = new Float32Array(numberOfFrames);
-                for (let ch = 0; ch < numberOfChannels; ch++) {
-                  audioData.copyTo(tempFrame, { planeIndex: ch });
-                  for (let i = 0; i < numberOfFrames; i++) {
-                    monoFrame[i] += tempFrame[i] / numberOfChannels;
-                  }
-                }
-              }
-            } catch (err) {
-              // Fallback: try without planeIndex (might be interleaved)
-              console.warn("Planar copy failed, trying interleaved:", err);
-              try {
-                const interleaved = new Float32Array(numberOfFrames * numberOfChannels);
-                audioData.copyTo(interleaved, { planeIndex: 0 });
-                // Extract first channel from interleaved
-                for (let i = 0; i < numberOfFrames; i++) {
-                  monoFrame[i] = interleaved[i * numberOfChannels];
-                }
-              } catch (err2) {
-                console.error("Error copying AudioData (both methods failed):", err2);
-                audioData.close();
-                continue;
-              }
-            }
-            audioData.close();
-            
-            // Accumulate samples (use monoFrame which is always mono)
-            const newBuffer = new Float32Array(sampleBuffer.length + monoFrame.length);
-            newBuffer.set(sampleBuffer);
-            newBuffer.set(monoFrame, sampleBuffer.length);
-            sampleBuffer = newBuffer;
-            
-            // Process complete 20ms frames (960 samples)
-            while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
-              const frame20ms = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
-              sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
-              
-              processCount++;
-              lastProcessTime = performance.now();
-              
-              // Convert to 8-bit PCM
-              const pcm8 = floatToPCM8(frame20ms);
-              
-              const ptsMs = BigInt(Math.round(performance.now() - startTime));
-              seq++;
-              
-              const laf = buildLafPacket({
-                tier: DEFAULT_TIER,
-                flags: 0,
-                streamId,
-                seq,
-                ptsMs,
-                opusPayload: pcm8,
-              });
-              
-              try {
-                if (ws.bufferedAmount > 512 * 1024) {
-                  console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
-                  continue;
-                }
-                
-                ws.send(laf);
-                broadcastPacketCount++;
-                packetsSent++;
-                lastPacketTime = performance.now();
-                
-                if (seq % 250 === 0) {
-                  const packetSize = laf.byteLength;
-                  const kbps = (packetSize * 50 * 8) / 1000;
-                  console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
-                }
-              } catch (sendErr) {
-                console.error("Failed to send packet:", sendErr);
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error in MediaStreamTrackProcessor:", err);
-          processingActive = false;
-        }
-      }
-      
-      processAudioChunk();
-      (audioCtx as any).processor = { stop: () => { processingActive = false; reader.cancel(); } };
-      
-    } else {
-      // FALLBACK: Use ScriptProcessor (deprecated, but better than nothing)
-      // This will stop after 2 seconds, but it's the only fallback
-      console.warn("⚠️ MediaStreamTrackProcessor not available, using ScriptProcessor (deprecated, may stop after 2 seconds)");
-      const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
-      
-      const dummyGain = audioCtx.createGain();
+      const dummyGain = audioCtx!.createGain();
       dummyGain.gain.value = 0;
-      dummyGain.connect(audioCtx.destination);
+      dummyGain.connect(audioCtx!.destination);
       
       processor.onaudioprocess = (ev) => {
         try {
           processCount++;
           lastProcessTime = performance.now();
-          
-          if (processCount % 50 === 0) {
-            console.log(`🎤 ScriptProcessor active: processed ${processCount} times, ${packetsSent} packets sent`);
-          }
           
           if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
             if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
@@ -847,7 +672,10 @@ async function startBroadcast() {
             const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
             sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
             
-            const pcm8 = floatToPCM8(frame);
+            // Convert to 16-bit PCM (simple, standard format)
+            const pcm16 = floatToPCM16(frame);
+            const pcm16Bytes = new Uint8Array(pcm16.buffer);
+            
             const ptsMs = BigInt(Math.round(performance.now() - startTime));
             seq++;
             
@@ -857,7 +685,7 @@ async function startBroadcast() {
               streamId,
               seq,
               ptsMs,
-              opusPayload: pcm8,
+              opusPayload: pcm16Bytes,
             });
             
             try {
@@ -870,12 +698,6 @@ async function startBroadcast() {
               broadcastPacketCount++;
               packetsSent++;
               lastPacketTime = performance.now();
-              
-              if (seq % 250 === 0) {
-                const packetSize = laf.byteLength;
-                const kbps = (packetSize * 50 * 8) / 1000;
-                console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
-              }
             } catch (sendErr) {
               console.error("Failed to send packet:", sendErr);
             }
@@ -887,8 +709,29 @@ async function startBroadcast() {
       
       source.connect(processor);
       processor.connect(dummyGain);
-      (audioCtx as any).processor = processor;
+      return processor;
     }
+    
+    let processor = createProcessor();
+    (audioCtx as any).processor = processor;
+    
+    // Workaround for ScriptProcessor stopping after 2 seconds: recreate it periodically
+    const processorKeepAlive = setInterval(() => {
+      const timeSinceLastProcess = performance.now() - lastProcessTime;
+      if (timeSinceLastProcess > 3000 && processingActive) {
+        console.log("🔄 Recreating ScriptProcessor (workaround for 2-second stop issue)");
+        try {
+          processor.disconnect();
+          source.disconnect();
+          processor = createProcessor();
+          (audioCtx as any).processor = processor;
+          lastProcessTime = performance.now();
+        } catch (err) {
+          console.error("Failed to recreate processor:", err);
+        }
+      }
+    }, 1000);
+    (audioCtx as any).processorKeepAlive = processorKeepAlive;
     
     // Health monitor
     const keepAliveMonitor = setInterval(() => {
