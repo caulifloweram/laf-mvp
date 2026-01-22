@@ -551,6 +551,9 @@ async function startBroadcast() {
           clearInterval((processor as any).keepAliveInterval);
         }
       }
+      if ((audioCtx as any)?.keepAliveMonitor) {
+        clearInterval((audioCtx as any).keepAliveMonitor);
+      }
     };
 
     startTime = performance.now();
@@ -574,19 +577,40 @@ async function startBroadcast() {
     dummyGain.gain.value = 0; // Silent
     dummyGain.connect(audioCtx.destination);
     
+    let lastProcessTime = performance.now();
+    let processCount = 0;
+    
     processor.onaudioprocess = (ev) => {
       try {
+        processCount++;
+        lastProcessTime = performance.now();
+        
+        // Log every 50th process to verify it's running
+        if (processCount % 50 === 0) {
+          console.log(`🎤 ScriptProcessor active: processed ${processCount} times, ${packetsSent} packets sent`);
+        }
+        
         if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
           if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
             console.error("WebSocket closed, stopping audio processing");
             processingActive = false;
             return;
           }
+          if (!ws) {
+            console.warn("⚠️ WebSocket is null, waiting...");
+          } else if (ws.readyState !== WebSocket.OPEN) {
+            console.warn(`⚠️ WebSocket not open: state=${ws.readyState}`);
+          }
           return;
         }
         
         const input = ev.inputBuffer.getChannelData(0);
-        if (!input || input.length === 0) return;
+        if (!input || input.length === 0) {
+          if (processCount % 100 === 0) {
+            console.warn("⚠️ Empty input buffer");
+          }
+          return;
+        }
         
         // Accumulate samples at 48kHz
         const newBuffer = new Float32Array(sampleBuffer.length + input.length);
@@ -647,6 +671,33 @@ async function startBroadcast() {
     source.connect(processor);
     processor.connect(dummyGain);
     (audioCtx as any).processor = processor;
+    
+    // Keep-alive monitor: Check if ScriptProcessor is still running
+    const keepAliveMonitor = setInterval(() => {
+      const timeSinceLastProcess = performance.now() - lastProcessTime;
+      
+      if (timeSinceLastProcess > 500) {
+        console.error(`⚠️ ScriptProcessor appears to have stopped! Last process: ${timeSinceLastProcess.toFixed(0)}ms ago`);
+        console.error(`   Process count: ${processCount}, Packets sent: ${packetsSent}`);
+        console.error(`   WebSocket state: ${ws?.readyState}, Processing active: ${processingActive}`);
+        console.error(`   AudioContext state: ${audioCtx?.state}`);
+        
+        // Try to resume AudioContext if suspended
+        if (audioCtx && audioCtx.state === 'suspended') {
+          console.log("Attempting to resume AudioContext...");
+          audioCtx.resume().then(() => {
+            console.log("✅ AudioContext resumed");
+          }).catch(err => {
+            console.error("Failed to resume AudioContext:", err);
+          });
+        }
+      } else if (processCount % 250 === 0) {
+        // Log health every ~5 seconds (250 * 20ms = 5s)
+        console.log(`✅ ScriptProcessor healthy: ${processCount} processes, ${packetsSent} packets sent, WS: ${ws?.readyState}`);
+      }
+    }, 1000); // Check every second
+    
+    (audioCtx as any).keepAliveMonitor = keepAliveMonitor;
 
     // Update meter
     const dataArray = new Uint8Array(analyzer.frequencyBinCount);
@@ -698,6 +749,10 @@ async function stopBroadcast() {
   
   if ((audioCtx as any)?.keepAliveInterval) {
     clearInterval((audioCtx as any).keepAliveInterval);
+  }
+  
+  if ((audioCtx as any)?.keepAliveMonitor) {
+    clearInterval((audioCtx as any).keepAliveMonitor);
   }
   
   if (ws) {
