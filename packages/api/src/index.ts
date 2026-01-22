@@ -63,11 +63,15 @@ app.get("/health", (_req, res) => {
 
 // Initialize database on startup (non-blocking)
 // Don't block server startup if DB fails
-initDb().catch((err) => {
-  console.error("❌ Database initialization error:", err);
-  console.error("   API will continue but database operations may fail");
-  // Don't crash - API can still serve some endpoints
-});
+initDb()
+  .then(() => {
+    console.log("✅ Database initialization completed");
+  })
+  .catch((err) => {
+    console.error("❌ Database initialization error:", err);
+    console.error("   API will continue but database operations may fail");
+    // Don't crash - API can still serve some endpoints
+  });
 
 // Auth endpoints
 app.post("/api/login", async (req, res) => {
@@ -250,11 +254,24 @@ try {
   process.exit(1);
 }
 
-// Handle errors
+// Handle errors - but don't exit
 process.on("uncaughtException", (err) => {
   console.error("❌ Uncaught Exception:", err);
+  console.error("   Stack:", err.stack);
+  // Don't exit - keep the server running
+  // Railway will restart if needed
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+  console.error("❌ Unhandled Rejection at:", promise);
+  console.error("   Reason:", reason);
+  // Don't exit - keep the server running
 });
+
+// Keep process alive
+setInterval(() => {
+  // Heartbeat to keep process alive
+  if (process.uptime() % 60 === 0) {
+    console.log(`💓 Server heartbeat - uptime: ${Math.floor(process.uptime())}s`);
+  }
+}, 1000);
