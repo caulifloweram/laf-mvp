@@ -5,6 +5,15 @@ dotenv.config();
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL || "postgresql://localhost:5432/laf_mvp",
+  // Don't crash on connection errors
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
+});
+
+// Handle pool errors without crashing
+pool.on("error", (err) => {
+  console.error("❌ Unexpected database pool error:", err);
+  // Don't crash - just log the error
 });
 
 export async function initDb() {
