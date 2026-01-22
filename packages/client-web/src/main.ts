@@ -1107,6 +1107,13 @@ function stopListening() {
     consecutiveLateOrMissing: 0
   };
   
+  // Reset window counters
+  lossCountWindow = 0;
+  recvCountWindow = 0;
+  lateCountWindow = 0;
+  lastStatsTime = performance.now();
+  lastLoopTime = performance.now();
+  
   // Suspend AudioContext (but don't close it - we'll reuse it)
   if (audioCtx && audioCtx.state !== "closed") {
     audioCtx.suspend();
