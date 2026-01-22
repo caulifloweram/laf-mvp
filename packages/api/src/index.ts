@@ -315,7 +315,7 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   });
 });
 
-// Admin: Clean up stale streams (mark all streams older than 1 hour as ended)
+// Admin: Clean up stale streams
 // This is useful for fixing database state if streams weren't properly stopped
 app.post("/api/admin/cleanup-streams", async (req, res) => {
   try {
@@ -325,19 +325,42 @@ app.post("/api/admin/cleanup-streams", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // First, show what active streams exist
+    const activeBefore = await pool.query(`
+      SELECT stream_id, channel_id, started_at, 
+             EXTRACT(EPOCH FROM (NOW() - started_at)) as age_seconds
+      FROM streams 
+      WHERE ended_at IS NULL
+      ORDER BY started_at DESC
+    `);
+    console.log(`📊 Found ${activeBefore.rows.length} active stream(s) before cleanup:`);
+    activeBefore.rows.forEach((row: any) => {
+      console.log(`   - Stream ${row.stream_id}, Channel ${row.channel_id}, Age: ${Math.floor(row.age_seconds)}s`);
+    });
+
+    // Clean up ALL active streams (not just old ones) - more aggressive
+    // This ensures we can fix any stuck streams
     const result = await pool.query(`
       UPDATE streams 
       SET ended_at = NOW() 
-      WHERE ended_at IS NULL 
-        AND started_at < NOW() - INTERVAL '1 hour'
+      WHERE ended_at IS NULL
       RETURNING stream_id, channel_id, started_at
     `);
 
-    console.log(`🧹 Cleaned up ${result.rows.length} stale stream(s)`);
+    console.log(`🧹 Cleaned up ${result.rows.length} active stream(s)`);
+    
+    // Verify cleanup worked
+    const activeAfter = await pool.query(`
+      SELECT COUNT(*) as count FROM streams WHERE ended_at IS NULL
+    `);
+    console.log(`✅ Verification: ${activeAfter.rows[0].count} active stream(s) remaining`);
+
     res.json({ 
       success: true, 
-      message: `Cleaned up ${result.rows.length} stale stream(s)`,
-      cleanedStreams: result.rows
+      message: `Cleaned up ${result.rows.length} active stream(s)`,
+      cleanedStreams: result.rows,
+      activeBefore: activeBefore.rows.length,
+      activeAfter: parseInt(activeAfter.rows[0].count)
     });
   } catch (err: any) {
     console.error("Error cleaning up streams:", err);
