@@ -147,7 +147,7 @@ app.post("/api/register", async (req, res) => {
 app.get("/api/channels/live", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT DISTINCT ON (c.id)
+      SELECT 
         c.id,
         c.title,
         c.description,
@@ -155,10 +155,19 @@ app.get("/api/channels/live", async (_req, res) => {
       FROM channels c
       INNER JOIN streams s ON s.channel_id = c.id
       WHERE s.ended_at IS NULL
-      ORDER BY c.id, s.started_at DESC
+      ORDER BY s.started_at DESC
     `);
     console.log(`Live channels query returned ${result.rows.length} channels`);
-    res.json(result.rows);
+    // Remove duplicates by channel id (keep the most recent stream per channel)
+    const uniqueChannels = new Map();
+    result.rows.forEach((row: any) => {
+      if (!uniqueChannels.has(row.id)) {
+        uniqueChannels.set(row.id, row);
+      }
+    });
+    const channels = Array.from(uniqueChannels.values());
+    console.log(`After deduplication: ${channels.length} unique live channels`);
+    res.json(channels);
   } catch (err: any) {
     console.error("Error fetching live channels:", err);
     res.status(500).json({ error: "Failed to fetch live channels", details: err.message });
