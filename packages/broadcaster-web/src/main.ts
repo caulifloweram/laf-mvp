@@ -445,7 +445,7 @@ function buildLafPacket(opts: {
   return buf;
 }
 
-// Improved PCM to Int16 encoding with dithering for better quality
+// Improved PCM to Int16 encoding with subtle dithering
 // TODO: Replace with real Opus encoding for production
 function encodePcmToInt16(pcm: Float32Array): Int16Array {
   const pcm16 = new Int16Array(pcm.length);
@@ -455,9 +455,9 @@ function encodePcmToInt16(pcm: Float32Array): Int16Array {
     // Clamp to [-1, 1] range
     let sample = Math.max(-1, Math.min(1, pcm[i]));
     
-    // Add triangular dithering for better quality (reduces quantization artifacts)
-    // Dithering helps preserve audio quality, especially for music
-    const dither = (Math.random() - Math.random()) * (1 / scale);
+    // Subtle dithering - reduced to prevent muffling
+    // Only add minimal dithering to reduce quantization artifacts without affecting sound quality
+    const dither = (Math.random() - Math.random()) * (0.5 / scale); // Reduced from 1.0 to 0.5
     sample += dither;
     
     // Convert to Int16 with proper scaling
@@ -505,12 +505,13 @@ async function startBroadcast() {
     const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}`;
     console.log("Connecting to relay:", wsUrl);
 
-    // Get microphone with better audio constraints for music quality
+    // Get microphone with optimized audio constraints
+    // Keep some processing enabled for better quality, but optimize for music
     mediaStream = await navigator.mediaDevices.getUserMedia({ 
       audio: {
-        echoCancellation: false, // Disable for music (preserves quality)
-        noiseSuppression: false,  // Disable for music (preserves quality)
-        autoGainControl: false,   // Disable for music (preserves dynamics)
+        echoCancellation: true,  // Keep enabled for better quality
+        noiseSuppression: false,  // Disable for music (preserves dynamics)
+        autoGainControl: false,   // Disable for music (preserves natural dynamics)
         sampleRate: SAMPLE_RATE,
         channelCount: CHANNELS
       } 
@@ -535,50 +536,112 @@ async function startBroadcast() {
 
     startTime = performance.now();
 
-    // Process audio - use power-of-2 buffer size (1024) and accumulate to 960 samples
-    const processor = audioCtx.createScriptProcessor(1024, CHANNELS, CHANNELS);
+    // Process audio - use ScriptProcessor (deprecated but works, will migrate to AudioWorklet later)
+    // Buffer size 4096 gives us better stability than 1024
+    const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
     let sampleBuffer = new Float32Array(0);
+    let lastProcessTime = performance.now();
+    let errorCount = 0;
     
     processor.onaudioprocess = (ev) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN || !streamId) return;
-      
-      const input = ev.inputBuffer.getChannelData(0);
-      
-      // Accumulate samples
-      const newBuffer = new Float32Array(sampleBuffer.length + input.length);
-      newBuffer.set(sampleBuffer);
-      newBuffer.set(input, sampleBuffer.length);
-      sampleBuffer = newBuffer;
-      
-      // Process complete 20ms frames (960 samples)
-      while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
-        const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
-        sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
+      try {
+        if (!ws || ws.readyState !== WebSocket.OPEN || !streamId) {
+          // If WebSocket is closed, try to reconnect or stop
+          if (ws && ws.readyState === WebSocket.CLOSED) {
+            console.warn("WebSocket closed, stopping audio processing");
+            processor.disconnect();
+            return;
+          }
+          return;
+        }
         
-        const ptsMs = BigInt(Math.round(performance.now() - startTime));
-        const fakeOpus = encodePcmToFakeOpus(frame);
-        seq++;
+        const input = ev.inputBuffer.getChannelData(0);
+        if (!input || input.length === 0) {
+          console.warn("Empty input buffer");
+          return;
+        }
+        
+        // Accumulate samples
+        const newBuffer = new Float32Array(sampleBuffer.length + input.length);
+        newBuffer.set(sampleBuffer);
+        newBuffer.set(input, sampleBuffer.length);
+        sampleBuffer = newBuffer;
+        
+        // Process complete 20ms frames (960 samples)
+        while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
+          const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
+          sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
+          
+          const ptsMs = BigInt(Math.round(performance.now() - startTime));
+          const fakeOpus = encodePcmToFakeOpus(frame);
+          seq++;
 
-        // For music quality, use tier 3 (32 kbps equivalent) or tier 4 (48 kbps equivalent)
-        // Note: Since we're sending raw PCM (not Opus), the actual bitrate is much higher
-        // TODO: Implement real Opus encoding to reduce bandwidth and improve quality
-        const tier = DEFAULT_TIER; // Use tier 3 for better music quality
+          // For music quality, use tier 3 (32 kbps equivalent) or tier 4 (48 kbps equivalent)
+          // Note: Since we're sending raw PCM (not Opus), the actual bitrate is much higher
+          // TODO: Implement real Opus encoding to reduce bandwidth and improve quality
+          const tier = DEFAULT_TIER; // Use tier 3 for better music quality
+          
+          const laf = buildLafPacket({
+            tier,
+            flags: 0,
+            streamId,
+            seq,
+            ptsMs,
+            opusPayload: fakeOpus,
+          });
+          
+          try {
+            ws.send(laf);
+            broadcastPacketCount++;
+            errorCount = 0; // Reset error count on success
+          } catch (sendErr) {
+            errorCount++;
+            console.error("Failed to send packet:", sendErr);
+            if (errorCount > 10) {
+              console.error("Too many send errors, stopping");
+              processor.disconnect();
+              return;
+            }
+          }
+        }
         
-        const laf = buildLafPacket({
-          tier,
-          flags: 0,
-          streamId,
-          seq,
-          ptsMs,
-          opusPayload: fakeOpus,
-        });
-        ws.send(laf);
-        broadcastPacketCount++;
+        // Log processing health periodically
+        const now = performance.now();
+        if (now - lastProcessTime > 5000) {
+          console.log(`Audio processing healthy: buffer=${sampleBuffer.length}, seq=${seq}, errors=${errorCount}`);
+          lastProcessTime = now;
+        }
+      } catch (err) {
+        errorCount++;
+        console.error("Error in audio processing:", err);
+        if (errorCount > 10) {
+          console.error("Too many processing errors, stopping");
+          processor.disconnect();
+        }
       }
     };
 
+    // Connect processor and keep it alive
     source.connect(processor);
     processor.connect(audioCtx.destination);
+    
+    // Store processor reference for cleanup
+    (audioCtx as any).processor = processor;
+    
+    // Keep processor alive by ensuring audio context stays active
+    // This helps prevent ScriptProcessor from stopping after a few seconds
+    const keepAlive = setInterval(() => {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(console.error);
+      }
+      // Log health check every 5 seconds
+      if (ws && ws.readyState === WebSocket.OPEN && seq % 250 === 0) {
+        console.log(`Keep-alive: audioCtx=${audioCtx.state}, ws=${ws.readyState}, seq=${seq}`);
+      }
+    }, 2000);
+    
+    // Store keepAlive interval ID for cleanup
+    (processor as any).keepAliveInterval = keepAlive;
 
     // Update meter
     const dataArray = new Uint8Array(analyzer.frequencyBinCount);
@@ -611,6 +674,15 @@ async function stopBroadcast() {
 
   btnStopLive.disabled = true;
   statusText.textContent = "Stopping broadcast...";
+  
+  // Clean up processor and keepAlive interval
+  const processor = (audioCtx as any)?.processor;
+  if (processor) {
+    if ((processor as any).keepAliveInterval) {
+      clearInterval((processor as any).keepAliveInterval);
+    }
+    processor.disconnect();
+  }
   
   if (ws) {
     ws.close();
