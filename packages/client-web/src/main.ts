@@ -345,8 +345,10 @@ let audioCtx: AudioContext | null = null;
 let opusDecoder: OpusDecoder | null = null;
 
 const tiers = new Map<number, JitterBuffer>();
+// Create jitter buffers with max size limit to prevent memory overflow
+// Max 100 packets = ~2 seconds of audio at 20ms per packet
 for (let t = MIN_TIER; t <= MAX_TIER_ALLOWED; t++) {
-  tiers.set(t, new JitterBuffer(400, 15)); // 400ms delay, 15 packets minimum (~300ms)
+  tiers.set(t, new JitterBuffer(400, 15, 100)); // 400ms delay, 15 packets minimum, 100 packets max
 }
 
 let abrState: AbrState = {
