@@ -942,6 +942,15 @@ async function loop() {
         scheduleSilence(audioCtx);
       }
     }
+    
+    // Check if we need to schedule more packets for lookahead
+    const newTimeUntilPlayhead = playheadTime - audioCtx.currentTime;
+    if (newTimeUntilPlayhead >= 0.1 && scheduledPackets >= LOOKAHEAD_PACKETS) {
+      // We have enough lookahead, break out of scheduling loop
+      break;
+    }
+    // Otherwise continue scheduling more packets
+    }
   }
 
   const stats = tierBuf;
