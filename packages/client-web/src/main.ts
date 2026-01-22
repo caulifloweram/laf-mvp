@@ -1096,35 +1096,17 @@ function stopListening() {
     ws = null;
   }
   
-  // CRITICAL: Fade out audio gracefully instead of abrupt stop
-  // This prevents glitching when broadcaster stops
+  // CRITICAL: Stop audio gracefully to prevent glitching
+  // Stop the loop first (already done above), then suspend AudioContext
+  // This ensures no new audio is scheduled and existing audio stops cleanly
   if (audioCtx && audioCtx.state === "running") {
     try {
-      // Create a gain node for fade out
-      const gainNode = audioCtx.createGain();
-      const currentTime = audioCtx.currentTime;
-      const fadeDuration = 0.1; // 100ms fade out
-      
-      // Fade out smoothly
-      gainNode.gain.setValueAtTime(1.0, currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.0, currentTime + fadeDuration);
-      
-      // Connect gain to destination (if we have a source)
-      // Note: This is a safety measure - the actual audio sources should already be disconnected
-      
-      // Suspend AudioContext after fade
-      setTimeout(() => {
-        if (audioCtx && audioCtx.state !== "closed") {
-          audioCtx.suspend();
-          console.log("🔇 AudioContext suspended after fade out");
-        }
-      }, fadeDuration * 1000 + 50);
+      // Suspend AudioContext immediately - this stops all scheduled audio
+      // The loop is already stopped, so no new audio will be scheduled
+      audioCtx.suspend();
+      console.log("🔇 AudioContext suspended - audio stopped gracefully");
     } catch (err) {
-      console.warn("⚠️ Error during audio fade out:", err);
-      // Fallback: just suspend immediately
-      if (audioCtx && audioCtx.state !== "closed") {
-        audioCtx.suspend();
-      }
+      console.warn("⚠️ Error suspending AudioContext:", err);
     }
   }
   
