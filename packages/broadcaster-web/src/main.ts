@@ -678,32 +678,42 @@ async function startBroadcast() {
             // value is an AudioData object
             const audioData = value;
             
-            // AudioData format is planar (channels are separate), not interleaved
-            // We need to extract the first channel (mono) or mix channels
+            // AudioData uses planar format (channels stored separately)
+            // Extract mono audio (first channel or mix all channels)
             const numberOfFrames = audioData.numberOfFrames;
             const numberOfChannels = audioData.numberOfChannels;
             const monoFrame = new Float32Array(numberOfFrames);
             
             try {
-              // AudioData.copyTo() with format 'f32-planar' gives us planar format
-              // Each channel is stored separately, so we need to copy each channel
-              // For mono, we just copy plane 0
+              // Try copying with planeIndex (planar format)
+              // For mono, copy plane 0
               if (numberOfChannels === 1) {
-                audioData.copyTo(monoFrame, { planeIndex: 0, format: 'f32-planar' });
+                audioData.copyTo(monoFrame, { planeIndex: 0 });
               } else {
                 // Multi-channel: mix to mono by averaging all channels
                 const tempFrame = new Float32Array(numberOfFrames);
                 for (let ch = 0; ch < numberOfChannels; ch++) {
-                  audioData.copyTo(tempFrame, { planeIndex: ch, format: 'f32-planar' });
+                  audioData.copyTo(tempFrame, { planeIndex: ch });
                   for (let i = 0; i < numberOfFrames; i++) {
                     monoFrame[i] += tempFrame[i] / numberOfChannels;
                   }
                 }
               }
             } catch (err) {
-              console.error("Error copying AudioData:", err, "format:", audioData.format, "channels:", numberOfChannels);
-              audioData.close();
-              continue;
+              // Fallback: try without planeIndex (might be interleaved)
+              console.warn("Planar copy failed, trying interleaved:", err);
+              try {
+                const interleaved = new Float32Array(numberOfFrames * numberOfChannels);
+                audioData.copyTo(interleaved, { planeIndex: 0 });
+                // Extract first channel from interleaved
+                for (let i = 0; i < numberOfFrames; i++) {
+                  monoFrame[i] = interleaved[i * numberOfChannels];
+                }
+              } catch (err2) {
+                console.error("Error copying AudioData (both methods failed):", err2);
+                audioData.close();
+                continue;
+              }
             }
             audioData.close();
             
