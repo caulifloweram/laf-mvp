@@ -17,8 +17,20 @@ interface StreamRoom {
   listeners: Set<ClientInfo>;
 }
 
-const PORT = Number(process.env.LAF_RELAY_PORT ?? 9000);
-const wss = new WebSocketServer({ port: PORT });
+const PORT = Number(process.env.PORT ?? process.env.LAF_RELAY_PORT ?? 9000);
+console.log(`🚀 Starting WebSocket relay server...`);
+console.log(`   PORT: ${PORT}`);
+console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+
+const wss = new WebSocketServer({ 
+  port: PORT,
+  host: "0.0.0.0" // Listen on all interfaces for Railway
+});
+
+wss.on("listening", () => {
+  console.log(`🌐 WebSocket relay server listening on ws://0.0.0.0:${PORT}`);
+  console.log(`   ✅ Relay server started successfully!`);
+});
 
 const rooms = new Map<number, StreamRoom>();
 
