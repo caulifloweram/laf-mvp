@@ -24,4 +24,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd /app/packages/relay && if [ ! -d node_modules/ws ]; then echo 'Installing missing dependencies...' && pnpm install; fi && node dist/index.js"
+cmd = "cd /app/packages/relay && if [ ! -d node_modules/ws ] && [ ! -d ../../node_modules/ws ]; then echo 'Installing missing dependencies...' && pnpm install --no-frozen-lockfile; fi && NODE_PATH=/app/packages/relay/node_modules:/app/node_modules node dist/index.js"
