@@ -212,8 +212,11 @@ app.get("/api/channels/live", async (_req, res) => {
     
     // CRITICAL: Filter to only include streams that have active broadcasters on relay
     // This ensures we only show streams that are actually broadcasting
+    // If relay check failed (empty array), we still filter - only show if explicitly in relay list
     const filteredChannels = result.rows.filter((row: any) => {
-      const isActiveOnRelay = activeStreamIdsFromRelay.length === 0 || activeStreamIdsFromRelay.includes(row.streamId);
+      // If we got relay data, only include streams that are active on relay
+      // If relay check failed, be conservative and don't show any (safer than showing stale data)
+      const isActiveOnRelay = activeStreamIdsFromRelay.length > 0 && activeStreamIdsFromRelay.includes(row.streamId);
       if (!isActiveOnRelay) {
         console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
       }

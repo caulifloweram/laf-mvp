@@ -341,10 +341,10 @@ function updateBroadcastStatus(status: "ready" | "live" | "stopped", message: st
     btnStopLive.classList.remove("hidden");
     btnStopLive.disabled = false;
   } else if (status === "stopped") {
-    // Stream terminated state - clear visual indication
-    statusIcon.textContent = "⏹️";
-    statusText.textContent = message || "Stream Terminated";
-    statusText.style.color = "#ef4444"; // Red color for terminated
+    // Stream finished state - clear visual indication
+    statusIcon.textContent = "✅";
+    statusText.textContent = message || "Stream Finished";
+    statusText.style.color = "#10b981"; // Green color for finished
     liveIndicator.classList.add("hidden");
     broadcastStats.classList.add("hidden");
     btnGoLive.classList.remove("hidden");
@@ -602,14 +602,13 @@ async function startBroadcast() {
     };
     
     ws.onclose = async (event) => {
-      console.error("❌ WebSocket closed!");
-      console.error("   Code:", event.code);
-      console.error("   Reason:", event.reason || "No reason");
-      console.error("   Was clean:", event.wasClean);
-      console.error("   Total packets sent:", packetsSent);
-      console.error("   Last packet time:", lastPacketTime ? `${(performance.now() - lastPacketTime).toFixed(0)}ms ago` : "never");
-      console.error("   ScriptProcessor processes:", processCount);
-      updateBroadcastStatus("stopped", `Connection closed (code: ${event.code})`);
+      console.log("🔌 WebSocket closed");
+      console.log(`   Code: ${event.code}`);
+      console.log(`   Reason: ${event.reason || "No reason"}`);
+      console.log(`   Was clean: ${event.wasClean}`);
+      console.log(`   Total packets sent: ${packetsSent}`);
+      console.log(`   Last packet time: ${lastPacketTime ? `${(performance.now() - lastPacketTime).toFixed(0)}ms ago` : "never"}`);
+      console.log(`   ScriptProcessor processes: ${processCount}`);
       
       // Stop audio processing if WebSocket closes
       processingActive = false;
@@ -627,24 +626,28 @@ async function startBroadcast() {
         clearInterval((audioCtx as any).keepAliveInterval);
       }
       
-      // If WebSocket closed unexpectedly (not from stopBroadcast), call stop-live API
-      // This ensures the channel is marked as stopped in the database
-      if (currentChannel && streamId) {
+      // If WebSocket closed unexpectedly (code 1000 = normal closure from stopBroadcast)
+      // Only call stop-live API if it was an unexpected closure
+      if (event.code !== 1000 && currentChannel && streamId) {
         try {
           console.log("🔄 WebSocket closed unexpectedly, calling stop-live API...");
           await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
             method: "POST",
           });
-          console.log("✅ Stream marked as stopped in database");
+          console.log("✅ Stream marked as finished in database");
+          updateBroadcastStatus("stopped", "✅ Stream Finished (unexpected closure)");
         } catch (err) {
           console.error("⚠️ Failed to call stop-live API:", err);
+          updateBroadcastStatus("stopped", "⚠️ Stream finished (server update failed)");
         }
+      } else if (event.code === 1000) {
+        // Normal closure - stopBroadcast already handled the API call
+        console.log("✅ WebSocket closed normally (stream finished)");
       }
       
       // Reset UI state
       btnStopLive.disabled = false;
       btnGoLive.disabled = false;
-      statusText.textContent = "Broadcast stopped";
       meterBar.style.width = "0%";
     };
     
@@ -869,17 +872,53 @@ async function startBroadcast() {
 }
 
 async function stopBroadcast() {
-  if (!confirm("Are you sure you want to stop broadcasting?")) {
+  if (!confirm("Are you sure you want to finish this livestream?")) {
     return;
   }
 
-  console.log("🛑 Stopping broadcast and cleaning up...");
+  console.log("🛑 Finishing livestream and cleaning up...");
   btnStopLive.disabled = true;
-  statusText.textContent = "Stopping broadcast...";
+  statusText.textContent = "Finishing stream...";
   
-  // Stop audio processing first
+  // CRITICAL: Stop audio processing FIRST to prevent new packets
   processingActive = false;
   
+  // CRITICAL: Call stop-live API BEFORE closing WebSocket
+  // This ensures database is updated before relay removes the broadcaster
+  // This prevents race conditions where client sees stream as live
+  let stopLiveSuccess = false;
+  if (currentChannel) {
+    try {
+      console.log(`🔄 Calling stop-live API for channel ${currentChannel.id}...`);
+      const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
+        method: "POST",
+      });
+      console.log("✅ Stop-live API response:", result);
+      
+      // Verify the response indicates success
+      if (result && (result.success || result.stoppedStreamIds)) {
+        const stoppedCount = result.stoppedStreamIds?.length || 0;
+        console.log(`✅ Successfully finished ${stoppedCount} stream(s) on server`);
+        console.log(`   Finished stream IDs: ${result.stoppedStreamIds?.join(", ") || "N/A"}`);
+        console.log(`   Verified: ${result.verified !== false ? "Yes" : "No"}`);
+        stopLiveSuccess = true;
+      } else {
+        console.warn("⚠️ Stop-live API returned unexpected response:", result);
+      }
+    } catch (err: any) {
+      console.error("❌ Failed to finish stream on server:", err);
+      console.error("   Error details:", {
+        message: err.message,
+        status: err.status,
+        response: err.response
+      });
+      // Continue with cleanup even if API call fails
+    }
+  } else {
+    console.warn("⚠️ No currentChannel set, cannot call stop-live API");
+  }
+  
+  // Now clean up local resources
   // Clean up processor if it exists
   const processor = (audioCtx as any)?.processor;
   if (processor) {
@@ -910,13 +949,15 @@ async function stopBroadcast() {
     (audioCtx as any).keepAliveMonitor = null;
   }
   
-  // Close WebSocket connection
+  // Close WebSocket connection AFTER database is updated
+  // This ensures relay removal happens after DB update
   if (ws) {
     // Clean up WebSocket health monitor
     if ((ws as any).healthMonitor) {
       clearInterval((ws as any).healthMonitor);
     }
-    ws.close();
+    // Close gracefully with code 1000 (normal closure)
+    ws.close(1000, "Stream finished by broadcaster");
     ws = null;
   }
   
@@ -941,59 +982,27 @@ async function stopBroadcast() {
   processCount = 0;
   lastProcessTime = 0;
   
-  // CRITICAL: Stop the stream on server - this marks it as ended in the database
-  // The client polls every 3 seconds and will see the stream is no longer live
-  if (currentChannel) {
-    try {
-      console.log(`🔄 Calling stop-live API for channel ${currentChannel.id}...`);
-      const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
-        method: "POST",
-      });
-      console.log("✅ Stop-live API response:", result);
-      
-      // Verify the response indicates success
-      if (result && (result.success || result.stoppedStreamIds)) {
-        const stoppedCount = result.stoppedStreamIds?.length || 0;
-        console.log(`✅ Successfully stopped ${stoppedCount} stream(s) on server`);
-        console.log(`   Stopped stream IDs: ${result.stoppedStreamIds?.join(", ") || "N/A"}`);
-        console.log(`   Verified: ${result.verified !== false ? "Yes" : "No"}`);
-        
-        // Show clear "terminated" state, then transition to "ready" after a moment
-        updateBroadcastStatus("stopped", "✅ Stream Terminated Successfully");
-        
-        // After 2 seconds, show ready state with clear message
-        setTimeout(() => {
-          updateBroadcastStatus("ready", "Ready to start a new stream");
-        }, 2000);
-      } else {
-        console.warn("⚠️ Stop-live API returned unexpected response:", result);
-        updateBroadcastStatus("stopped", "⚠️ Stream stopped (server response unclear)");
-        setTimeout(() => {
-          updateBroadcastStatus("ready", "Ready to start a new stream");
-        }, 2000);
-      }
-    } catch (err: any) {
-      console.error("❌ Failed to stop stream on server:", err);
-      console.error("   Error details:", {
-        message: err.message,
-        status: err.status,
-        response: err.response
-      });
-      
-      // Show user-friendly error
-      const errorMsg = err.message || "Unknown error";
-      alert(`Failed to stop stream on server: ${errorMsg}\n\nThe stream may still appear as live. You may need to refresh the client page.`);
-      updateBroadcastStatus("ready", "Ready to go live (server stop failed - stream may still show as live)");
-    }
+  // Update UI based on success
+  if (stopLiveSuccess) {
+    // Show "finished" state (not "stopped")
+    updateBroadcastStatus("stopped", "✅ Stream Finished Successfully");
+    
+    // After 2 seconds, show ready state with clear message
+    setTimeout(() => {
+      updateBroadcastStatus("ready", "Ready to start a new stream");
+    }, 2000);
   } else {
-    console.warn("⚠️ No currentChannel set, cannot call stop-live API");
-    updateBroadcastStatus("ready", "Ready to go live");
+    // API call failed, but still show finished state
+    updateBroadcastStatus("stopped", "⚠️ Stream finished (server update may have failed)");
+    setTimeout(() => {
+      updateBroadcastStatus("ready", "Ready to start a new stream");
+    }, 2000);
   }
   
   btnStopLive.disabled = false;
   btnGoLive.disabled = false;
   goLiveIcon.textContent = "▶️";
-  console.log("✅ Broadcast stopped - ready to restart");
+  console.log("✅ Broadcast finished - ready to restart");
 }
 
 // Event handlers

@@ -52,16 +52,29 @@ const httpServer = http.createServer((req, res) => {
     }));
   } else if (req.url === "/active-streams") {
     // Return list of streamIds that have active broadcasters
+    // CRITICAL: Only return streams where broadcaster WebSocket is OPEN and connected
     const activeStreamIds: number[] = [];
+    const now = Date.now();
+    
     for (const [streamId, room] of rooms.entries()) {
-      if (room.broadcaster && room.broadcaster.ws.readyState === 1) { // WebSocket.OPEN = 1
-        activeStreamIds.push(streamId);
+      if (room.broadcaster) {
+        const ws = room.broadcaster.ws;
+        // Check if WebSocket is OPEN (readyState === 1)
+        // Also verify it's not in the process of closing
+        if (ws.readyState === 1) { // WebSocket.OPEN = 1
+          activeStreamIds.push(streamId);
+        } else {
+          console.log(`[${streamId}] Broadcaster WebSocket not open (state: ${ws.readyState})`);
+        }
       }
     }
+    
+    console.log(`📡 /active-streams: Returning ${activeStreamIds.length} active stream(s): ${activeStreamIds.join(", ")}`);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ 
       activeStreamIds,
-      count: activeStreamIds.length
+      count: activeStreamIds.length,
+      timestamp: now
     }));
   } else {
     res.writeHead(404);
