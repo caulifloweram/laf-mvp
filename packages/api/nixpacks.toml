@@ -1,14 +1,9 @@
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
-cmds = [
-  "apt-get update && apt-get install -y build-essential python3 || true"
-]
 
 [phases.install]
 cmds = [
   "cd /app && pnpm install",
-  "echo 'Rebuilding native modules...'",
-  "cd /app/packages/api && pnpm rebuild bcrypt || echo 'Rebuild warning (may be ok)'",
   "echo 'Install complete'"
 ]
 

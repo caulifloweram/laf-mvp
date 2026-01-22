@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { pool } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
