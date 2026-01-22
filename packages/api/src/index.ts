@@ -162,6 +162,7 @@ app.get("/api/channels/live", async (_req, res) => {
 
     // Only get streams that are actually active (ended_at IS NULL)
     // Use DISTINCT ON to ensure we only get the most recent active stream per channel
+    // IMPORTANT: Double-check that ended_at is actually NULL
     const result = await pool.query(`
       SELECT DISTINCT ON (c.id)
         c.id,
@@ -173,9 +174,20 @@ app.get("/api/channels/live", async (_req, res) => {
       FROM channels c
       INNER JOIN streams s ON s.channel_id = c.id
       WHERE s.ended_at IS NULL
+        AND s.stream_id IS NOT NULL
       ORDER BY c.id, s.started_at DESC
     `);
+    
+    // Log for debugging
     console.log(`Live channels query returned ${result.rows.length} raw channels`);
+    if (result.rows.length > 0) {
+      console.log(`🔍 Found ${result.rows.length} active stream(s):`);
+      result.rows.forEach((row: any) => {
+        console.log(`   - Channel ${row.id} (${row.title}): streamId=${row.streamId}, ended_at=${row.ended_at}`);
+      });
+    } else {
+      console.log(`✅ No active streams found - all channels are offline`);
+    }
     console.log("Raw channels:", result.rows.map((r: any) => ({
       id: r.id,
       title: r.title,
