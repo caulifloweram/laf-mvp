@@ -6,11 +6,19 @@ import { authMiddleware, login, register } from "./auth";
 const app = express();
 
 // CORS configuration
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://lafbroadcaster-web-production.up.railway.app",
+  "https://lafclient-web-production.up.railway.app"
+];
+
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map(o => o.trim())
-  : ["http://localhost:5173", "http://localhost:3000"]; // Default to local dev
+  : defaultOrigins;
 
 console.log("🌐 CORS allowed origins:", allowedOrigins);
+console.log("🌐 CORS_ORIGIN env var:", process.env.CORS_ORIGIN || "not set");
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {

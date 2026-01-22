@@ -2,10 +2,14 @@
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["cd ../.. && pnpm install"]
+cmds = ["cd /app && pnpm install"]
 
 [phases.build]
-cmds = ["cd ../.. && pnpm build"]
+cmds = [
+  "cd /app && pnpm build",
+  "echo 'Verifying build output...'",
+  "ls -la /app/packages/api/dist/ || (echo 'Build failed, trying manual build...' && cd /app/packages/api && pnpm build)"
+]
 
 [start]
-cmd = "cd packages/api && node dist/index.js"
+cmd = "cd /app/packages/api && if [ ! -f dist/index.js ]; then echo 'ERROR: dist/index.js not found. Running build...' && pnpm build; fi && node dist/index.js"
