@@ -4,6 +4,8 @@ nixPkgs = ["nodejs_20", "pnpm"]
 [phases.install]
 cmds = [
   "cd /app && pnpm install",
+  "echo 'Rebuilding native modules...'",
+  "cd /app/packages/api && pnpm rebuild bcrypt || echo 'Rebuild warning (may be ok)'",
   "echo 'Install complete'"
 ]
 
