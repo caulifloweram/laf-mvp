@@ -2,14 +2,25 @@
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["cd /app && pnpm install"]
+cmds = [
+  "cd /app && pnpm install",
+  "echo 'Install complete'"
+]
 
 [phases.build]
 cmds = [
-  "cd /app && pnpm build",
+  "echo 'Starting build...'",
+  "cd /app && pwd && ls -la",
+  "echo 'Building all packages...'",
+  "cd /app && pnpm build || echo 'Root build failed'",
+  "echo 'Checking if API dist exists...'",
+  "ls -la /app/packages/api/ || echo 'packages/api not found'",
+  "echo 'Building API package directly...'",
+  "cd /app/packages/api && pnpm build",
   "echo 'Verifying build output...'",
-  "ls -la /app/packages/api/dist/ || (echo 'Build failed, trying manual build...' && cd /app/packages/api && pnpm build)"
+  "ls -la /app/packages/api/dist/ || echo 'ERROR: dist folder still not found'",
+  "test -f /app/packages/api/dist/index.js && echo '✅ Build successful!' || (echo '❌ Build failed!' && exit 1)"
 ]
 
 [start]
-cmd = "cd /app/packages/api && if [ ! -f dist/index.js ]; then echo 'ERROR: dist/index.js not found. Running build...' && pnpm build; fi && node dist/index.js"
+cmd = "cd /app/packages/api && pwd && ls -la && if [ ! -f dist/index.js ]; then echo 'ERROR: dist/index.js not found. Building now...' && pnpm build && ls -la dist/; fi && echo 'Starting server...' && node dist/index.js"
