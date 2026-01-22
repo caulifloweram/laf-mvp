@@ -38,6 +38,10 @@ app.use(express.json());
 // Log all requests for debugging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  // Log response when it finishes
+  res.on("finish", () => {
+    console.log(`${req.method} ${req.path} - Status: ${res.statusCode}`);
+  });
   next();
 });
 
@@ -48,13 +52,17 @@ const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 // Railway uses this to check if the service is healthy
 app.get("/health", (_req, res) => {
   try {
-    res.json({ 
+    console.log("Health check called");
+    const response = { 
       status: "ok", 
       timestamp: new Date().toISOString(),
       port: PORT,
       cors: "enabled",
       uptime: process.uptime()
-    });
+    };
+    console.log("Sending health check response:", response);
+    res.status(200).json(response);
+    console.log("Health check response sent");
   } catch (error) {
     console.error("Health check error:", error);
     res.status(500).json({ status: "error", error: String(error) });
