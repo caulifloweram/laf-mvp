@@ -5,25 +5,28 @@ import { authMiddleware, login, register } from "./auth";
 
 const app = express();
 
-// CORS - Allow all origins with explicit configuration
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow all origins
-    callback(null, true);
-  },
+// CORS - Apply FIRST, before any other middleware
+// This ensures preflight OPTIONS requests are handled correctly
+app.use(cors({
+  origin: "*", // Allow all origins explicitly
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   exposedHeaders: ["Content-Type", "Authorization"],
   preflightContinue: false,
   optionsSuccessStatus: 204
-};
+}));
 
-// Apply CORS to all routes
-app.use(cors(corsOptions));
-
-// Explicitly handle OPTIONS for all routes (before other middleware)
-app.options("*", cors(corsOptions));
+// Explicit OPTIONS handler as backup (shouldn't be needed but ensures it works)
+app.options("*", (req, res) => {
+  console.log(`OPTIONS request from origin: ${req.headers.origin}`);
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400"); // 24 hours
+  res.sendStatus(204);
+});
 
 // Parse JSON bodies
 app.use(express.json());
