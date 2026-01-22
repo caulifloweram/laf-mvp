@@ -86,6 +86,29 @@
       }
       button:hover { background: #1d4ed8; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .live-badge {
+        display: inline-block;
+        background: #ef4444;
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      .status {
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      .status.success { background: #065f46; }
+      .status.error { background: #7f1d1d; }
+      .status.info { background: #1e3a8a; }
+      .status.playing { background: #065f46; border: 2px solid #22c55e; }
+      .status.stopped { background: #7f1d1d; border: 2px solid #ef4444; }
       .hidden { display: none; }
     </style>
   </head>
@@ -95,11 +118,28 @@
       <div id="channels-grid" class="channels-grid"></div>
       <div id="player-section" class="player-section hidden">
         <div class="player-header">
-          <div>
-            <h2 id="now-playing-title">Not playing</h2>
-            <p id="now-playing-desc"></p>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+              <h2 id="now-playing-title" style="margin: 0;">Not playing</h2>
+              <span id="player-live-badge" class="live-badge hidden">🔴 LIVE</span>
+            </div>
+            <p id="now-playing-desc" style="opacity: 0.7;"></p>
           </div>
-          <button id="btn-start">Start Listening</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btn-start" style="min-width: 140px;">
+              <span id="play-icon">▶️</span> <span id="play-text">Start</span>
+            </button>
+            <button id="btn-stop" class="hidden" style="min-width: 140px; background: #ef4444;">
+              <span>⏹️</span> Stop
+            </button>
+          </div>
+        </div>
+        
+        <div id="player-status" class="status info" style="margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span id="player-status-icon">⏸️</span>
+            <span id="player-status-text">Ready to listen</span>
+          </div>
         </div>
         <div class="stat-grid">
           <div class="stat-item">

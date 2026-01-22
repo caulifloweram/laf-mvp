@@ -36,8 +36,17 @@ const broadcastSection = document.getElementById("broadcast-section")!;
 const settingsSection = document.getElementById("settings-section")!;
 const channelsList = document.getElementById("channels-list")!;
 const broadcastChannelTitle = document.getElementById("broadcast-channel-title")!;
+const broadcastChannelDesc = document.getElementById("broadcast-channel-desc")!;
 const meterBar = document.getElementById("meter-bar")!;
 const broadcastStatus = document.getElementById("broadcast-status")!;
+const statusIcon = document.getElementById("status-icon")!;
+const statusText = document.getElementById("status-text")!;
+const liveIndicator = document.getElementById("live-indicator")!;
+const broadcastStats = document.getElementById("broadcast-stats")!;
+const broadcastDuration = document.getElementById("broadcast-duration")!;
+const broadcastPackets = document.getElementById("broadcast-packets")!;
+const broadcastLevel = document.getElementById("broadcast-level")!;
+const goLiveIcon = document.getElementById("go-live-icon")!;
 
 const btnLogin = document.getElementById("btn-login")!;
 const btnRegister = document.getElementById("btn-register")!;
@@ -293,8 +302,10 @@ function escapeHtml(text: string): string {
 
 function selectChannel(ch: Channel) {
   currentChannel = ch;
-  broadcastChannelTitle.textContent = `Broadcasting: ${ch.title}`;
+  broadcastChannelTitle.textContent = ch.title;
+  broadcastChannelDesc.textContent = ch.description || "";
   showSection("broadcast");
+  updateBroadcastStatus("ready", "Ready to go live");
 }
 
 async function createChannel() {
@@ -393,7 +404,8 @@ async function startBroadcast() {
 
   try {
     btnGoLive.disabled = true;
-    btnGoLive.textContent = "Starting...";
+    goLiveIcon.textContent = "⏳";
+    statusText.textContent = "Starting broadcast...";
     
     console.log("Starting broadcast for channel:", currentChannel.id);
     const result = await apiCall(`/api/me/channels/${currentChannel.id}/go-live`, {
@@ -462,6 +474,7 @@ async function startBroadcast() {
           opusPayload: fakeOpus,
         });
         ws.send(laf);
+        broadcastPacketCount++;
       }
     };
 
@@ -479,21 +492,29 @@ async function startBroadcast() {
     }
     updateMeter();
 
-    broadcastStatus.className = "status success";
-    broadcastStatus.textContent = "🔴 LIVE - Broadcasting...";
-    btnGoLive.classList.add("hidden");
-    btnStopLive.classList.remove("hidden");
+    broadcastStartTime = Date.now();
+    broadcastPacketCount = 0;
+    updateBroadcastStatus("live", "🔴 Broadcasting live");
+    btnGoLive.disabled = false;
+    goLiveIcon.textContent = "▶️";
+    updateBroadcastStats();
   } catch (err: any) {
     console.error("Broadcast start error:", err);
     alert(`Failed to start broadcast: ${err.message}`);
-    broadcastStatus.className = "status error";
-    broadcastStatus.textContent = `Error: ${err.message}`;
+    updateBroadcastStatus("ready", `Error: ${err.message}`);
     btnGoLive.disabled = false;
-    btnGoLive.textContent = "Go Live";
+    goLiveIcon.textContent = "▶️";
   }
 }
 
 async function stopBroadcast() {
+  if (!confirm("Are you sure you want to stop broadcasting?")) {
+    return;
+  }
+
+  btnStopLive.disabled = true;
+  statusText.textContent = "Stopping broadcast...";
+  
   if (ws) {
     ws.close();
     ws = null;
@@ -506,16 +527,28 @@ async function stopBroadcast() {
     await audioCtx.close();
     audioCtx = null;
   }
+  
+  meterBar.style.width = "0%";
+  broadcastStartTime = null;
+  broadcastPacketCount = 0;
+  
   if (currentChannel && streamId) {
     try {
       await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
         method: "POST",
       });
+      updateBroadcastStatus("ready", "Ready to go live again");
     } catch (err) {
       console.error("Failed to stop stream:", err);
+      updateBroadcastStatus("ready", "Ready to go live (server stop failed)");
     }
+  } else {
+    updateBroadcastStatus("ready", "Ready to go live");
   }
+  
   streamId = null;
+  btnStopLive.disabled = false;
+}
   seq = 0;
   meterBar.style.width = "0%";
   broadcastStatus.className = "status info";

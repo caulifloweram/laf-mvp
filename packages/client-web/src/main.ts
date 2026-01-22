@@ -235,6 +235,13 @@ const playerSection = document.getElementById("player-section")!;
 const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
 const btnStart = document.getElementById("btn-start") as HTMLButtonElement;
+const btnStop = document.getElementById("btn-stop") as HTMLButtonElement;
+const playIcon = document.getElementById("play-icon")!;
+const playText = document.getElementById("play-text")!;
+const playerLiveBadge = document.getElementById("player-live-badge")!;
+const playerStatus = document.getElementById("player-status")!;
+const playerStatusIcon = document.getElementById("player-status-icon")!;
+const playerStatusText = document.getElementById("player-status-text")!;
 const statTier = document.getElementById("stat-tier")!;
 const statLoss = document.getElementById("stat-loss")!;
 const statBuffer = document.getElementById("stat-buffer")!;
@@ -368,7 +375,12 @@ async function startListening() {
     
     loopRunning = true; // Start the loop
     loop(); // Start processing
-    btnStart.textContent = "Listening...";
+    
+    // Update UI
+    updatePlayerStatus("playing", "🔴 Listening live");
+    btnStart.classList.add("hidden");
+    btnStop.classList.remove("hidden");
+    playerLiveBadge.classList.remove("hidden");
   };
 
   ws.onerror = (err) => {
@@ -378,8 +390,13 @@ async function startListening() {
   ws.onclose = (event) => {
     console.log("WebSocket disconnected:", event.code, event.reason || "No reason");
     loopRunning = false; // Stop the loop
+    updatePlayerStatus("stopped", "Disconnected");
     btnStart.disabled = false;
-    btnStart.textContent = "Reconnect";
+    btnStart.classList.remove("hidden");
+    btnStop.classList.add("hidden");
+    playerLiveBadge.classList.add("hidden");
+    playIcon.textContent = "▶️";
+    playText.textContent = "Reconnect";
   };
 
   ws.onmessage = (ev) => {
@@ -646,11 +663,58 @@ async function loop() {
   }
 }
 
+function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: string) {
+  playerStatus.className = `status ${status}`;
+  if (status === "playing") {
+    playerStatusIcon.textContent = "🔴";
+    playerStatusText.textContent = message;
+  } else if (status === "stopped") {
+    playerStatusIcon.textContent = "⏹️";
+    playerStatusText.textContent = message;
+  } else {
+    playerStatusIcon.textContent = "⏸️";
+    playerStatusText.textContent = message;
+  }
+}
+
+function stopListening() {
+  if (ws) {
+    loopRunning = false;
+    ws.close();
+    ws = null;
+  }
+  if (audioCtx && audioCtx.state !== "closed") {
+    audioCtx.suspend();
+  }
+  updatePlayerStatus("stopped", "Stopped");
+  btnStart.disabled = false;
+  btnStart.classList.remove("hidden");
+  btnStop.classList.add("hidden");
+  playerLiveBadge.classList.add("hidden");
+  playIcon.textContent = "▶️";
+  playText.textContent = "Start";
+}
+
 btnStart.onclick = () => {
+  if (!currentChannel) return;
+  playIcon.textContent = "⏳";
+  playText.textContent = "Connecting...";
+  btnStart.disabled = true;
+  updatePlayerStatus("ready", "Connecting...");
   startListening().catch((e) => {
-    console.error(e);
+    console.error("Failed to start listening:", e);
+    alert(`Failed to start: ${e.message}`);
+    updatePlayerStatus("stopped", `Error: ${e.message}`);
     btnStart.disabled = false;
+    playIcon.textContent = "▶️";
+    playText.textContent = "Start";
   });
+};
+
+btnStop.onclick = () => {
+  if (confirm("Stop listening to this stream?")) {
+    stopListening();
+  }
 };
 
 // Load channels on startup and refresh every 5s
