@@ -236,23 +236,21 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
   const targetTier = next.currentTier - 1;
   const targetTierHasPackets = targetTier >= MIN_TIER && checkTierHasPackets(targetTier);
   
-  // CRITICAL: Only downgrade if we have a REAL problem AND target tier has packets
-  // Don't downgrade just because bufferMs is temporarily low - that's normal during playback
-  // Only downgrade if we're actually losing packets or have sustained issues
-  const hasRealProblem = inputs.lossPercent2s > 5 || 
-                         (inputs.bufferMs < 50 && playbackStarted && next.consecutiveLateOrMissing >= 5) ||
-                         (next.consecutiveLateOrMissing >= 5 && playbackStarted);
+  // SIMPLIFIED: Only downgrade if we have sustained packet loss
+  // Don't downgrade for temporary buffer issues - that's normal
+  const hasRealProblem = inputs.lossPercent2s > 10 || 
+                         (next.consecutiveLateOrMissing >= 10 && playbackStarted);
   
   const shouldDown =
     hasRealProblem &&
-    // Don't downgrade if current tier has packets and is initialized (even if bufferMs is low)
+    // Don't downgrade if current tier has packets and is initialized
     !(hasPackets && bufferInitialized) &&
     // Don't downgrade during initial delay
     playbackStarted &&
     // CRITICAL: Don't downgrade if target tier doesn't have packets (would cause silence)
     targetTierHasPackets &&
-    // CRITICAL: Don't downgrade if current tier has more than 5 packets (buffer is healthy)
-    (tierBuf as any).packets.size <= 5;
+    // Don't downgrade if current tier has packets (buffer is healthy)
+    (tierBuf as any).packets.size > 0;
 
   if (shouldDown) {
     const oldTier = next.currentTier;
