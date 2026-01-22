@@ -5,68 +5,42 @@ import { authMiddleware, login, register } from "./auth";
 
 const app = express();
 
-// CORS configuration
-const defaultOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://lafbroadcaster-web-production.up.railway.app",
-  "https://lafclient-web-production.up.railway.app"
-];
-
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map(o => o.trim())
-  : defaultOrigins;
-
-console.log("🌐 CORS allowed origins:", allowedOrigins);
-console.log("🌐 CORS_ORIGIN env var:", process.env.CORS_ORIGIN || "not set");
-
-// More permissive CORS for production - allow all Railway domains
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log("CORS: No origin header, allowing");
-      return callback(null, true);
-    }
-    
-    // Allow if in allowed list, or if it's a Railway domain
-    const isAllowed = allowedOrigins.includes(origin) || 
-                     allowedOrigins.includes("*") ||
-                     origin.includes(".up.railway.app");
-    
-    if (isAllowed) {
-      console.log(`CORS: Allowing origin: ${origin}`);
-      callback(null, true);
-    } else {
-      console.warn(`CORS: Blocked origin: ${origin} (not in allowed list)`);
-      // For production, allow all origins but log it
-      callback(null, true);
-    }
-  },
+// SIMPLIFIED CORS - Allow all origins for now to get it working
+// This is the most permissive configuration that will definitely work
+app.use(cors({
+  origin: true, // Allow all origins
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-  exposedHeaders: ["Content-Type", "Authorization"],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Content-Type", "Authorization"]
+}));
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Explicitly handle OPTIONS requests for all routes
-app.options("*", cors(corsOptions));
+// Parse JSON bodies
 app.use(express.json());
+
+// Log all requests for debugging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
 
 const PORT = Number(process.env.PORT ?? 4000);
 const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 
-// Initialize database on startup
-initDb().catch(console.error);
-
-// Health check endpoint
+// Health check endpoint - put it early so we can test if API is running
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    cors: "enabled"
+  });
+});
+
+// Initialize database on startup (non-blocking)
+initDb().catch((err) => {
+  console.error("❌ Database initialization error:", err);
+  // Don't crash - API can still serve some endpoints
 });
 
 // Auth endpoints
@@ -196,7 +170,19 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   res.json({ success: true });
 });
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
-  console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Connected" : "⚠️ Using default"}`);
+  console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Configured" : "⚠️ Not configured"}`);
+  console.log(`   CORS: ✅ Enabled (allowing all origins)`);
+});
+
+// Handle errors
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
 });
