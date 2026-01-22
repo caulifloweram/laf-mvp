@@ -5,6 +5,9 @@ declare global {
   }
 }
 
+// Import OpusScript for encoding (will use Node.js version, may need WASM fallback for browser)
+import OpusScript from "opusscript";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
 
@@ -14,19 +17,16 @@ const FRAME_DURATION_MS = 20;
 const SAMPLES_PER_FRAME = (SAMPLE_RATE * FRAME_DURATION_MS) / 1000;
 
 // Tier configurations matching the Node broadcaster
-// For music, we want higher quality tiers
 const TIERS = [
-  { tier: 1, bitrate: 12_000 }, // 12 kbps - lowest quality
-  { tier: 2, bitrate: 24_000 }, // 24 kbps - low quality
-  { tier: 3, bitrate: 32_000 }, // 32 kbps - medium quality (good for music)
-  { tier: 4, bitrate: 48_000 }  // 48 kbps - high quality (best for music)
+  { tier: 1, bitrate: 12_000 }, // 12 kbps
+  { tier: 2, bitrate: 24_000 }, // 24 kbps
+  { tier: 3, bitrate: 32_000 }, // 32 kbps - good for music
+  { tier: 4, bitrate: 48_000 }  // 48 kbps - best for music
 ];
 
-// Default tier for music - use tier 2 for now to reduce bandwidth
-// TODO: Once Opus encoding is implemented, we can use tier 3 or 4
-// Raw PCM is ~768 kbps, so we need to be careful with bandwidth
-const DEFAULT_TIER = 2; // 24 kbps equivalent (but raw PCM is much higher)
-const MAX_TIER = 4; // Support up to tier 4
+// Default tier - use tier 3 for music quality (32 kbps with Opus)
+const DEFAULT_TIER = 3;
+const MAX_TIER = 4;
 
 interface Channel {
   id: string;
@@ -454,41 +454,49 @@ function buildLafPacket(opts: {
   return buf;
 }
 
-// Improved PCM to Int16 encoding with subtle dithering
-// TODO: Replace with real Opus encoding for production
-// Raw PCM at 48kHz is ~768 kbps - this is the main bandwidth issue
-function encodePcmToInt16(pcm: Float32Array): Int16Array {
+// Convert Float32 PCM to Int16 PCM for Opus encoding
+function floatToPCM16(pcm: Float32Array): Int16Array {
   const pcm16 = new Int16Array(pcm.length);
   const scale = 0x7fff;
   
   for (let i = 0; i < pcm.length; i++) {
-    // Clamp to [-1, 1] range
     let sample = Math.max(-1, Math.min(1, pcm[i]));
-    
-    // Subtle dithering - reduced to prevent muffling
-    // Only add minimal dithering to reduce quantization artifacts without affecting sound quality
-    const dither = (Math.random() - Math.random()) * (0.5 / scale); // Reduced from 1.0 to 0.5
-    sample += dither;
-    
-    // Convert to Int16 with proper scaling
-    // Use symmetric scaling for better quality
-    if (sample >= 0) {
-      pcm16[i] = Math.min(0x7fff, Math.round(sample * scale));
-    } else {
-      pcm16[i] = Math.max(-0x8000, Math.round(sample * scale));
-    }
+    const v = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    pcm16[i] = Math.round(v);
   }
   
   return pcm16;
 }
 
-// Encode PCM to "fake Opus" (raw PCM for now, will be replaced with real Opus)
-// WARNING: Raw PCM at 48kHz is ~768 kbps - this is very high bandwidth!
-// Real Opus encoding would reduce this to ~32-48 kbps (15-20x reduction)
-function encodePcmToFakeOpus(pcm: Float32Array): Uint8Array {
-  const pcm16 = encodePcmToInt16(pcm);
-  // Return as Uint8Array for compatibility
-  return new Uint8Array(pcm16.buffer);
+// Encode PCM to Opus using OpusScript
+// This reduces bandwidth from ~768 kbps (raw PCM) to ~32-48 kbps (Opus)
+function encodePcmToOpus(pcm: Float32Array, encoder: any): Uint8Array {
+  try {
+    // Convert Float32 to Int16 PCM
+    const pcm16 = floatToPCM16(pcm);
+    
+    // Convert Int16Array to Buffer-like format for OpusScript
+    // OpusScript expects a Buffer, but we're in browser, so use Uint8Array
+    const pcmBytes = new Uint8Array(pcm16.buffer);
+    
+    // Encode with Opus
+    const opusData = encoder.encode(pcmBytes, SAMPLES_PER_FRAME);
+    
+    // OpusScript returns a Buffer in Node.js, but in browser it might be Uint8Array
+    if (opusData instanceof Uint8Array) {
+      return opusData;
+    } else if (Buffer.isBuffer && Buffer.isBuffer(opusData)) {
+      return new Uint8Array(opusData);
+    } else {
+      // Fallback: try to convert
+      return new Uint8Array(opusData);
+    }
+  } catch (err) {
+    console.error("Opus encoding error:", err);
+    // Fallback to raw PCM if encoding fails
+    const pcm16 = floatToPCM16(pcm);
+    return new Uint8Array(pcm16.buffer);
+  }
 }
 
 async function startBroadcast() {
@@ -583,6 +591,39 @@ async function startBroadcast() {
 
     startTime = performance.now();
 
+    // Create Opus encoders for each tier
+    console.log("Creating Opus encoders...");
+    const encoders = new Map<number, any>();
+    let encoderInitialized = false;
+    
+    try {
+      // Try to create encoders - OpusScript might not work in browser
+      for (const tierConfig of TIERS) {
+        try {
+          const encoder = new (OpusScript as any)(
+            SAMPLE_RATE, 
+            CHANNELS, 
+            (OpusScript as any).Application.AUDIO
+          );
+          encoder.setBitrate(tierConfig.bitrate);
+          encoders.set(tierConfig.tier, encoder);
+          console.log(`✅ Created Opus encoder for tier ${tierConfig.tier} at ${tierConfig.bitrate} bps`);
+        } catch (err) {
+          console.warn(`⚠️ Failed to create Opus encoder for tier ${tierConfig.tier}:`, err);
+        }
+      }
+      encoderInitialized = encoders.size > 0;
+      if (encoderInitialized) {
+        console.log(`✅ Opus encoding enabled with ${encoders.size} tiers`);
+      } else {
+        console.warn("⚠️ Opus encoding not available, falling back to raw PCM");
+      }
+    } catch (err) {
+      console.error("Failed to initialize Opus encoders:", err);
+      console.warn("⚠️ Falling back to raw PCM encoding");
+      encoderInitialized = false;
+    }
+
     // Use MediaStreamTrackProcessor (modern API) if available, fallback to ScriptProcessor
     // MediaStreamTrackProcessor is more reliable and doesn't stop after a few seconds
     let sampleBuffer = new Float32Array(0);
@@ -633,17 +674,35 @@ async function startBroadcast() {
               sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
               
               const ptsMs = BigInt(Math.round(performance.now() - startTime));
-              const fakeOpus = encodePcmToFakeOpus(frame20ms);
+              
+              // Encode with Opus if available, otherwise use raw PCM
+              let opusPayload: Uint8Array;
+              const tier = DEFAULT_TIER;
+              
+              if (encoderInitialized) {
+                const encoder = encoders.get(tier);
+                if (encoder) {
+                  opusPayload = encodePcmToOpus(frame20ms, encoder);
+                } else {
+                  // Fallback to raw PCM if encoder not available for this tier
+                  const pcm16 = floatToPCM16(frame20ms);
+                  opusPayload = new Uint8Array(pcm16.buffer);
+                }
+              } else {
+                // Fallback to raw PCM if Opus not available
+                const pcm16 = floatToPCM16(frame20ms);
+                opusPayload = new Uint8Array(pcm16.buffer);
+              }
+              
               seq++;
 
-              const tier = DEFAULT_TIER;
               const laf = buildLafPacket({
                 tier,
                 flags: 0,
                 streamId,
                 seq,
                 ptsMs,
-                opusPayload: fakeOpus,
+                opusPayload,
               });
               
               try {
@@ -734,17 +793,35 @@ async function startBroadcast() {
             sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
             
             const ptsMs = BigInt(Math.round(performance.now() - startTime));
-            const fakeOpus = encodePcmToFakeOpus(frame);
+            
+            // Encode with Opus if available, otherwise use raw PCM
+            let opusPayload: Uint8Array;
+            const tier = DEFAULT_TIER;
+            
+            if (encoderInitialized) {
+              const encoder = encoders.get(tier);
+              if (encoder) {
+                opusPayload = encodePcmToOpus(frame, encoder);
+              } else {
+                // Fallback to raw PCM if encoder not available for this tier
+                const pcm16 = floatToPCM16(frame);
+                opusPayload = new Uint8Array(pcm16.buffer);
+              }
+            } else {
+              // Fallback to raw PCM if Opus not available
+              const pcm16 = floatToPCM16(frame);
+              opusPayload = new Uint8Array(pcm16.buffer);
+            }
+            
             seq++;
 
-            const tier = DEFAULT_TIER;
             const laf = buildLafPacket({
               tier,
               flags: 0,
               streamId,
               seq,
               ptsMs,
-              opusPayload: fakeOpus,
+              opusPayload,
             });
             
             try {
