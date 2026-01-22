@@ -341,18 +341,26 @@ function updateBroadcastStatus(status: "ready" | "live" | "stopped", message: st
     btnStopLive.classList.remove("hidden");
     btnStopLive.disabled = false;
   } else if (status === "stopped") {
+    // Stream terminated state - clear visual indication
     statusIcon.textContent = "⏹️";
-    statusText.textContent = message;
+    statusText.textContent = message || "Stream Terminated";
+    statusText.style.color = "#ef4444"; // Red color for terminated
     liveIndicator.classList.add("hidden");
     broadcastStats.classList.add("hidden");
     btnGoLive.classList.remove("hidden");
+    btnGoLive.disabled = false;
+    btnGoLive.textContent = "▶️ Start New Stream";
     btnStopLive.classList.add("hidden");
   } else {
+    // Ready state - can start new stream
     statusIcon.textContent = "⏸️";
     statusText.textContent = message;
+    statusText.style.color = ""; // Reset to default
     liveIndicator.classList.add("hidden");
     broadcastStats.classList.add("hidden");
     btnGoLive.classList.remove("hidden");
+    btnGoLive.disabled = false;
+    btnGoLive.textContent = "▶️ Go Live";
     btnStopLive.classList.add("hidden");
   }
 }
@@ -948,10 +956,21 @@ async function stopBroadcast() {
         const stoppedCount = result.stoppedStreamIds?.length || 0;
         console.log(`✅ Successfully stopped ${stoppedCount} stream(s) on server`);
         console.log(`   Stopped stream IDs: ${result.stoppedStreamIds?.join(", ") || "N/A"}`);
-        updateBroadcastStatus("ready", "Stream stopped - click 'Go Live' to start again");
+        console.log(`   Verified: ${result.verified !== false ? "Yes" : "No"}`);
+        
+        // Show clear "terminated" state, then transition to "ready" after a moment
+        updateBroadcastStatus("stopped", "✅ Stream Terminated Successfully");
+        
+        // After 2 seconds, show ready state with clear message
+        setTimeout(() => {
+          updateBroadcastStatus("ready", "Ready to start a new stream");
+        }, 2000);
       } else {
         console.warn("⚠️ Stop-live API returned unexpected response:", result);
-        updateBroadcastStatus("ready", "Stream stopped (server response unclear)");
+        updateBroadcastStatus("stopped", "⚠️ Stream stopped (server response unclear)");
+        setTimeout(() => {
+          updateBroadcastStatus("ready", "Ready to start a new stream");
+        }, 2000);
       }
     } catch (err: any) {
       console.error("❌ Failed to stop stream on server:", err);

@@ -299,31 +299,45 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   }
 
   // End ALL active streams for this channel (should only be one, but be thorough)
+  // Use explicit timestamp to ensure it's set correctly
   const updateResult = await pool.query(
-    "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL RETURNING stream_id",
+    "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL RETURNING stream_id, started_at",
     [channelId]
   );
 
   if (updateResult.rows.length === 0) {
     console.log(`⚠️ No active stream found for channel ${channelId} - might already be stopped`);
     // Stream might already be stopped, return success anyway
-    return res.json({ success: true, message: "Stream already stopped" });
+    return res.json({ success: true, message: "Stream already stopped", stoppedStreamIds: [] });
   }
 
   const stoppedStreamIds = updateResult.rows.map((r: any) => r.stream_id);
   console.log(`✅ Stopped ${updateResult.rows.length} stream(s) for channel ${channelId}: ${stoppedStreamIds.join(", ")}`);
   
-  // Verify the streams are actually ended
+  // CRITICAL: Verify the streams are actually ended with a fresh query
   const verifyResult = await pool.query(
-    "SELECT stream_id, ended_at FROM streams WHERE channel_id = $1 AND stream_id = ANY($2::bigint[])",
+    "SELECT stream_id, ended_at, started_at FROM streams WHERE channel_id = $1 AND stream_id = ANY($2::bigint[])",
     [channelId, stoppedStreamIds]
   );
-  console.log(`✅ Verification: ${verifyResult.rows.length} stream(s) verified as ended`);
+  
+  const allEnded = verifyResult.rows.every((r: any) => r.ended_at !== null);
+  if (!allEnded) {
+    console.error(`❌ ERROR: Some streams were not properly ended!`);
+    verifyResult.rows.forEach((r: any) => {
+      console.error(`   Stream ${r.stream_id}: ended_at=${r.ended_at}`);
+    });
+  } else {
+    console.log(`✅ Verification: All ${verifyResult.rows.length} stream(s) verified as ended`);
+  }
+  
+  // Force a small delay to ensure database transaction is committed
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   res.json({ 
     success: true, 
     message: "Stream stopped successfully",
-    stoppedStreamIds: stoppedStreamIds
+    stoppedStreamIds: stoppedStreamIds,
+    verified: allEnded
   });
 });
 

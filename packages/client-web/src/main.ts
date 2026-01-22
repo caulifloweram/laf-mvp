@@ -390,10 +390,14 @@ async function loadChannels() {
     console.log(`[loadChannels] Fetching live channels from ${url}`);
     console.log(`[loadChannels] API_URL is: ${API_URL}`);
     
-    const res = await fetch(url, {
-      cache: "no-cache",
+    // Add timestamp to URL to prevent caching
+    const cacheBuster = `?t=${Date.now()}`;
+    const res = await fetch(url + cacheBuster, {
+      cache: "no-store",
       headers: {
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
         "Accept": "application/json"
       }
     });
