@@ -731,13 +731,34 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     if (fadeOutStartTime !== null) {
       const elapsed = performance.now() - fadeOutStartTime;
       if (elapsed >= fadeOutDuration) {
-        // Fade out complete - don't schedule any more audio
+        // Fade out complete - stop scheduling audio and clean up
+        console.log("🎵 Fade out complete - stopping audio and cleaning up");
         fadeOutStartTime = null;
         isStopping = true;
+        loopRunning = false; // Stop the loop
+        
+        // Clean up gracefully after fade-out
+        setTimeout(() => {
+          stopListening();
+          updatePlayerStatus("stopped", "Stream ended");
+        }, 100); // Small delay to ensure last audio packet is scheduled
+        
         return;
       }
       // Linear fade out: 1.0 at start, 0.0 at end
       fadeOutFactor = 1.0 - (elapsed / fadeOutDuration);
+      
+      // Update UI countdown every second during fade-out
+      const remainingSeconds = Math.ceil((fadeOutDuration - elapsed) / 1000);
+      const lastShownCountdown = (window as any).lastShownCountdown || 999;
+      if (remainingSeconds !== lastShownCountdown && remainingSeconds >= 0) {
+        (window as any).lastShownCountdown = remainingSeconds;
+        if (remainingSeconds > 0) {
+          updatePlayerStatus("playing", `Stream ending in ${remainingSeconds}...`);
+        } else {
+          updatePlayerStatus("playing", "Stream ending...");
+        }
+      }
     }
     
     // If this is a concealed packet (packet loss), fade it out to reduce artifacts
@@ -1144,6 +1165,7 @@ function stopListening() {
   
   // Reset fade out state
   fadeOutStartTime = null;
+  (window as any).lastShownCountdown = null; // Reset countdown tracker
   
   // Stop the loop to prevent any new audio processing
   loopRunning = false;
