@@ -166,10 +166,15 @@ app.get("/api/channels/live", async (_req, res) => {
     // This is the source of truth - database might be stale
     let activeStreamIdsFromRelay: number[] = [];
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      
       const relayResponse = await fetch(`${RELAY_HTTP_URL}/active-streams`, {
-        timeout: 2000,
-        signal: AbortSignal.timeout(2000)
+        signal: controller.signal
       } as any);
+      
+      clearTimeout(timeoutId);
+      
       if (relayResponse.ok) {
         const relayData = await relayResponse.json();
         activeStreamIdsFromRelay = relayData.activeStreamIds || [];
@@ -178,7 +183,11 @@ app.get("/api/channels/live", async (_req, res) => {
         console.warn(`⚠️ Failed to check relay for active streams: HTTP ${relayResponse.status}`);
       }
     } catch (err: any) {
-      console.warn(`⚠️ Could not check relay for active streams: ${err.message}`);
+      if (err.name === 'AbortError') {
+        console.warn(`⚠️ Relay check timed out after 2s`);
+      } else {
+        console.warn(`⚠️ Could not check relay for active streams: ${err.message}`);
+      }
       // Continue with database check as fallback
     }
 
