@@ -1165,11 +1165,16 @@ async function loop() {
 
   // Schedule next iteration (approximately 20ms for 20ms audio frames)
   // Use requestAnimationFrame for more precise timing, but throttle to ~20ms
-  if (loopRunning) {
+  // CRITICAL: Check both loopRunning and isStopping to prevent loop after fade-out
+  if (loopRunning && !isStopping) {
     // Use a more precise timing mechanism
     const nextFrameTime = now + 18; // Slightly less than 20ms to account for processing time
     const delay = Math.max(0, nextFrameTime - performance.now());
     setTimeout(loop, Math.min(delay, 20));
+  } else if (isStopping) {
+    // Fade-out complete, stop the loop gracefully
+    console.log("🛑 Loop stopping due to fade-out completion");
+    loopRunning = false;
   }
 }
 
