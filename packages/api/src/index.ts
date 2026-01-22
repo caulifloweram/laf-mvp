@@ -145,20 +145,24 @@ app.post("/api/register", async (req, res) => {
 
 // Public: Get live channels
 app.get("/api/channels/live", async (_req, res) => {
-  const result = await pool.query(`
-    SELECT 
-      c.id,
-      c.title,
-      c.description,
-      s.stream_id as "streamId"
-    FROM channels c
-    INNER JOIN streams s ON s.channel_id = c.id
-    WHERE s.ended_at IS NULL
-    GROUP BY c.id, c.title, c.description, s.stream_id
-    ORDER BY s.started_at DESC
-  `);
-  console.log(`Live channels query returned ${result.rows.length} channels`);
-  res.json(result.rows);
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (c.id)
+        c.id,
+        c.title,
+        c.description,
+        s.stream_id as "streamId"
+      FROM channels c
+      INNER JOIN streams s ON s.channel_id = c.id
+      WHERE s.ended_at IS NULL
+      ORDER BY c.id, s.started_at DESC
+    `);
+    console.log(`Live channels query returned ${result.rows.length} channels`);
+    res.json(result.rows);
+  } catch (err: any) {
+    console.error("Error fetching live channels:", err);
+    res.status(500).json({ error: "Failed to fetch live channels", details: err.message });
+  }
 });
 
 // Protected: Get my channels

@@ -276,6 +276,7 @@ let loopRunning = false;
 
 async function loadChannels() {
   try {
+    console.log(`Fetching live channels from ${API_URL}/api/channels/live`);
     const res = await fetch(`${API_URL}/api/channels/live`, {
       cache: "no-cache",
       headers: {
@@ -283,10 +284,12 @@ async function loadChannels() {
       }
     });
     if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Failed to fetch live channels: HTTP ${res.status}`, errorText);
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
     const channels: LiveChannel[] = await res.json();
-    console.log(`Loaded ${channels.length} live channels`);
+    console.log(`Loaded ${channels.length} live channels:`, channels);
     
     channelsGrid.innerHTML = "";
     if (channels.length === 0) {
