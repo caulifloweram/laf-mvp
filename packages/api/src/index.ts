@@ -235,21 +235,24 @@ app.get("/api/channels/live", async (_req, res) => {
           return false; // Filter out old streams that aren't on relay
         }
       } else {
-        // Relay check succeeded and returned active streams - only include streams that are active on relay
+        // Relay check succeeded and returned active streams
+        // CRITICAL: If stream is in relay's active list, always show it (regardless of age)
         const isActiveOnRelay = activeStreamIdsFromRelay.includes(row.streamId);
-        if (!isActiveOnRelay) {
-          // Check if stream is very recent (grace period for timing)
-          const streamAge = row.started_at ? (Date.now() - new Date(row.started_at).getTime()) : Infinity;
-          const GRACE_PERIOD_MS = 30000; // 30 seconds grace period
-          if (streamAge < GRACE_PERIOD_MS) {
-            console.log(`   ⏳ Stream ${row.streamId} not on relay yet but recent (${Math.round(streamAge/1000)}s old) - showing as grace period`);
-            return true; // Include recent streams during grace period
-          } else {
-            console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
-            return false;
-          }
+        if (isActiveOnRelay) {
+          console.log(`   ✅ Stream ${row.streamId} is active on relay - showing`);
+          return true; // Always show streams that are active on relay
         }
-        return isActiveOnRelay;
+        
+        // Stream not in relay's active list - check if it's very recent (grace period for timing)
+        const streamAge = row.started_at ? (Date.now() - new Date(row.started_at).getTime()) : Infinity;
+        const GRACE_PERIOD_MS = 30000; // 30 seconds grace period
+        if (streamAge < GRACE_PERIOD_MS) {
+          console.log(`   ⏳ Stream ${row.streamId} not on relay yet but recent (${Math.round(streamAge/1000)}s old) - showing as grace period`);
+          return true; // Include recent streams during grace period
+        } else {
+          console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay and too old (${Math.round(streamAge/1000)}s)`);
+          return false; // Filter out old streams that aren't on relay
+        }
       }
     });
     
