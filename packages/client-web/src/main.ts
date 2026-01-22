@@ -581,7 +581,10 @@ async function startListening() {
   };
 
   ws.onclose = (event) => {
-    console.log("WebSocket disconnected:", event.code, event.reason || "No reason");
+    console.log("❌ WebSocket closed!");
+    console.log(`   Code: ${event.code}`);
+    console.log(`   Reason: ${event.reason || "No reason"}`);
+    console.log(`   Was clean: ${event.wasClean}`);
     console.log(`   Total messages received: ${messageCount}, last seq: ${lastLoggedSeq}`);
     
     // Clean up message monitor
@@ -589,7 +592,9 @@ async function startListening() {
       clearInterval((ws as any).messageMonitor);
     }
     
-    loopRunning = false; // Stop the loop
+    // Properly stop listening to clean up all buffers and state
+    stopListening();
+    
     updatePlayerStatus("stopped", "Disconnected");
     btnStart.disabled = false;
     btnStart.classList.remove("hidden");

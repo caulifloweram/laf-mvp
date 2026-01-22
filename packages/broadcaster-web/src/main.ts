@@ -50,6 +50,7 @@ let streamId: number | null = null;
 let seq = 0;
 let startTime = 0;
 let processingActive = false; // Track if audio processing is active
+let sampleBuffer: Float32Array = new Float32Array(0); // Module-level buffer for cleanup
 
 // Note: @wasm-audio-decoders/opus doesn't have an encoder
 // For MVP, we'll use a simple approach: encode via Web Audio and send raw PCM
@@ -592,7 +593,7 @@ async function startBroadcast() {
       updateBroadcastStatus("stopped", "WebSocket error - check console");
     };
     
-    ws.onclose = (event) => {
+    ws.onclose = async (event) => {
       console.error("❌ WebSocket closed!");
       console.error("   Code:", event.code);
       console.error("   Reason:", event.reason || "No reason");
@@ -601,7 +602,9 @@ async function startBroadcast() {
       console.error("   Last packet time:", lastPacketTime ? `${(performance.now() - lastPacketTime).toFixed(0)}ms ago` : "never");
       console.error("   ScriptProcessor processes:", processCount);
       updateBroadcastStatus("stopped", `Connection closed (code: ${event.code})`);
+      
       // Stop audio processing if WebSocket closes
+      processingActive = false;
       const processor = (audioCtx as any)?.processor;
       if (processor) {
         processor.disconnect();
@@ -615,6 +618,26 @@ async function startBroadcast() {
       if ((audioCtx as any)?.keepAliveInterval) {
         clearInterval((audioCtx as any).keepAliveInterval);
       }
+      
+      // If WebSocket closed unexpectedly (not from stopBroadcast), call stop-live API
+      // This ensures the channel is marked as stopped in the database
+      if (currentChannel && streamId) {
+        try {
+          console.log("🔄 WebSocket closed unexpectedly, calling stop-live API...");
+          await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
+            method: "POST",
+          });
+          console.log("✅ Stream marked as stopped in database");
+        } catch (err) {
+          console.error("⚠️ Failed to call stop-live API:", err);
+        }
+      }
+      
+      // Reset UI state
+      btnStopLive.disabled = false;
+      btnGoLive.disabled = false;
+      statusText.textContent = "Broadcast stopped";
+      meterBar.style.width = "0%";
     };
     
     // WebSocket health monitor
@@ -657,7 +680,7 @@ async function startBroadcast() {
     console.log("📊 WebSocket state:", ws?.readyState);
     console.log("📊 Stream ID:", streamId);
     
-    let sampleBuffer = new Float32Array(0);
+    sampleBuffer = new Float32Array(0); // Reset module-level buffer
     let lastPacketTime = performance.now();
     let packetsSent = 0;
     
@@ -670,7 +693,7 @@ async function startBroadcast() {
     // Reset state for fresh start
     seq = 0;
     startTime = performance.now();
-    sampleBuffer = new Float32Array(0);
+    sampleBuffer = new Float32Array(0); // Reset module-level buffer
     packetsSent = 0;
     lastPacketTime = performance.now();
     processingActive = true; // Use module-level variable
