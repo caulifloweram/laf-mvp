@@ -485,6 +485,13 @@ async function startListening() {
 
   ws.onclose = (event) => {
     console.log("WebSocket disconnected:", event.code, event.reason || "No reason");
+    console.log(`   Total messages received: ${messageCount}, last seq: ${lastLoggedSeq}`);
+    
+    // Clean up message monitor
+    if ((ws as any).messageMonitor) {
+      clearInterval((ws as any).messageMonitor);
+    }
+    
     loopRunning = false; // Stop the loop
     updatePlayerStatus("stopped", "Disconnected");
     btnStart.disabled = false;
@@ -495,7 +502,23 @@ async function startListening() {
     playText.textContent = "Reconnect";
   };
 
+  let lastMessageTime = performance.now();
+  let messageCount = 0;
+  let lastLoggedSeq = 0;
+  
+  // Monitor message reception to detect when they stop
+  const messageMonitor = setInterval(() => {
+    const timeSinceLastMessage = performance.now() - lastMessageTime;
+    if (timeSinceLastMessage > 2000 && ws && ws.readyState === WebSocket.OPEN) {
+      console.warn(`⚠️ No messages received for ${timeSinceLastMessage.toFixed(0)}ms, WebSocket state: ${ws.readyState}`);
+      console.warn(`   Last message count: ${messageCount}, last seq: ${lastLoggedSeq}`);
+    }
+  }, 2000);
+  
   ws.onmessage = (ev) => {
+    lastMessageTime = performance.now();
+    messageCount++;
+    
     if (!(ev.data instanceof ArrayBuffer)) {
       console.warn("Received non-ArrayBuffer message");
       return;
@@ -506,6 +529,8 @@ async function startListening() {
       console.warn("Failed to decode LAF packet, data size:", ev.data.byteLength);
       return;
     }
+    
+    lastLoggedSeq = pkt.seq;
     
     // Log first packet always
     if (pkt.seq === 1) {
@@ -525,7 +550,7 @@ async function startListening() {
     
     // Log initialization
     if (playbackSeqBefore === null && playbackSeqAfter !== null) {
-      console.log("✅ Jitter buffer initialized! playbackSeq:", playbackSeqAfter, "playback starts in 300ms");
+      console.log("✅ Jitter buffer initialized! playbackSeq:", playbackSeqAfter, "playback starts in 400ms");
     }
     
     // Log first few packets and periodically
@@ -534,10 +559,14 @@ async function startListening() {
         seq: pkt.seq, 
         payloadSize: pkt.opusPayload.length, 
         receivedCount: buf.receivedCount,
-        bufferSize: (buf as any).packets.size
+        bufferSize: (buf as any).packets.size,
+        totalMessages: messageCount
       });
     }
   };
+  
+  // Store messageMonitor for cleanup
+  (ws as any).messageMonitor = messageMonitor;
 
   // Loop will be started when WebSocket opens
 }
@@ -612,7 +641,20 @@ function scheduleSilence(ctx: AudioContext) {
   }
 }
 
+let lastLoopTime = performance.now();
+let loopIterations = 0;
+
 async function loop() {
+  loopIterations++;
+  const now = performance.now();
+  const timeSinceLastLoop = now - lastLoopTime;
+  lastLoopTime = now;
+  
+  // Warn if loop is running slowly
+  if (timeSinceLastLoop > 100 && loopIterations % 100 === 0) {
+    console.warn(`⚠️ Loop running slowly: ${timeSinceLastLoop.toFixed(0)}ms since last iteration`);
+  }
+  
   if (!loopRunning) {
     console.log("Loop stopped");
     return;
@@ -623,7 +665,6 @@ async function loop() {
     return;
   }
 
-  const now = performance.now();
   const deltaMs = now - lastStatsTime;
   lastStatsTime = now;
 
@@ -682,9 +723,12 @@ async function loop() {
   if (!pkt) {
     abrState.consecutiveLateOrMissing++;
     lossCountWindow++;
-    // Only log missing packets occasionally
-    if (lossCountWindow % 10 === 0) {
-      console.log("Missing packet, scheduling silence");
+    // Log missing packets more frequently to detect issues
+    if (lossCountWindow === 1 || lossCountWindow % 5 === 0) {
+      const bufferPackets = (tierBuf as any).packets.size;
+      const lastSeq = tierBuf.lastSeq;
+      const playbackSeq = (tierBuf as any).playbackSeq;
+      console.warn(`⚠️ Missing packet: lossCount=${lossCountWindow}, buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}`);
     }
     scheduleSilence(audioCtx);
   } else {
