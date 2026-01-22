@@ -677,14 +677,40 @@ async function startBroadcast() {
             
             // value is an AudioData object
             const audioData = value;
-            const frame = new Float32Array(audioData.numberOfFrames);
-            audioData.copyTo(frame);
+            // AudioData.copyTo() requires 2 arguments: destination and options
+            // For mono audio, we need numberOfFrames samples
+            // For multi-channel, we need numberOfFrames * numberOfChannels
+            const totalSamples = audioData.numberOfFrames * audioData.numberOfChannels;
+            const frame = new Float32Array(totalSamples);
+            
+            // copyTo requires destination buffer and options object
+            // Options: { planeIndex: number, format: string }
+            // For interleaved format (default), use planeIndex 0
+            try {
+              audioData.copyTo(frame, { planeIndex: 0 });
+            } catch (err) {
+              console.error("Error copying AudioData:", err);
+              audioData.close();
+              continue;
+            }
             audioData.close();
             
-            // Accumulate samples
-            const newBuffer = new Float32Array(sampleBuffer.length + frame.length);
+            // If multi-channel, convert to mono by taking first channel or averaging
+            let monoFrame: Float32Array;
+            if (audioData.numberOfChannels > 1) {
+              monoFrame = new Float32Array(audioData.numberOfFrames);
+              // Take first channel (interleaved: [L0, R0, L1, R1, ...])
+              for (let i = 0; i < audioData.numberOfFrames; i++) {
+                monoFrame[i] = frame[i * audioData.numberOfChannels];
+              }
+            } else {
+              monoFrame = frame;
+            }
+            
+            // Accumulate samples (use monoFrame which is always mono)
+            const newBuffer = new Float32Array(sampleBuffer.length + monoFrame.length);
             newBuffer.set(sampleBuffer);
-            newBuffer.set(frame, sampleBuffer.length);
+            newBuffer.set(monoFrame, sampleBuffer.length);
             sampleBuffer = newBuffer;
             
             // Process complete 20ms frames (960 samples)
