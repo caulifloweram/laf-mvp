@@ -20,6 +20,7 @@ const allowedOrigins = process.env.CORS_ORIGIN
 console.log("🌐 CORS allowed origins:", allowedOrigins);
 console.log("🌐 CORS_ORIGIN env var:", process.env.CORS_ORIGIN || "not set");
 
+// More permissive CORS for production - allow all Railway domains
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -28,22 +29,33 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+    // Allow if in allowed list, or if it's a Railway domain
+    const isAllowed = allowedOrigins.includes(origin) || 
+                     allowedOrigins.includes("*") ||
+                     origin.includes(".up.railway.app");
+    
+    if (isAllowed) {
       console.log(`CORS: Allowing origin: ${origin}`);
       callback(null, true);
     } else {
       console.warn(`CORS: Blocked origin: ${origin} (not in allowed list)`);
-      // For now, allow it but log a warning
+      // For production, allow all origins but log it
       callback(null, true);
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  exposedHeaders: ["Content-Type", "Authorization"],
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS requests for all routes
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -51,6 +63,11 @@ const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 
 // Initialize database on startup
 initDb().catch(console.error);
+
+// Health check endpoint
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 // Auth endpoints
 app.post("/api/login", async (req, res) => {
