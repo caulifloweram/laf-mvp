@@ -33,6 +33,7 @@ const registerSection = document.getElementById("register-section")!;
 const mainSection = document.getElementById("main-section")!;
 const createChannelSection = document.getElementById("create-channel-section")!;
 const broadcastSection = document.getElementById("broadcast-section")!;
+const settingsSection = document.getElementById("settings-section")!;
 const channelsList = document.getElementById("channels-list")!;
 const broadcastChannelTitle = document.getElementById("broadcast-channel-title")!;
 const meterBar = document.getElementById("meter-bar")!;
@@ -45,6 +46,11 @@ const btnSaveChannel = document.getElementById("btn-save-channel")!;
 const btnCancelCreate = document.getElementById("btn-cancel-create")!;
 const btnGoLive = document.getElementById("btn-go-live")!;
 const btnStopLive = document.getElementById("btn-stop-live")!;
+const btnLogout = document.getElementById("btn-logout")!;
+const btnSettings = document.getElementById("btn-settings")!;
+const btnCloseSettings = document.getElementById("btn-close-settings")!;
+const btnChangePassword = document.getElementById("btn-change-password")!;
+const btnDeleteAccount = document.getElementById("btn-delete-account")!;
 
 const linkRegister = document.getElementById("link-register")!;
 const linkLogin = document.getElementById("link-login")!;
@@ -55,6 +61,7 @@ function showSection(section: string) {
   mainSection.classList.add("hidden");
   createChannelSection.classList.add("hidden");
   broadcastSection.classList.add("hidden");
+  settingsSection.classList.add("hidden");
 
   if (section === "login") {
     loginSection.classList.remove("hidden");
@@ -68,6 +75,10 @@ function showSection(section: string) {
   } else if (section === "broadcast") {
     mainSection.classList.remove("hidden");
     broadcastSection.classList.remove("hidden");
+  } else if (section === "settings") {
+    mainSection.classList.remove("hidden");
+    settingsSection.classList.remove("hidden");
+    loadUserProfile();
   }
 }
 
@@ -114,14 +125,138 @@ async function login(email: string, password: string) {
 }
 
 async function register(email: string, password: string) {
-  const result = await apiCall("/api/register", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  token = result.token;
-  localStorage.setItem("token", token);
-  await loadChannels();
-  showSection("main");
+  try {
+    const result = await apiCall("/api/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    token = result.token;
+    localStorage.setItem("token", token);
+    await loadChannels();
+    showSection("main");
+  } catch (err: any) {
+    throw new Error(err.message || "Registration failed");
+  }
+}
+
+function logout() {
+  if (confirm("Are you sure you want to logout?")) {
+    token = null;
+    localStorage.removeItem("token");
+    currentChannel = null;
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+    showSection("login");
+  }
+}
+
+async function loadUserProfile() {
+  try {
+    const profile = await apiCall("/api/me/profile");
+    const emailEl = document.getElementById("user-email")!;
+    const createdEl = document.getElementById("user-created")!;
+    emailEl.textContent = profile.email;
+    const createdDate = new Date(profile.created_at);
+    createdEl.textContent = createdDate.toLocaleDateString();
+  } catch (err: any) {
+    console.error("Failed to load profile:", err);
+  }
+}
+
+async function handleChangePassword() {
+  const currentPassword = (document.getElementById("current-password") as HTMLInputElement).value;
+  const newPassword = (document.getElementById("new-password") as HTMLInputElement).value;
+  const confirmPassword = (document.getElementById("confirm-password") as HTMLInputElement).value;
+  const statusEl = document.getElementById("password-change-status")!;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    statusEl.innerHTML = '<div class="status error">Please fill in all fields</div>';
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    statusEl.innerHTML = '<div class="status error">New passwords do not match</div>';
+    return;
+  }
+
+  try {
+    btnChangePassword.disabled = true;
+    btnChangePassword.textContent = "Changing...";
+    
+    await apiCall("/api/me/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    statusEl.innerHTML = '<div class="status success">Password changed successfully!</div>';
+    (document.getElementById("current-password") as HTMLInputElement).value = "";
+    (document.getElementById("new-password") as HTMLInputElement).value = "";
+    (document.getElementById("confirm-password") as HTMLInputElement).value = "";
+    
+    setTimeout(() => {
+      statusEl.innerHTML = "";
+    }, 3000);
+  } catch (err: any) {
+    statusEl.innerHTML = `<div class="status error">${err.message || "Failed to change password"}</div>`;
+  } finally {
+    btnChangePassword.disabled = false;
+    btnChangePassword.textContent = "Change Password";
+  }
+}
+
+async function handleDeleteAccount() {
+  const password = (document.getElementById("delete-password") as HTMLInputElement).value;
+  const statusEl = document.getElementById("delete-account-status")!;
+
+  if (!password) {
+    statusEl.innerHTML = '<div class="status error">Please enter your password to confirm</div>';
+    return;
+  }
+
+  const confirmMessage = "Are you absolutely sure? This will permanently delete your account and all your channels. This action cannot be undone.";
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  try {
+    btnDeleteAccount.disabled = true;
+    btnDeleteAccount.textContent = "Deleting...";
+    
+    await apiCall("/api/me/delete-account", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+
+    statusEl.innerHTML = '<div class="status success">Account deleted successfully. Redirecting...</div>';
+    
+    // Clear everything and redirect to login
+    token = null;
+    localStorage.removeItem("token");
+    currentChannel = null;
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+    
+    setTimeout(() => {
+      showSection("login");
+      statusEl.innerHTML = "";
+    }, 2000);
+  } catch (err: any) {
+    statusEl.innerHTML = `<div class="status error">${err.message || "Failed to delete account"}</div>`;
+    btnDeleteAccount.disabled = false;
+    btnDeleteAccount.textContent = "Delete My Account";
+  }
 }
 
 async function loadChannels() {
@@ -417,6 +552,16 @@ btnSaveChannel.onclick = createChannel;
 btnCancelCreate.onclick = () => showSection("main");
 btnGoLive.onclick = startBroadcast;
 btnStopLive.onclick = stopBroadcast;
+btnLogout.onclick = logout;
+btnSettings.onclick = () => showSection("settings");
+btnCloseSettings.onclick = () => showSection("main");
+btnChangePassword.onclick = handleChangePassword;
+btnDeleteAccount.onclick = handleDeleteAccount;
+btnLogout.onclick = logout;
+btnSettings.onclick = () => showSection("settings");
+btnCloseSettings.onclick = () => showSection("main");
+btnChangePassword.onclick = handleChangePassword;
+btnDeleteAccount.onclick = handleDeleteAccount;
 
 // Check if already logged in
 if (token) {

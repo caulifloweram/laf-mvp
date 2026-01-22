@@ -121,6 +121,9 @@
         <div class="form-group">
           <label>Password</label>
           <input type="password" id="register-password" placeholder="password" />
+          <small style="display: block; margin-top: 0.25rem; opacity: 0.7; font-size: 0.85rem;">
+            Must be 8+ characters with uppercase, lowercase, number, and special character
+          </small>
         </div>
         <button id="btn-register">Register</button>
         <p style="margin-top: 1rem; opacity: 0.7; text-align: center;">
@@ -129,8 +132,15 @@
       </div>
 
       <div id="main-section" class="hidden">
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="margin: 0;">My Channels</h2>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btn-settings" style="width: auto; padding: 0.5rem 1rem; background: #4b5563;">⚙️ Settings</button>
+            <button id="btn-logout" style="width: auto; padding: 0.5rem 1rem; background: #6b7280;">Logout</button>
+          </div>
+        </div>
+        
         <div class="card">
-          <h2>My Channels</h2>
           <div id="channels-list" class="channels-list"></div>
           <button id="btn-create-channel">+ Create New Channel</button>
         </div>
@@ -159,6 +169,50 @@
           </div>
           <button id="btn-go-live">Go Live</button>
           <button id="btn-stop-live" class="danger hidden" style="margin-top: 0.5rem;">Stop Streaming</button>
+        </div>
+
+        <div id="settings-section" class="card hidden">
+          <h2>Account Settings</h2>
+          <div id="user-info" style="margin-bottom: 2rem; padding: 1rem; background: #0f1419; border-radius: 8px;">
+            <p><strong>Email:</strong> <span id="user-email">-</span></p>
+            <p style="margin-top: 0.5rem; opacity: 0.7; font-size: 0.9rem;">Member since: <span id="user-created">-</span></p>
+          </div>
+
+          <div style="margin-bottom: 2rem;">
+            <h3 style="margin-bottom: 1rem;">Change Password</h3>
+            <div class="form-group">
+              <label>Current Password</label>
+              <input type="password" id="current-password" placeholder="Enter current password" />
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="new-password" placeholder="Enter new password" />
+              <small style="display: block; margin-top: 0.25rem; opacity: 0.7; font-size: 0.85rem;">
+                Must be 8+ characters with uppercase, lowercase, number, and special character
+              </small>
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="confirm-password" placeholder="Confirm new password" />
+            </div>
+            <button id="btn-change-password">Change Password</button>
+            <div id="password-change-status" style="margin-top: 1rem;"></div>
+          </div>
+
+          <div style="border-top: 1px solid #2a2f40; padding-top: 2rem;">
+            <h3 style="margin-bottom: 1rem; color: #ef4444;">Danger Zone</h3>
+            <div class="form-group">
+              <label>Delete Account</label>
+              <p style="margin-bottom: 0.5rem; opacity: 0.8; font-size: 0.9rem;">
+                This will permanently delete your account and all your channels. This action cannot be undone.
+              </p>
+              <input type="password" id="delete-password" placeholder="Enter your password to confirm" />
+            </div>
+            <button id="btn-delete-account" class="danger">Delete My Account</button>
+            <div id="delete-account-status" style="margin-top: 1rem;"></div>
+          </div>
+
+          <button id="btn-close-settings" style="margin-top: 1.5rem; background: #4b5563;">Close Settings</button>
         </div>
       </div>
     </div>

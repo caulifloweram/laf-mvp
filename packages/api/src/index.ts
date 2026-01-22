@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { initDb, pool } from "./db";
-import { authMiddleware, login, register } from "./auth";
+import { authMiddleware, login, register, changePassword, deleteUser } from "./auth";
+import { sendWelcomeEmail, sendPasswordChangedEmail, sendAccountDeletedEmail } from "./email";
 
 const app = express();
 
@@ -128,10 +129,15 @@ app.post("/api/register", async (req, res) => {
   }
   try {
     const result = await register(email, password);
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail(result.user.email).catch(console.error);
     res.json(result);
   } catch (err: any) {
     if (err.code === "23505") {
       return res.status(409).json({ error: "Email already exists" });
+    }
+    if (err.message) {
+      return res.status(400).json({ error: err.message });
     }
     throw err;
   }
@@ -233,6 +239,68 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   );
 
   res.json({ success: true });
+});
+
+// Protected: Change password
+app.post("/api/me/change-password", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Current password and new password required" });
+  }
+  
+  try {
+    await changePassword(user.id, currentPassword, newPassword);
+    // Get user email for notification
+    const userResult = await pool.query("SELECT email FROM users WHERE id = $1", [user.id]);
+    if (userResult.rows.length > 0) {
+      sendPasswordChangedEmail(userResult.rows[0].email).catch(console.error);
+    }
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || "Failed to change password" });
+  }
+});
+
+// Protected: Delete account
+app.post("/api/me/delete-account", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { password } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ error: "Password required to delete account" });
+  }
+  
+  try {
+    // Get user email before deletion
+    const userResult = await pool.query("SELECT email FROM users WHERE id = $1", [user.id]);
+    const userEmail = userResult.rows[0]?.email;
+    
+    await deleteUser(user.id, password);
+    
+    // Send deletion email (non-blocking)
+    if (userEmail) {
+      sendAccountDeletedEmail(userEmail).catch(console.error);
+    }
+    
+    res.json({ success: true, message: "Account deleted successfully" });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || "Failed to delete account" });
+  }
+});
+
+// Protected: Get user profile
+app.get("/api/me/profile", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const result = await pool.query(
+    "SELECT id, email, created_at FROM users WHERE id = $1",
+    [user.id]
+  );
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: "User not found" });
+  }
+  res.json(result.rows[0]);
 });
 
 // Start server with error handling
