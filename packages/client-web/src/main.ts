@@ -766,12 +766,27 @@ async function loop() {
   if (!pkt) {
     abrState.consecutiveLateOrMissing++;
     lossCountWindow++;
+    
+    // Check if other tiers have packets we could use
+    let alternativeTier: number | null = null;
+    for (const [t, buf] of tiers.entries()) {
+      if (t !== tierToUse && ((buf as any).packets.size > 0 || (buf as any).playbackSeq !== null)) {
+        alternativeTier = t;
+        break;
+      }
+    }
+    
     // Log missing packets more frequently to detect issues
     if (lossCountWindow === 1 || lossCountWindow % 5 === 0) {
       const bufferPackets = (tierBuf as any).packets.size;
       const lastSeq = tierBuf.lastSeq;
       const playbackSeq = (tierBuf as any).playbackSeq;
-      console.warn(`⚠️ Missing packet: lossCount=${lossCountWindow}, buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}`);
+      if (alternativeTier) {
+        const altBuf = tiers.get(alternativeTier)!;
+        console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, playbackSeq=${playbackSeq}, but tier ${alternativeTier} has ${(altBuf as any).packets.size} packets - should switch!`);
+      } else {
+        console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}, no alternative tiers available`);
+      }
     }
     scheduleSilence(audioCtx);
   } else {
