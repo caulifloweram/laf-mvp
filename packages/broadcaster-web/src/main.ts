@@ -3,6 +3,13 @@
 // This is much simpler and more reliable than trying to encode Opus in the browser
 // The client can easily convert 8-bit back to 16-bit for playback
 
+// Type declaration for MediaStreamTrackProcessor (modern API)
+declare global {
+  interface Window {
+    MediaStreamTrackProcessor?: any;
+  }
+}
+
 // Convert Float32 PCM to Int8 PCM (8-bit, reduces bandwidth by 2x)
 function floatToPCM8(pcm: Float32Array): Uint8Array {
   const pcm8 = new Uint8Array(pcm.length);
@@ -633,135 +640,209 @@ async function startBroadcast() {
     let packetsSent = 0;
     let processingActive = true;
     
-    // Use ScriptProcessor to capture audio at 48kHz
-    console.log("🎤 Creating ScriptProcessor...");
-    const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
-    console.log("✅ ScriptProcessor created");
+    // CRITICAL FIX: ScriptProcessor is DEPRECATED and stops after 2 seconds
+    // Use MediaStreamTrackProcessor (modern API) which is reliable
+    // If not available, use a polling approach with MediaStream directly
     
-    // Create a dummy destination to keep processor alive without playing audio
-    const dummyGain = audioCtx.createGain();
-    dummyGain.gain.value = 0; // Silent
-    dummyGain.connect(audioCtx.destination);
-    
+    const audioTrack = mediaStream.getAudioTracks()[0];
     let lastProcessTime = performance.now();
     let processCount = 0;
     
-    processor.onaudioprocess = (ev) => {
-      try {
-        processCount++;
-        lastProcessTime = performance.now();
-        
-        // Log every 50th process to verify it's running
-        if (processCount % 50 === 0) {
-          console.log(`🎤 ScriptProcessor active: processed ${processCount} times, ${packetsSent} packets sent`);
-        }
-        
-        if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
-          if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
-            console.error("WebSocket closed, stopping audio processing");
-            processingActive = false;
-            return;
-          }
-          if (!ws) {
-            console.warn("⚠️ WebSocket is null, waiting...");
-          } else if (ws.readyState !== WebSocket.OPEN) {
-            console.warn(`⚠️ WebSocket not open: state=${ws.readyState}`);
-          }
-          return;
-        }
-        
-        const input = ev.inputBuffer.getChannelData(0);
-        if (!input || input.length === 0) {
-          if (processCount % 100 === 0) {
-            console.warn("⚠️ Empty input buffer");
-          }
-          return;
-        }
-        
-        // Accumulate samples at 48kHz
-        const newBuffer = new Float32Array(sampleBuffer.length + input.length);
-        newBuffer.set(sampleBuffer);
-        newBuffer.set(input, sampleBuffer.length);
-        sampleBuffer = newBuffer;
-        
-        // Process complete 20ms frames at 48kHz (960 samples)
-        while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
-          const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
-          sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
-          
-          // Convert to 8-bit PCM (reduces bandwidth by 2x)
-          const pcm8 = floatToPCM8(frame);
-          
-          // Send as "fake Opus" (raw 8-bit PCM)
-          // This reduces bandwidth from 768 kbps to 384 kbps (2x reduction)
-          const ptsMs = BigInt(Math.round(performance.now() - startTime));
-          seq++;
-          
-          const laf = buildLafPacket({
-            tier: DEFAULT_TIER,
-            flags: 0,
-            streamId,
-            seq,
-            ptsMs,
-            opusPayload: pcm8, // Raw 8-bit PCM
-          });
-          
-          try {
-            // Check WebSocket buffer to avoid backpressure
-            if (ws.bufferedAmount > 512 * 1024) { // 512KB limit
-              console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
+    // Try MediaStreamTrackProcessor first (modern, reliable API)
+    if (audioTrack && typeof (window as any).MediaStreamTrackProcessor !== 'undefined') {
+      console.log("✅ Using MediaStreamTrackProcessor (modern, reliable API)");
+      const trackProcessor = new (window as any).MediaStreamTrackProcessor({ track: audioTrack });
+      const readable = trackProcessor.readable;
+      const reader = readable.getReader();
+      
+      async function processAudioChunk() {
+        try {
+          while (processingActive) {
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log("Audio track ended");
+              break;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
+              if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
+                console.error("WebSocket closed, stopping audio processing");
+                processingActive = false;
+                break;
+              }
+              await new Promise(r => setTimeout(r, 10));
               continue;
             }
             
-            ws.send(laf);
-            broadcastPacketCount++;
-            packetsSent++;
-            lastPacketTime = performance.now();
+            // value is an AudioData object
+            const audioData = value;
+            const frame = new Float32Array(audioData.numberOfFrames);
+            audioData.copyTo(frame);
+            audioData.close();
             
-            // Log bandwidth periodically
-            if (seq % 250 === 0) {
-              const packetSize = laf.byteLength;
-              const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
-              console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
+            // Accumulate samples
+            const newBuffer = new Float32Array(sampleBuffer.length + frame.length);
+            newBuffer.set(sampleBuffer);
+            newBuffer.set(frame, sampleBuffer.length);
+            sampleBuffer = newBuffer;
+            
+            // Process complete 20ms frames (960 samples)
+            while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
+              const frame20ms = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
+              sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
+              
+              processCount++;
+              lastProcessTime = performance.now();
+              
+              // Convert to 8-bit PCM
+              const pcm8 = floatToPCM8(frame20ms);
+              
+              const ptsMs = BigInt(Math.round(performance.now() - startTime));
+              seq++;
+              
+              const laf = buildLafPacket({
+                tier: DEFAULT_TIER,
+                flags: 0,
+                streamId,
+                seq,
+                ptsMs,
+                opusPayload: pcm8,
+              });
+              
+              try {
+                if (ws.bufferedAmount > 512 * 1024) {
+                  console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
+                  continue;
+                }
+                
+                ws.send(laf);
+                broadcastPacketCount++;
+                packetsSent++;
+                lastPacketTime = performance.now();
+                
+                if (seq % 250 === 0) {
+                  const packetSize = laf.byteLength;
+                  const kbps = (packetSize * 50 * 8) / 1000;
+                  console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
+                }
+              } catch (sendErr) {
+                console.error("Failed to send packet:", sendErr);
+              }
             }
-          } catch (sendErr) {
-            console.error("Failed to send packet:", sendErr);
           }
+        } catch (err) {
+          console.error("Error in MediaStreamTrackProcessor:", err);
+          processingActive = false;
         }
-      } catch (err) {
-        console.error("Error in audio processing:", err);
       }
-    };
+      
+      processAudioChunk();
+      (audioCtx as any).processor = { stop: () => { processingActive = false; reader.cancel(); } };
+      
+    } else {
+      // FALLBACK: Use ScriptProcessor (deprecated, but better than nothing)
+      // This will stop after 2 seconds, but it's the only fallback
+      console.warn("⚠️ MediaStreamTrackProcessor not available, using ScriptProcessor (deprecated, may stop after 2 seconds)");
+      const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
+      
+      const dummyGain = audioCtx.createGain();
+      dummyGain.gain.value = 0;
+      dummyGain.connect(audioCtx.destination);
+      
+      processor.onaudioprocess = (ev) => {
+        try {
+          processCount++;
+          lastProcessTime = performance.now();
+          
+          if (processCount % 50 === 0) {
+            console.log(`🎤 ScriptProcessor active: processed ${processCount} times, ${packetsSent} packets sent`);
+          }
+          
+          if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
+            if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
+              console.error("WebSocket closed, stopping audio processing");
+              processingActive = false;
+              return;
+            }
+            return;
+          }
+          
+          const input = ev.inputBuffer.getChannelData(0);
+          if (!input || input.length === 0) return;
+          
+          const newBuffer = new Float32Array(sampleBuffer.length + input.length);
+          newBuffer.set(sampleBuffer);
+          newBuffer.set(input, sampleBuffer.length);
+          sampleBuffer = newBuffer;
+          
+          while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
+            const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
+            sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
+            
+            const pcm8 = floatToPCM8(frame);
+            const ptsMs = BigInt(Math.round(performance.now() - startTime));
+            seq++;
+            
+            const laf = buildLafPacket({
+              tier: DEFAULT_TIER,
+              flags: 0,
+              streamId,
+              seq,
+              ptsMs,
+              opusPayload: pcm8,
+            });
+            
+            try {
+              if (ws.bufferedAmount > 512 * 1024) {
+                console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
+                continue;
+              }
+              
+              ws.send(laf);
+              broadcastPacketCount++;
+              packetsSent++;
+              lastPacketTime = performance.now();
+              
+              if (seq % 250 === 0) {
+                const packetSize = laf.byteLength;
+                const kbps = (packetSize * 50 * 8) / 1000;
+                console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
+              }
+            } catch (sendErr) {
+              console.error("Failed to send packet:", sendErr);
+            }
+          }
+        } catch (err) {
+          console.error("Error in audio processing:", err);
+        }
+      };
+      
+      source.connect(processor);
+      processor.connect(dummyGain);
+      (audioCtx as any).processor = processor;
+    }
     
-    // Connect: source -> processor -> dummyGain -> destination
-    source.connect(processor);
-    processor.connect(dummyGain);
-    (audioCtx as any).processor = processor;
-    
-    // Keep-alive monitor: Check if ScriptProcessor is still running
+    // Health monitor
     const keepAliveMonitor = setInterval(() => {
       const timeSinceLastProcess = performance.now() - lastProcessTime;
       
       if (timeSinceLastProcess > 500) {
-        console.error(`⚠️ ScriptProcessor appears to have stopped! Last process: ${timeSinceLastProcess.toFixed(0)}ms ago`);
+        console.error(`⚠️ Audio processing appears to have stopped! Last process: ${timeSinceLastProcess.toFixed(0)}ms ago`);
         console.error(`   Process count: ${processCount}, Packets sent: ${packetsSent}`);
         console.error(`   WebSocket state: ${ws?.readyState}, Processing active: ${processingActive}`);
         console.error(`   AudioContext state: ${audioCtx?.state}`);
         
-        // Try to resume AudioContext if suspended
         if (audioCtx && audioCtx.state === 'suspended') {
-          console.log("Attempting to resume AudioContext...");
           audioCtx.resume().then(() => {
             console.log("✅ AudioContext resumed");
           }).catch(err => {
             console.error("Failed to resume AudioContext:", err);
           });
         }
-      } else if (processCount % 250 === 0) {
-        // Log health every ~5 seconds (250 * 20ms = 5s)
-        console.log(`✅ ScriptProcessor healthy: ${processCount} processes, ${packetsSent} packets sent, WS: ${ws?.readyState}`);
+      } else if (processCount % 250 === 0 && processCount > 0) {
+        console.log(`✅ Audio processing healthy: ${processCount} processes, ${packetsSent} packets sent, WS: ${ws?.readyState}`);
       }
-    }, 1000); // Check every second
+    }, 1000);
     
     (audioCtx as any).keepAliveMonitor = keepAliveMonitor;
 
