@@ -878,11 +878,40 @@ async function stopBroadcast() {
     return;
   }
 
-  console.log("🛑 Finishing livestream and cleaning up...");
+  console.log("🛑 Starting 5-second countdown before finishing livestream...");
   btnStopLive.disabled = true;
-  statusText.textContent = "Finishing stream...";
   
-  // CRITICAL: Stop audio processing FIRST to prevent new packets
+  // Send "stream ending" message to clients so they can fade out gracefully
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.send(JSON.stringify({ type: "stream_ending", countdown: 5 }));
+      console.log("📤 Sent stream ending notification to clients");
+    } catch (err) {
+      console.error("⚠️ Failed to send stream ending message:", err);
+    }
+  }
+  
+  // Show countdown UI
+  let countdown = 5;
+  const countdownInterval = setInterval(() => {
+    countdown--;
+    statusText.textContent = `Finishing stream in ${countdown}...`;
+    console.log(`⏱️ Countdown: ${countdown} seconds remaining`);
+    
+    if (countdown <= 0) {
+      clearInterval(countdownInterval);
+      actuallyStopBroadcast();
+    }
+  }, 1000);
+  
+  // Also set initial countdown display
+  statusText.textContent = `Finishing stream in ${countdown}...`;
+}
+
+async function actuallyStopBroadcast() {
+  console.log("🛑 Finishing livestream and cleaning up...");
+  
+  // CRITICAL: Stop audio processing NOW to prevent new packets
   processingActive = false;
   
   // CRITICAL: Call stop-live API BEFORE closing WebSocket

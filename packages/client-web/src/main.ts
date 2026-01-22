@@ -383,6 +383,8 @@ let currentChannel: LiveChannel | null = null;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
+let fadeOutStartTime: number | null = null; // When fade out started (for smooth fade)
+let fadeOutDuration = 5000; // 5 seconds fade out
 const LOOKAHEAD_PACKETS = 10; // Schedule 10 packets (200ms) ahead for smooth playback - increased for better stability
 
 async function loadChannels() {
@@ -502,8 +504,9 @@ async function startListening() {
 
   console.log("▶️ Starting listening - initializing fresh state...");
   
-  // CRITICAL: Reset stopping flag when starting a new stream
+  // CRITICAL: Reset stopping flag and fade out state when starting a new stream
   isStopping = false;
+  fadeOutStartTime = null;
   
   // CRITICAL: Ensure all state is reset before starting
   // Reset playheadTime to current time (fresh start)
@@ -700,20 +703,39 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     const buffer = ctx.createBuffer(CHANNELS, sampleCount, SAMPLE_RATE);
     const channelData = buffer.getChannelData(0);
     
+    // Calculate fade out factor if fade out is active
+    let fadeOutFactor = 1.0;
+    if (fadeOutStartTime !== null) {
+      const elapsed = performance.now() - fadeOutStartTime;
+      if (elapsed >= fadeOutDuration) {
+        // Fade out complete - don't schedule any more audio
+        fadeOutStartTime = null;
+        isStopping = true;
+        return;
+      }
+      // Linear fade out: 1.0 at start, 0.0 at end
+      fadeOutFactor = 1.0 - (elapsed / fadeOutDuration);
+    }
+    
     // If this is a concealed packet (packet loss), fade it out to reduce artifacts
     if (isConcealed) {
       const fadeLength = Math.min(sampleCount / 4, 240); // Fade last 25% or 5ms, whichever is smaller
       const fadeStart = sampleCount - fadeLength;
       for (let i = 0; i < sampleCount; i++) {
+        let sample = pcm[i];
         if (i >= fadeStart) {
-          const fadeFactor = 1 - ((i - fadeStart) / fadeLength);
-          channelData[i] = pcm[i] * fadeFactor;
-        } else {
-          channelData[i] = pcm[i];
+          const concealFadeFactor = 1 - ((i - fadeStart) / fadeLength);
+          sample *= concealFadeFactor;
         }
+        // Apply stream ending fade out
+        sample *= fadeOutFactor;
+        channelData[i] = sample;
       }
     } else {
-      channelData.set(pcm);
+      // Apply stream ending fade out to all samples
+      for (let i = 0; i < sampleCount; i++) {
+        channelData[i] = pcm[i] * fadeOutFactor;
+      }
     }
     
     const src = ctx.createBufferSource();
@@ -1096,6 +1118,9 @@ function stopListening() {
   
   // CRITICAL: Set stopping flag FIRST to prevent any new audio scheduling
   isStopping = true;
+  
+  // Reset fade out state
+  fadeOutStartTime = null;
   
   // Stop the loop to prevent any new audio processing
   loopRunning = false;

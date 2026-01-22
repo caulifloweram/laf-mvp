@@ -144,11 +144,23 @@ wss.on("connection", (ws, req) => {
   }
 
   ws.on("message", (data, isBinary) => {
-    if (!isBinary || client.role !== "broadcaster") return;
-    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as any);
+    if (client.role !== "broadcaster") return;
     const r = rooms.get(streamId);
     if (!r) return;
 
+    // Forward text messages (control messages like "stream ending") to all listeners
+    if (!isBinary) {
+      const text = data.toString();
+      for (const listener of r.listeners) {
+        if (listener.ws.readyState === WebSocket.OPEN) {
+          listener.ws.send(text);
+        }
+      }
+      return;
+    }
+
+    // Forward binary messages (audio packets) to all listeners
+    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as any);
     for (const listener of r.listeners) {
       if (listener.ws.readyState !== WebSocket.OPEN) continue;
 
