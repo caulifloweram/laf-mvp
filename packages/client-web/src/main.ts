@@ -732,34 +732,57 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     let fadeOutFactor = 1.0;
     if (fadeOutStartTime !== null) {
       const elapsed = performance.now() - fadeOutStartTime;
+      
+      // Add small ramp-in period (100ms) to prevent glitch when fade starts
+      const RAMP_IN_MS = 100;
+      const effectiveElapsed = Math.max(0, elapsed - RAMP_IN_MS);
+      const effectiveDuration = fadeOutDuration - RAMP_IN_MS;
+      
       if (elapsed >= fadeOutDuration) {
         // Fade out complete - stop scheduling audio and clean up
         console.log("🎵 Fade out complete - stopping audio and cleaning up");
         fadeOutStartTime = null;
         isStopping = true;
-        loopRunning = false; // Stop the loop
         
-        // Clean up gracefully after fade-out
-        setTimeout(() => {
-          stopListening();
-          updatePlayerStatus("stopped", "Stream ended");
-        }, 100); // Small delay to ensure last audio packet is scheduled
+        // Don't stop loopRunning here - let the loop handle it naturally
+        // This prevents the freeze issue
+        
+        // Clean up gracefully after fade-out completes
+        // Use requestAnimationFrame to ensure UI updates happen
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            stopListening();
+            updatePlayerStatus("stopped", "Stream ended");
+          }, 200); // Small delay to ensure last audio packet is scheduled
+        });
         
         return;
       }
-      // Linear fade out: 1.0 at start, 0.0 at end
-      fadeOutFactor = 1.0 - (elapsed / fadeOutDuration);
+      
+      // Smooth fade out with ramp-in: 1.0 at start, gradually fade to 0.0 at end
+      // Use exponential curve for smoother fade (ease-out)
+      if (effectiveElapsed <= 0) {
+        fadeOutFactor = 1.0; // Full volume during ramp-in
+      } else {
+        const progress = Math.min(1.0, effectiveElapsed / effectiveDuration);
+        // Exponential ease-out for smoother fade: 1 - (1 - progress)^2
+        const easedProgress = 1 - Math.pow(1 - progress, 2);
+        fadeOutFactor = 1.0 - easedProgress;
+      }
       
       // Update UI countdown every second during fade-out
       const remainingSeconds = Math.ceil((fadeOutDuration - elapsed) / 1000);
       const lastShownCountdown = (window as any).lastShownCountdown || 999;
       if (remainingSeconds !== lastShownCountdown && remainingSeconds >= 0) {
         (window as any).lastShownCountdown = remainingSeconds;
-        if (remainingSeconds > 0) {
-          updatePlayerStatus("playing", `Stream ending in ${remainingSeconds}...`);
-        } else {
-          updatePlayerStatus("playing", "Stream ending...");
-        }
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+          if (remainingSeconds > 0) {
+            updatePlayerStatus("playing", `Stream ending in ${remainingSeconds}...`);
+          } else {
+            updatePlayerStatus("playing", "Stream ending...");
+          }
+        });
       }
     }
     
@@ -846,8 +869,13 @@ async function loop() {
     console.warn(`⚠️ Loop running slowly: ${timeSinceLastLoop.toFixed(0)}ms since last iteration`);
   }
   
-  if (!loopRunning) {
-    console.log("Loop stopped");
+  // CRITICAL: Check both loopRunning and isStopping
+  if (!loopRunning || isStopping) {
+    if (isStopping) {
+      console.log("Loop stopped due to fade-out completion");
+    } else {
+      console.log("Loop stopped");
+    }
     return;
   }
   
