@@ -239,16 +239,26 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
 console.log(`🚀 Starting API server...`);
 console.log(`   PORT: ${PORT}`);
 console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? "✅ Set" : "❌ Not set"}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV || "not set"}`);
+console.log(`   RAILWAY_ENVIRONMENT: ${process.env.RAILWAY_ENVIRONMENT || "not set"}`);
 
 try {
+  // Listen on all interfaces - Railway needs this
   const server = app.listen(PORT, "0.0.0.0", () => {
+    const address = server.address();
     console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
+    console.log(`   Server address: ${JSON.stringify(address)}`);
     console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
     console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Configured" : "⚠️ Not configured"}`);
     console.log(`   CORS: ✅ Enabled (allowing all origins)`);
     console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
     console.log(`   ✅ Server started successfully!`);
     console.log(`   Process PID: ${process.pid}`);
+    
+    // Test that server is actually listening
+    if (address && typeof address === 'object') {
+      console.log(`   ✅ Server bound to ${address.address}:${address.port}`);
+    }
   });
 
   // Handle server errors
