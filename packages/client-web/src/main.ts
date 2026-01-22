@@ -55,6 +55,7 @@ function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
 class JitterBuffer {
   private readonly targetDelayMs: number;
   private readonly minBufferPackets: number;
+  private readonly maxBufferPackets: number; // Prevent memory overflow
   private packets = new Map<number, LAFPacket>();
   private playbackSeq: number | null = null;
   private startPtsMs: bigint | null = null;
@@ -67,12 +68,37 @@ class JitterBuffer {
   lastSeq: number | null = null;
   bufferMs = 0;
 
-  constructor(targetDelayMs = 400, minBufferPackets = 15) {
+  constructor(targetDelayMs = 400, minBufferPackets = 15, maxBufferPackets = 100) {
     this.targetDelayMs = targetDelayMs;
     this.minBufferPackets = minBufferPackets; // ~300ms at 20ms per frame
+    this.maxBufferPackets = maxBufferPackets; // ~2 seconds max buffer to prevent memory overflow
   }
 
   push(pkt: LAFPacket) {
+    // CRITICAL: Prevent buffer overflow by removing old packets if buffer is too large
+    if (this.packets.size >= this.maxBufferPackets) {
+      // Remove oldest packets (lowest sequence numbers)
+      const sortedSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
+      const packetsToRemove = sortedSeqs.slice(0, sortedSeqs.length - this.maxBufferPackets + 1);
+      for (const seq of packetsToRemove) {
+        this.packets.delete(seq);
+      }
+      if (packetsToRemove.length > 0) {
+        console.warn(`⚠️ Buffer overflow: removed ${packetsToRemove.length} old packets (buffer was ${this.packets.size + packetsToRemove.length}, max: ${this.maxBufferPackets})`);
+      }
+    }
+    
+    // Also remove packets that are too far behind playback (more than 2 seconds = 100 packets)
+    if (this.playbackSeq !== null) {
+      const maxAge = 100; // ~2 seconds at 20ms per packet
+      const oldestAllowedSeq = this.playbackSeq - maxAge;
+      for (const seq of this.packets.keys()) {
+        if (seq < oldestAllowedSeq) {
+          this.packets.delete(seq);
+        }
+      }
+    }
+    
     this.packets.set(pkt.seq, pkt);
     this.receivedCount++;
     this.lastSeq = pkt.seq;
