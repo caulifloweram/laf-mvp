@@ -556,13 +556,21 @@ async function startBroadcast() {
     
     // Add WebSocket event handlers for debugging (after connection is established)
     ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error("❌ WebSocket error:", error);
+      console.error("   WebSocket state:", ws?.readyState);
+      console.error("   Stream ID:", streamId);
+      console.error("   Packets sent:", packetsSent);
       updateBroadcastStatus("stopped", "WebSocket error - check console");
     };
     
     ws.onclose = (event) => {
-      console.error("WebSocket closed:", event.code, event.reason || "No reason");
-      console.error("Close was clean:", event.wasClean);
+      console.error("❌ WebSocket closed!");
+      console.error("   Code:", event.code);
+      console.error("   Reason:", event.reason || "No reason");
+      console.error("   Was clean:", event.wasClean);
+      console.error("   Total packets sent:", packetsSent);
+      console.error("   Last packet time:", lastPacketTime ? `${(performance.now() - lastPacketTime).toFixed(0)}ms ago` : "never");
+      console.error("   ScriptProcessor processes:", processCount);
       updateBroadcastStatus("stopped", `Connection closed (code: ${event.code})`);
       // Stop audio processing if WebSocket closes
       const processor = (audioCtx as any)?.processor;
@@ -575,7 +583,38 @@ async function startBroadcast() {
       if ((audioCtx as any)?.keepAliveMonitor) {
         clearInterval((audioCtx as any).keepAliveMonitor);
       }
+      if ((audioCtx as any)?.keepAliveInterval) {
+        clearInterval((audioCtx as any).keepAliveInterval);
+      }
     };
+    
+    // WebSocket health monitor
+    let lastWsCheck = performance.now();
+    const wsHealthMonitor = setInterval(() => {
+      if (!ws) {
+        console.error("⚠️ WebSocket is null!");
+        clearInterval(wsHealthMonitor);
+        return;
+      }
+      
+      const wsState = ws.readyState;
+      const timeSinceLastCheck = performance.now() - lastWsCheck;
+      lastWsCheck = performance.now();
+      
+      if (wsState !== WebSocket.OPEN) {
+        console.error(`⚠️ WebSocket not open: state=${wsState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+      } else {
+        const buffered = ws.bufferedAmount;
+        if (buffered > 0) {
+          console.warn(`⚠️ WebSocket buffer: ${buffered} bytes (${(buffered / 1024).toFixed(1)} KB)`);
+        }
+        // Log health every 10 seconds
+        if (packetsSent % 500 === 0 && packetsSent > 0) {
+          console.log(`✅ WebSocket healthy: state=${wsState}, buffer=${buffered} bytes, packets=${packetsSent}`);
+        }
+      }
+    }, 2000); // Check every 2 seconds
+    (ws as any).healthMonitor = wsHealthMonitor;
 
     startTime = performance.now();
     seq = 0;
@@ -777,6 +816,10 @@ async function stopBroadcast() {
   }
   
   if (ws) {
+    // Clean up WebSocket health monitor
+    if ((ws as any).healthMonitor) {
+      clearInterval((ws as any).healthMonitor);
+    }
     ws.close();
     ws = null;
   }
