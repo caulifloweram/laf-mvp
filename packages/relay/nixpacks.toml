@@ -3,24 +3,25 @@ nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
 cmds = [
-  "cd /app && pnpm install",
-  "echo 'Install complete'"
+  "cd /app && pnpm install --frozen-lockfile",
+  "echo 'Install complete'",
+  "echo 'Verifying ws module...'",
+  "cd /app/packages/relay && ls -la node_modules/ws 2>/dev/null || echo 'WARNING: ws not found in relay node_modules'",
+  "cd /app && ls -la node_modules/ws 2>/dev/null || echo 'WARNING: ws not found in root node_modules'"
 ]
 
 [phases.build]
 cmds = [
   "echo 'Starting build...'",
   "cd /app && pwd && ls -la",
-  "echo 'Building all packages...'",
-  "cd /app && pnpm build || echo 'Root build failed'",
-  "echo 'Checking if relay dist exists...'",
-  "ls -la /app/packages/relay/ || echo 'packages/relay not found'",
-  "echo 'Building relay package directly...'",
+  "echo 'Building relay package...'",
   "cd /app/packages/relay && pnpm build",
   "echo 'Verifying build output...'",
   "ls -la /app/packages/relay/dist/ || echo 'ERROR: dist folder still not found'",
-  "test -f /app/packages/relay/dist/index.js && echo '✅ Build successful!' || (echo '❌ Build failed!' && exit 1)"
+  "test -f /app/packages/relay/dist/index.js && echo '✅ Build successful!' || (echo '❌ Build failed!' && exit 1)",
+  "echo 'Verifying dependencies are installed...'",
+  "cd /app/packages/relay && test -d node_modules/ws && echo '✅ ws module found' || (echo '❌ ws module missing, installing...' && pnpm install ws)"
 ]
 
 [start]
-cmd = "cd /app/packages/relay && pwd && ls -la && if [ ! -f dist/index.js ]; then echo 'ERROR: dist/index.js not found. Building now...' && pnpm build && ls -la dist/; fi && echo 'Starting relay server...' && node dist/index.js"
+cmd = "cd /app/packages/relay && if [ ! -d node_modules/ws ]; then echo 'Installing missing dependencies...' && pnpm install; fi && node dist/index.js"
