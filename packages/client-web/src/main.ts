@@ -366,6 +366,8 @@ let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let playheadTime = 0;
 let loopRunning = false;
+let scheduledPackets = 0; // Track how many packets we've scheduled ahead
+const LOOKAHEAD_PACKETS = 5; // Schedule 5 packets (100ms) ahead for smooth playback
 
 async function loadChannels() {
   try {
@@ -669,15 +671,21 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     
-    // Use AudioContext's precise timing to prevent drift
+    // CRITICAL: Use playheadTime for continuous scheduling, but ensure we're not too far ahead
     const now = ctx.currentTime;
-    // Schedule at least 20ms ahead to avoid gaps, but use playheadTime to maintain continuity
-    const targetTime = Math.max(playheadTime, now + 0.02);
+    // If playheadTime is too far in the past, reset it to now + small buffer
+    if (playheadTime < now - 0.1) {
+      playheadTime = now + 0.05; // Reset if we're more than 100ms behind
+    }
+    
+    // Schedule at playheadTime to maintain continuity
+    const targetTime = playheadTime;
     src.connect(ctx.destination);
     
     src.start(targetTime);
-    // Update playheadTime to maintain continuous playback
+    // Update playheadTime for next packet (continuous scheduling)
     playheadTime = targetTime + buffer.duration;
+    scheduledPackets++;
   } catch (err) {
     console.error("Failed to schedule PCM:", err, "sampleCount:", sampleCount);
   }
@@ -821,35 +829,44 @@ async function loop() {
     abrState.currentTier = tierToUse;
   }
   
-  const pkt = tierBuf.popForPlayback(now);
+  // CRITICAL: Schedule multiple packets ahead (lookahead scheduling) for smooth playback
+  // This prevents glitches by ensuring we always have audio scheduled ahead
+  const nowAudioTime = audioCtx.currentTime;
+  const timeUntilPlayhead = playheadTime - nowAudioTime;
+  const packetsNeeded = Math.ceil(timeUntilPlayhead / 0.02); // How many 20ms packets we need ahead
+  
+  // Schedule packets until we have enough lookahead
+  while (scheduledPackets < LOOKAHEAD_PACKETS || timeUntilPlayhead < 0.1) {
+    const pkt = tierBuf.popForPlayback(now);
 
-  if (!pkt) {
-    abrState.consecutiveLateOrMissing++;
-    lossCountWindow++;
-    
-    // Check if other tiers have packets we could use
-    let alternativeTier: number | null = null;
-    for (const [t, buf] of tiers.entries()) {
-      if (t !== tierToUse && ((buf as any).packets.size > 0 || (buf as any).playbackSeq !== null)) {
-        alternativeTier = t;
-        break;
+    if (!pkt) {
+      abrState.consecutiveLateOrMissing++;
+      lossCountWindow++;
+      
+      // Check if other tiers have packets we could use
+      let alternativeTier: number | null = null;
+      for (const [t, buf] of tiers.entries()) {
+        if (t !== tierToUse && ((buf as any).packets.size > 0 || (buf as any).playbackSeq !== null)) {
+          alternativeTier = t;
+          break;
+        }
       }
-    }
-    
-    // Log missing packets more frequently to detect issues
-    if (lossCountWindow === 1 || lossCountWindow % 5 === 0) {
-      const bufferPackets = (tierBuf as any).packets.size;
-      const lastSeq = tierBuf.lastSeq;
-      const playbackSeq = (tierBuf as any).playbackSeq;
-      if (alternativeTier) {
-        const altBuf = tiers.get(alternativeTier)!;
-        console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, playbackSeq=${playbackSeq}, but tier ${alternativeTier} has ${(altBuf as any).packets.size} packets - should switch!`);
-      } else {
-        console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}, no alternative tiers available`);
+      
+      // Log missing packets more frequently to detect issues
+      if (lossCountWindow === 1 || lossCountWindow % 5 === 0) {
+        const bufferPackets = (tierBuf as any).packets.size;
+        const lastSeq = tierBuf.lastSeq;
+        const playbackSeq = (tierBuf as any).playbackSeq;
+        if (alternativeTier) {
+          const altBuf = tiers.get(alternativeTier)!;
+          console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, playbackSeq=${playbackSeq}, but tier ${alternativeTier} has ${(altBuf as any).packets.size} packets - should switch!`);
+        } else {
+          console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}, no alternative tiers available`);
+        }
       }
-    }
-    scheduleSilence(audioCtx);
-  } else {
+      scheduleSilence(audioCtx);
+      break; // Can't schedule more if no packets available
+    } else {
     const isConcealed = (pkt as any).concealed === true;
     // Log first few packets to verify they're being processed
     if (pkt.seq <= 5 || (pkt.seq > 0 && pkt.seq % 100 === 0)) {
