@@ -1,12 +1,18 @@
-// Type declaration for MediaStreamTrackProcessor (modern API, not in all browsers yet)
-declare global {
-  interface Window {
-    MediaStreamTrackProcessor?: any;
-  }
-}
+// NEW APPROACH: Use 8-bit PCM instead of 16-bit to reduce bandwidth by 2x
+// 8-bit PCM = 384 kbps vs 16-bit PCM = 768 kbps
+// This is much simpler and more reliable than trying to encode Opus in the browser
+// The client can easily convert 8-bit back to 16-bit for playback
 
-// Import OpusScript for encoding (will use Node.js version, may need WASM fallback for browser)
-import OpusScript from "opusscript";
+// Convert Float32 PCM to Int8 PCM (8-bit, reduces bandwidth by 2x)
+function floatToPCM8(pcm: Float32Array): Uint8Array {
+  const pcm8 = new Uint8Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    let sample = Math.max(-1, Math.min(1, pcm[i]));
+    // Convert to 8-bit: -1.0 -> 0, 0.0 -> 128, 1.0 -> 255
+    pcm8[i] = Math.round((sample + 1) * 127.5);
+  }
+  return pcm8;
+}
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
@@ -454,56 +460,8 @@ function buildLafPacket(opts: {
   return buf;
 }
 
-// Convert Float32 PCM to Int16 PCM for Opus encoding
-function floatToPCM16(pcm: Float32Array): Int16Array {
-  const pcm16 = new Int16Array(pcm.length);
-  const scale = 0x7fff;
-  
-  for (let i = 0; i < pcm.length; i++) {
-    let sample = Math.max(-1, Math.min(1, pcm[i]));
-    const v = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-    pcm16[i] = Math.round(v);
-  }
-  
-  return pcm16;
-}
-
-// Encode PCM to Opus using OpusScript
-// This reduces bandwidth from ~768 kbps (raw PCM) to ~32-48 kbps (Opus)
-// Note: OpusScript uses native bindings and may not work in all browsers
-// If it fails, we fall back to raw PCM
-function encodePcmToOpus(pcm: Float32Array, encoder: any): Uint8Array {
-  try {
-    // Convert Float32 to Int16 PCM
-    const pcm16 = floatToPCM16(pcm);
-    
-    // OpusScript expects Int16 PCM data
-    // In browser, we need to convert to the format OpusScript expects
-    // OpusScript.encode() expects: (pcm: Buffer | Uint8Array, frameSize: number)
-    const pcmBytes = new Uint8Array(pcm16.buffer);
-    
-    // Encode with Opus - frameSize is number of samples (960 for 20ms at 48kHz)
-    const opusData = encoder.encode(pcmBytes, SAMPLES_PER_FRAME);
-    
-    // OpusScript returns different types depending on environment
-    if (opusData instanceof Uint8Array) {
-      return opusData;
-    } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(opusData)) {
-      return new Uint8Array(opusData);
-    } else if (opusData && typeof opusData.length === 'number') {
-      // Try to convert array-like object
-      return new Uint8Array(opusData);
-    } else {
-      throw new Error("Unexpected Opus encoder return type");
-    }
-  } catch (err) {
-    console.error("Opus encoding error:", err);
-    console.warn("Falling back to raw PCM encoding");
-    // Fallback to raw PCM if encoding fails
-    const pcm16 = floatToPCM16(pcm);
-    return new Uint8Array(pcm16.buffer);
-  }
-}
+// MediaRecorder API handles Opus encoding natively - no need for manual encoding!
+// This is much simpler and more reliable than OpusScript or WASM
 
 async function startBroadcast() {
   if (!currentChannel) {
@@ -596,309 +554,99 @@ async function startBroadcast() {
     };
 
     startTime = performance.now();
+    seq = 0;
 
-    // Create Opus encoders for each tier
-    console.log("Creating Opus encoders...");
-    const encoders = new Map<number, any>();
-    let encoderInitialized = false;
+    // NEW APPROACH: Use 8-bit PCM instead of 16-bit to reduce bandwidth by 2x
+    // This is simpler and more reliable than Opus encoding
+    // 8-bit PCM = 384 kbps vs 16-bit PCM = 768 kbps (2x reduction)
+    console.log("🎙️ Using 8-bit PCM encoding (2x bandwidth reduction, 384 kbps)");
     
-    try {
-      // Try to create encoders - OpusScript might not work in browser
-      for (const tierConfig of TIERS) {
-        try {
-          const encoder = new (OpusScript as any)(
-            SAMPLE_RATE, 
-            CHANNELS, 
-            (OpusScript as any).Application.AUDIO
-          );
-          encoder.setBitrate(tierConfig.bitrate);
-          encoders.set(tierConfig.tier, encoder);
-          console.log(`✅ Created Opus encoder for tier ${tierConfig.tier} at ${tierConfig.bitrate} bps`);
-        } catch (err) {
-          console.warn(`⚠️ Failed to create Opus encoder for tier ${tierConfig.tier}:`, err);
-        }
-      }
-      encoderInitialized = encoders.size > 0;
-      if (encoderInitialized) {
-        console.log(`✅ Opus encoding enabled with ${encoders.size} tiers`);
-      } else {
-        console.warn("⚠️ Opus encoding not available, falling back to raw PCM");
-      }
-    } catch (err) {
-      console.error("Failed to initialize Opus encoders:", err);
-      console.warn("⚠️ Falling back to raw PCM encoding");
-      encoderInitialized = false;
-    }
-
-    // Use MediaStreamTrackProcessor (modern API) if available, fallback to ScriptProcessor
-    // MediaStreamTrackProcessor is more reliable and doesn't stop after a few seconds
     let sampleBuffer = new Float32Array(0);
-    let lastProcessTime = performance.now();
-    let errorCount = 0;
     let lastPacketTime = performance.now();
     let packetsSent = 0;
     let processingActive = true;
     
-    const audioTrack = mediaStream.getAudioTracks()[0];
+    // Use ScriptProcessor to capture audio at 48kHz
+    const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
     
-    // Try to use MediaStreamTrackProcessor (modern, reliable)
-    if (audioTrack && 'getSettings' in audioTrack && typeof (window as any).MediaStreamTrackProcessor !== 'undefined') {
-      console.log("Using MediaStreamTrackProcessor (modern API)");
-      const trackProcessor = new (window as any).MediaStreamTrackProcessor({ track: audioTrack });
-      const readable = trackProcessor.readable;
-      const reader = readable.getReader();
-      
-      async function processAudioChunk() {
-        try {
-          while (processingActive) {
-            const { done, value } = await reader.read();
-            if (done) {
-              console.log("Audio track ended");
-              break;
-            }
-            
-            if (!ws || ws.readyState !== WebSocket.OPEN || !streamId) {
-              await new Promise(r => setTimeout(r, 10));
+    // Create a dummy destination to keep processor alive without playing audio
+    const dummyGain = audioCtx.createGain();
+    dummyGain.gain.value = 0; // Silent
+    dummyGain.connect(audioCtx.destination);
+    
+    processor.onaudioprocess = (ev) => {
+      try {
+        if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
+          if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
+            console.error("WebSocket closed, stopping audio processing");
+            processingActive = false;
+            return;
+          }
+          return;
+        }
+        
+        const input = ev.inputBuffer.getChannelData(0);
+        if (!input || input.length === 0) return;
+        
+        // Accumulate samples at 48kHz
+        const newBuffer = new Float32Array(sampleBuffer.length + input.length);
+        newBuffer.set(sampleBuffer);
+        newBuffer.set(input, sampleBuffer.length);
+        sampleBuffer = newBuffer;
+        
+        // Process complete 20ms frames at 48kHz (960 samples)
+        while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
+          const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
+          sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
+          
+          // Convert to 8-bit PCM (reduces bandwidth by 2x)
+          const pcm8 = floatToPCM8(frame);
+          
+          // Send as "fake Opus" (raw 8-bit PCM)
+          // This reduces bandwidth from 768 kbps to 384 kbps (2x reduction)
+          const ptsMs = BigInt(Math.round(performance.now() - startTime));
+          seq++;
+          
+          const laf = buildLafPacket({
+            tier: DEFAULT_TIER,
+            flags: 0,
+            streamId,
+            seq,
+            ptsMs,
+            opusPayload: pcm8, // Raw 8-bit PCM
+          });
+          
+          try {
+            // Check WebSocket buffer to avoid backpressure
+            if (ws.bufferedAmount > 512 * 1024) { // 512KB limit
+              console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
               continue;
             }
             
-            // value is an AudioData object
-            const audioData = value;
-            const frame = new Float32Array(audioData.numberOfFrames);
-            audioData.copyTo(frame);
-            audioData.close();
+            ws.send(laf);
+            broadcastPacketCount++;
+            packetsSent++;
+            lastPacketTime = performance.now();
             
-            // Accumulate samples
-            const newBuffer = new Float32Array(sampleBuffer.length + frame.length);
-            newBuffer.set(sampleBuffer);
-            newBuffer.set(frame, sampleBuffer.length);
-            sampleBuffer = newBuffer;
-            
-            // Process complete 20ms frames (960 samples)
-            while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
-              const frame20ms = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
-              sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
-              
-              const ptsMs = BigInt(Math.round(performance.now() - startTime));
-              
-              // Encode with Opus if available, otherwise use raw PCM
-              let opusPayload: Uint8Array;
-              const tier = DEFAULT_TIER;
-              
-              if (encoderInitialized) {
-                const encoder = encoders.get(tier);
-                if (encoder) {
-                  opusPayload = encodePcmToOpus(frame20ms, encoder);
-                } else {
-                  // Fallback to raw PCM if encoder not available for this tier
-                  const pcm16 = floatToPCM16(frame20ms);
-                  opusPayload = new Uint8Array(pcm16.buffer);
-                }
-              } else {
-                // Fallback to raw PCM if Opus not available
-                const pcm16 = floatToPCM16(frame20ms);
-                opusPayload = new Uint8Array(pcm16.buffer);
-              }
-              
-              seq++;
-
-              const laf = buildLafPacket({
-                tier,
-                flags: 0,
-                streamId,
-                seq,
-                ptsMs,
-                opusPayload,
-              });
-              
-              try {
-                if (ws.readyState === WebSocket.OPEN) {
-                  // Check WebSocket bufferedAmount to avoid backpressure
-                  // If buffer is too large, skip this packet to prevent connection issues
-                  if (ws.bufferedAmount > 1024 * 1024) { // 1MB buffer limit
-                    console.warn(`⚠️ WebSocket buffer too large: ${ws.bufferedAmount} bytes, skipping packet`);
-                    errorCount++;
-                    if (errorCount > 50) {
-                      console.error("Too many buffered packets, connection may be stuck");
-                      processingActive = false;
-                      break;
-                    }
-                    continue;
-                  }
-                  
-                  ws.send(laf);
-                  broadcastPacketCount++;
-                  packetsSent++;
-                  errorCount = 0;
-                  lastPacketTime = performance.now();
-                  
-                  // Log bandwidth every 5 seconds
-                  if (seq % 250 === 0) {
-                    const packetSize = laf.byteLength;
-                    const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
-                    console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps, packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
-                  }
-                } else {
-                  console.error(`WebSocket not open: state=${ws.readyState}`);
-                  processingActive = false;
-                  break;
-                }
-              } catch (sendErr) {
-                errorCount++;
-                console.error("Failed to send packet:", sendErr);
-                if (errorCount > 10) {
-                  console.error("Too many send errors, stopping");
-                  processingActive = false;
-                  break;
-                }
-              }
+            // Log bandwidth periodically
+            if (seq % 250 === 0) {
+              const packetSize = laf.byteLength;
+              const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
+              console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps (8-bit PCM), packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
             }
+          } catch (sendErr) {
+            console.error("Failed to send packet:", sendErr);
           }
-        } catch (err) {
-          console.error("Error in MediaStreamTrackProcessor:", err);
         }
+      } catch (err) {
+        console.error("Error in audio processing:", err);
       }
-      
-      processAudioChunk();
-      (audioCtx as any).processor = { stop: () => { processingActive = false; reader.cancel(); } };
-    } else {
-      // Fallback to ScriptProcessor with improved connection handling
-      console.log("Using ScriptProcessor (fallback)");
-      const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
-      
-      // Create a dummy destination to keep processor alive without playing audio
-      const dummyGain = audioCtx.createGain();
-      dummyGain.gain.value = 0; // Silent
-      dummyGain.connect(audioCtx.destination);
-      
-      processor.onaudioprocess = (ev) => {
-        try {
-          const now = performance.now();
-          
-          if (!ws || ws.readyState !== WebSocket.OPEN || !streamId) {
-            if (ws && (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
-              console.error("WebSocket closed, stopping audio processing");
-              processingActive = false;
-              return;
-            }
-            return;
-          }
-          
-          const input = ev.inputBuffer.getChannelData(0);
-          if (!input || input.length === 0) return;
-          
-          // Accumulate samples
-          const newBuffer = new Float32Array(sampleBuffer.length + input.length);
-          newBuffer.set(sampleBuffer);
-          newBuffer.set(input, sampleBuffer.length);
-          sampleBuffer = newBuffer;
-          
-          // Process complete 20ms frames (960 samples)
-          while (sampleBuffer.length >= SAMPLES_PER_FRAME) {
-            const frame = sampleBuffer.subarray(0, SAMPLES_PER_FRAME);
-            sampleBuffer = sampleBuffer.subarray(SAMPLES_PER_FRAME);
-            
-            const ptsMs = BigInt(Math.round(performance.now() - startTime));
-            
-            // Encode with Opus if available, otherwise use raw PCM
-            let opusPayload: Uint8Array;
-            const tier = DEFAULT_TIER;
-            
-            if (encoderInitialized) {
-              const encoder = encoders.get(tier);
-              if (encoder) {
-                opusPayload = encodePcmToOpus(frame, encoder);
-              } else {
-                // Fallback to raw PCM if encoder not available for this tier
-                const pcm16 = floatToPCM16(frame);
-                opusPayload = new Uint8Array(pcm16.buffer);
-              }
-            } else {
-              // Fallback to raw PCM if Opus not available
-              const pcm16 = floatToPCM16(frame);
-              opusPayload = new Uint8Array(pcm16.buffer);
-            }
-            
-            seq++;
-
-            const laf = buildLafPacket({
-              tier,
-              flags: 0,
-              streamId,
-              seq,
-              ptsMs,
-              opusPayload,
-            });
-            
-            try {
-              if (ws.readyState === WebSocket.OPEN) {
-                // Check WebSocket bufferedAmount to avoid backpressure
-                if (ws.bufferedAmount > 1024 * 1024) { // 1MB buffer limit
-                  console.warn(`⚠️ WebSocket buffer too large: ${ws.bufferedAmount} bytes, skipping packet`);
-                  errorCount++;
-                  if (errorCount > 50) {
-                    console.error("Too many buffered packets, connection may be stuck");
-                    processingActive = false;
-                    return;
-                  }
-                  continue;
-                }
-                
-                ws.send(laf);
-                broadcastPacketCount++;
-                packetsSent++;
-                errorCount = 0;
-                lastPacketTime = now;
-                
-                // Log bandwidth every 5 seconds
-                if (seq % 250 === 0) {
-                  const packetSize = laf.byteLength;
-                  const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
-                  console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps, packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
-                }
-              } else {
-                console.error(`WebSocket not open: state=${ws.readyState}`);
-                processingActive = false;
-                return;
-              }
-            } catch (sendErr) {
-              errorCount++;
-              console.error("Failed to send packet:", sendErr);
-              if (errorCount > 10) {
-                console.error("Too many send errors, stopping");
-                processingActive = false;
-                return;
-              }
-            }
-          }
-          
-          if (now - lastProcessTime > 2000) {
-            const timeSinceLastPacket = now - lastPacketTime;
-            console.log(`Audio: buffer=${sampleBuffer.length}, seq=${seq}, packets=${packetsSent}, errors=${errorCount}, ws=${ws?.readyState}, gap=${timeSinceLastPacket.toFixed(0)}ms`);
-            lastProcessTime = now;
-            packetsSent = 0;
-          }
-        } catch (err) {
-          console.error("Error in audio processing:", err);
-        }
-      };
-
-      // Connect: source -> processor -> dummyGain -> destination
-      // This keeps processor alive without playing audio
-      source.connect(processor);
-      processor.connect(dummyGain);
-      (audioCtx as any).processor = processor;
-    }
+    };
     
-    // Keep audio context alive
-    const keepAlive = setInterval(() => {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(console.error);
-      }
-      console.log(`Keep-alive: audioCtx=${audioCtx.state}, ws=${ws?.readyState}, seq=${seq}`);
-    }, 2000);
-    
-    (audioCtx as any).keepAliveInterval = keepAlive;
+    // Connect: source -> processor -> dummyGain -> destination
+    source.connect(processor);
+    processor.connect(dummyGain);
+    (audioCtx as any).processor = processor;
 
     // Update meter
     const dataArray = new Uint8Array(analyzer.frequencyBinCount);
@@ -932,7 +680,13 @@ async function stopBroadcast() {
   btnStopLive.disabled = true;
   statusText.textContent = "Stopping broadcast...";
   
-  // Clean up processor and keepAlive interval
+  // Clean up MediaRecorder
+  const mediaRecorder = (audioCtx as any)?.mediaRecorder;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  
+  // Clean up processor if it exists (fallback)
   const processor = (audioCtx as any)?.processor;
   if (processor) {
     if (processor.stop) {

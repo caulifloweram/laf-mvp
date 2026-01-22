@@ -808,29 +808,50 @@ async function loop() {
         console.log("Opus decode failed, trying raw PCM (payload size:", pkt.opusPayload.length, ")");
       }
       try {
-        // The broadcaster sends Int16 PCM as bytes - convert back to Int16Array
+        // The broadcaster may send Int16 PCM (2 bytes per sample) or Int8 PCM (1 byte per sample)
         const byteLength = pkt.opusPayload.length;
-        if (byteLength % 2 !== 0) {
-          console.warn("Odd byte length for PCM:", byteLength);
-          scheduleSilence(audioCtx);
-          return;
+        
+        // Check if it's 8-bit PCM (1 byte per sample) or 16-bit PCM (2 bytes per sample)
+        // 8-bit: 960 bytes for 20ms at 48kHz, 16-bit: 1920 bytes
+        const is8Bit = byteLength === SAMPLES_PER_FRAME || (byteLength < SAMPLES_PER_FRAME * 1.5);
+        
+        let pcmFloat: Float32Array;
+        
+        if (is8Bit) {
+          // 8-bit PCM: convert from Uint8 (0-255) to Float32 (-1.0 to 1.0)
+          const sampleCount = byteLength;
+          pcmFloat = new Float32Array(sampleCount);
+          for (let i = 0; i < sampleCount; i++) {
+            // Convert: 0 -> -1.0, 128 -> 0.0, 255 -> 1.0
+            pcmFloat[i] = (pkt.opusPayload[i] - 128) / 127.5;
+          }
+        } else {
+          // 16-bit PCM: convert from Int16Array
+          if (byteLength % 2 !== 0) {
+            console.warn("Odd byte length for 16-bit PCM:", byteLength);
+            scheduleSilence(audioCtx);
+            return;
+          }
+          
+          const sampleCount = byteLength / 2;
+          const pcm16 = new Int16Array(pkt.opusPayload.buffer, pkt.opusPayload.byteOffset, sampleCount);
+          
+          // Convert Int16 to Float32 (-1.0 to 1.0)
+          pcmFloat = new Float32Array(sampleCount);
+          for (let i = 0; i < sampleCount; i++) {
+            const normalized = pcm16[i] / (pcm16[i] < 0 ? 0x8000 : 0x7fff);
+            pcmFloat[i] = Math.max(-1, Math.min(1, normalized));
+          }
         }
         
-        const sampleCount = byteLength / 2;
-        const pcm16 = new Int16Array(pkt.opusPayload.buffer, pkt.opusPayload.byteOffset, sampleCount);
-        
-        // Convert Int16 to Float32 (-1.0 to 1.0)
-        const pcmFloat = new Float32Array(sampleCount);
         let maxSample = 0;
-        for (let i = 0; i < sampleCount; i++) {
-          const normalized = pcm16[i] / (pcm16[i] < 0 ? 0x8000 : 0x7fff);
-          pcmFloat[i] = Math.max(-1, Math.min(1, normalized));
+        for (let i = 0; i < pcmFloat.length; i++) {
           maxSample = Math.max(maxSample, Math.abs(pcmFloat[i]));
         }
         
         // Only log occasionally
         if (pkt.seq <= 10 || pkt.seq % 100 === 0) {
-          console.log("Decoded raw PCM:", sampleCount, "samples, max amplitude:", maxSample.toFixed(3));
+          console.log("Decoded raw PCM:", pcmFloat.length, "samples,", is8Bit ? "8-bit" : "16-bit", "max amplitude:", maxSample.toFixed(3));
         }
         
         // Check if we have actual audio data (not silence)
