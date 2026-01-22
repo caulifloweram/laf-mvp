@@ -677,35 +677,35 @@ async function startBroadcast() {
             
             // value is an AudioData object
             const audioData = value;
-            // AudioData.copyTo() requires 2 arguments: destination and options
-            // For mono audio, we need numberOfFrames samples
-            // For multi-channel, we need numberOfFrames * numberOfChannels
-            const totalSamples = audioData.numberOfFrames * audioData.numberOfChannels;
-            const frame = new Float32Array(totalSamples);
             
-            // copyTo requires destination buffer and options object
-            // Options: { planeIndex: number, format: string }
-            // For interleaved format (default), use planeIndex 0
+            // AudioData format is planar (channels are separate), not interleaved
+            // We need to extract the first channel (mono) or mix channels
+            const numberOfFrames = audioData.numberOfFrames;
+            const numberOfChannels = audioData.numberOfChannels;
+            const monoFrame = new Float32Array(numberOfFrames);
+            
             try {
-              audioData.copyTo(frame, { planeIndex: 0 });
+              // AudioData.copyTo() with format 'f32-planar' gives us planar format
+              // Each channel is stored separately, so we need to copy each channel
+              // For mono, we just copy plane 0
+              if (numberOfChannels === 1) {
+                audioData.copyTo(monoFrame, { planeIndex: 0, format: 'f32-planar' });
+              } else {
+                // Multi-channel: mix to mono by averaging all channels
+                const tempFrame = new Float32Array(numberOfFrames);
+                for (let ch = 0; ch < numberOfChannels; ch++) {
+                  audioData.copyTo(tempFrame, { planeIndex: ch, format: 'f32-planar' });
+                  for (let i = 0; i < numberOfFrames; i++) {
+                    monoFrame[i] += tempFrame[i] / numberOfChannels;
+                  }
+                }
+              }
             } catch (err) {
-              console.error("Error copying AudioData:", err);
+              console.error("Error copying AudioData:", err, "format:", audioData.format, "channels:", numberOfChannels);
               audioData.close();
               continue;
             }
             audioData.close();
-            
-            // If multi-channel, convert to mono by taking first channel or averaging
-            let monoFrame: Float32Array;
-            if (audioData.numberOfChannels > 1) {
-              monoFrame = new Float32Array(audioData.numberOfFrames);
-              // Take first channel (interleaved: [L0, R0, L1, R1, ...])
-              for (let i = 0; i < audioData.numberOfFrames; i++) {
-                monoFrame[i] = frame[i * audioData.numberOfChannels];
-              }
-            } else {
-              monoFrame = frame;
-            }
             
             // Accumulate samples (use monoFrame which is always mono)
             const newBuffer = new Float32Array(sampleBuffer.length + monoFrame.length);
