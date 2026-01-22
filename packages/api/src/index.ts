@@ -49,23 +49,32 @@ const PORT = Number(process.env.PORT ?? 4000);
 const RELAY_WS_URL = process.env.RELAY_WS_URL || "ws://localhost:9000";
 
 // Health check endpoint - put it early so we can test if API is running
-// Railway uses this to check if the service is healthy
-// This MUST respond quickly and reliably
-app.get("/health", (req, res) => {
-  console.log("🏥 Health check called");
-  console.log("   Request headers:", JSON.stringify(req.headers));
+// Railway uses HEAD requests for health checks, so we need to handle both GET and HEAD
+const healthCheckHandler = (req: express.Request, res: express.Response) => {
+  console.log(`🏥 Health check called (${req.method})`);
   
   // Send response immediately - no async operations
-  res.status(200).json({ 
-    status: "ok", 
-    timestamp: new Date().toISOString(),
-    port: PORT,
-    cors: "enabled",
-    uptime: process.uptime()
-  });
+  res.status(200);
   
-  console.log("✅ Health check response sent - Status: 200");
-});
+  // For GET requests, send JSON body. For HEAD, just send status.
+  if (req.method === "GET") {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      cors: "enabled",
+      uptime: process.uptime()
+    });
+  } else {
+    // HEAD request - just send status, no body
+    res.end();
+  }
+  
+  console.log(`✅ Health check response sent - Status: 200 (${req.method})`);
+};
+
+app.get("/health", healthCheckHandler);
+app.head("/health", healthCheckHandler);
 
 // Initialize database on startup (non-blocking)
 // Don't block server startup if DB fails
