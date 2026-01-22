@@ -2,10 +2,25 @@
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["cd ../.. && pnpm install"]
+cmds = [
+  "cd /app && pnpm install",
+  "echo 'Install complete'"
+]
 
 [phases.build]
-cmds = ["cd ../.. && pnpm build"]
+cmds = [
+  "echo 'Starting build...'",
+  "cd /app && pwd && ls -la",
+  "echo 'Building all packages...'",
+  "cd /app && pnpm build || echo 'Root build failed'",
+  "echo 'Checking if relay dist exists...'",
+  "ls -la /app/packages/relay/ || echo 'packages/relay not found'",
+  "echo 'Building relay package directly...'",
+  "cd /app/packages/relay && pnpm build",
+  "echo 'Verifying build output...'",
+  "ls -la /app/packages/relay/dist/ || echo 'ERROR: dist folder still not found'",
+  "test -f /app/packages/relay/dist/index.js && echo '✅ Build successful!' || (echo '❌ Build failed!' && exit 1)"
+]
 
 [start]
-cmd = "cd packages/relay && node dist/index.js"
+cmd = "cd /app/packages/relay && pwd && ls -la && if [ ! -f dist/index.js ]; then echo 'ERROR: dist/index.js not found. Building now...' && pnpm build && ls -la dist/; fi && echo 'Starting relay server...' && node dist/index.js"
