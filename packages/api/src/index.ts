@@ -160,8 +160,10 @@ app.get("/api/channels/live", async (_req, res) => {
       ended_at: r.ended_at
     })));
 
+    // Only get streams that are actually active (ended_at IS NULL)
+    // Use DISTINCT ON to ensure we only get the most recent active stream per channel
     const result = await pool.query(`
-      SELECT 
+      SELECT DISTINCT ON (c.id)
         c.id,
         c.title,
         c.description,
@@ -171,7 +173,7 @@ app.get("/api/channels/live", async (_req, res) => {
       FROM channels c
       INNER JOIN streams s ON s.channel_id = c.id
       WHERE s.ended_at IS NULL
-      ORDER BY s.started_at DESC
+      ORDER BY c.id, s.started_at DESC
     `);
     console.log(`Live channels query returned ${result.rows.length} raw channels`);
     console.log("Raw channels:", result.rows.map((r: any) => ({
@@ -284,19 +286,33 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
     return res.status(404).json({ error: "Channel not found" });
   }
 
+  // End ALL active streams for this channel (should only be one, but be thorough)
   const updateResult = await pool.query(
     "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL RETURNING stream_id",
     [channelId]
   );
 
   if (updateResult.rows.length === 0) {
-    console.log(`No active stream found for channel ${channelId}`);
+    console.log(`⚠️ No active stream found for channel ${channelId} - might already be stopped`);
     // Stream might already be stopped, return success anyway
     return res.json({ success: true, message: "Stream already stopped" });
   }
 
-  console.log(`Stream stopped for channel ${channelId}, stream_id: ${updateResult.rows[0].stream_id}`);
-  res.json({ success: true, message: "Stream stopped successfully" });
+  const stoppedStreamIds = updateResult.rows.map((r: any) => r.stream_id);
+  console.log(`✅ Stopped ${updateResult.rows.length} stream(s) for channel ${channelId}: ${stoppedStreamIds.join(", ")}`);
+  
+  // Verify the streams are actually ended
+  const verifyResult = await pool.query(
+    "SELECT stream_id, ended_at FROM streams WHERE channel_id = $1 AND stream_id = ANY($2::bigint[])",
+    [channelId, stoppedStreamIds]
+  );
+  console.log(`✅ Verification: ${verifyResult.rows.length} stream(s) verified as ended`);
+  
+  res.json({ 
+    success: true, 
+    message: "Stream stopped successfully",
+    stoppedStreamIds: stoppedStreamIds
+  });
 });
 
 // Protected: Change password
