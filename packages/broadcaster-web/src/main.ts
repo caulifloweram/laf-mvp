@@ -470,29 +470,35 @@ function floatToPCM16(pcm: Float32Array): Int16Array {
 
 // Encode PCM to Opus using OpusScript
 // This reduces bandwidth from ~768 kbps (raw PCM) to ~32-48 kbps (Opus)
+// Note: OpusScript uses native bindings and may not work in all browsers
+// If it fails, we fall back to raw PCM
 function encodePcmToOpus(pcm: Float32Array, encoder: any): Uint8Array {
   try {
     // Convert Float32 to Int16 PCM
     const pcm16 = floatToPCM16(pcm);
     
-    // Convert Int16Array to Buffer-like format for OpusScript
-    // OpusScript expects a Buffer, but we're in browser, so use Uint8Array
+    // OpusScript expects Int16 PCM data
+    // In browser, we need to convert to the format OpusScript expects
+    // OpusScript.encode() expects: (pcm: Buffer | Uint8Array, frameSize: number)
     const pcmBytes = new Uint8Array(pcm16.buffer);
     
-    // Encode with Opus
+    // Encode with Opus - frameSize is number of samples (960 for 20ms at 48kHz)
     const opusData = encoder.encode(pcmBytes, SAMPLES_PER_FRAME);
     
-    // OpusScript returns a Buffer in Node.js, but in browser it might be Uint8Array
+    // OpusScript returns different types depending on environment
     if (opusData instanceof Uint8Array) {
       return opusData;
-    } else if (Buffer.isBuffer && Buffer.isBuffer(opusData)) {
+    } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(opusData)) {
+      return new Uint8Array(opusData);
+    } else if (opusData && typeof opusData.length === 'number') {
+      // Try to convert array-like object
       return new Uint8Array(opusData);
     } else {
-      // Fallback: try to convert
-      return new Uint8Array(opusData);
+      throw new Error("Unexpected Opus encoder return type");
     }
   } catch (err) {
     console.error("Opus encoding error:", err);
+    console.warn("Falling back to raw PCM encoding");
     // Fallback to raw PCM if encoding fails
     const pcm16 = floatToPCM16(pcm);
     return new Uint8Array(pcm16.buffer);
