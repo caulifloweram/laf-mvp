@@ -5,25 +5,25 @@ import { authMiddleware, login, register } from "./auth";
 
 const app = express();
 
-// CORS - Allow all origins
-app.use(cors({
-  origin: true, // Allow all origins
+// CORS - Allow all origins with explicit configuration
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow all origins
+    callback(null, true);
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   exposedHeaders: ["Content-Type", "Authorization"],
   preflightContinue: false,
   optionsSuccessStatus: 204
-}));
+};
 
-// Handle OPTIONS requests explicitly (preflight)
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.sendStatus(204);
-});
+// Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS for all routes (before other middleware)
+app.options("*", cors(corsOptions));
 
 // Parse JSON bodies
 app.use(express.json());
