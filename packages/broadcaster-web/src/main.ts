@@ -300,6 +300,56 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+function updateBroadcastStatus(status: "ready" | "live" | "stopped", message: string) {
+  broadcastStatus.className = `status ${status}`;
+  if (status === "live") {
+    statusIcon.textContent = "🔴";
+    statusText.textContent = message;
+    liveIndicator.classList.remove("hidden");
+    broadcastStats.classList.remove("hidden");
+    btnGoLive.classList.add("hidden");
+    btnStopLive.classList.remove("hidden");
+    btnStopLive.disabled = false;
+  } else if (status === "stopped") {
+    statusIcon.textContent = "⏹️";
+    statusText.textContent = message;
+    liveIndicator.classList.add("hidden");
+    broadcastStats.classList.add("hidden");
+    btnGoLive.classList.remove("hidden");
+    btnStopLive.classList.add("hidden");
+  } else {
+    statusIcon.textContent = "⏸️";
+    statusText.textContent = message;
+    liveIndicator.classList.add("hidden");
+    broadcastStats.classList.add("hidden");
+    btnGoLive.classList.remove("hidden");
+    btnStopLive.classList.add("hidden");
+  }
+}
+
+let broadcastStartTime: number | null = null;
+let broadcastPacketCount = 0;
+
+function updateBroadcastStats() {
+  if (broadcastStartTime && ws && ws.readyState === WebSocket.OPEN) {
+    const elapsed = Math.floor((Date.now() - broadcastStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    broadcastDuration.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    broadcastPackets.textContent = String(broadcastPacketCount);
+    
+    // Update audio level from meter
+    const meterWidth = parseFloat(meterBar.style.width) || 0;
+    if (meterWidth > 0) {
+      broadcastLevel.textContent = `${Math.round(meterWidth)}%`;
+    } else {
+      broadcastLevel.textContent = "-";
+    }
+    
+    requestAnimationFrame(updateBroadcastStats);
+  }
+}
+
 function selectChannel(ch: Channel) {
   currentChannel = ch;
   broadcastChannelTitle.textContent = ch.title;
@@ -495,8 +545,6 @@ async function startBroadcast() {
     broadcastStartTime = Date.now();
     broadcastPacketCount = 0;
     updateBroadcastStatus("live", "🔴 Broadcasting live");
-    btnGoLive.disabled = false;
-    goLiveIcon.textContent = "▶️";
     updateBroadcastStats();
   } catch (err: any) {
     console.error("Broadcast start error:", err);
