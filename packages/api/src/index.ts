@@ -315,6 +315,36 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   });
 });
 
+// Admin: Clean up stale streams (mark all streams older than 1 hour as ended)
+// This is useful for fixing database state if streams weren't properly stopped
+app.post("/api/admin/cleanup-streams", async (req, res) => {
+  try {
+    // Check for admin token in header (simple security - in production use proper auth)
+    const adminToken = req.headers["x-admin-token"];
+    if (adminToken !== process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await pool.query(`
+      UPDATE streams 
+      SET ended_at = NOW() 
+      WHERE ended_at IS NULL 
+        AND started_at < NOW() - INTERVAL '1 hour'
+      RETURNING stream_id, channel_id, started_at
+    `);
+
+    console.log(`🧹 Cleaned up ${result.rows.length} stale stream(s)`);
+    res.json({ 
+      success: true, 
+      message: `Cleaned up ${result.rows.length} stale stream(s)`,
+      cleanedStreams: result.rows
+    });
+  } catch (err: any) {
+    console.error("Error cleaning up streams:", err);
+    res.status(500).json({ error: "Failed to cleanup streams", details: err.message });
+  }
+});
+
 // Protected: Change password
 app.post("/api/me/change-password", authMiddleware, async (req, res) => {
   const user = (req as any).user;
