@@ -55,8 +55,10 @@ app.get("/health", (_req, res) => {
 });
 
 // Initialize database on startup (non-blocking)
+// Don't block server startup if DB fails
 initDb().catch((err) => {
   console.error("❌ Database initialization error:", err);
+  console.error("   API will continue but database operations may fail");
   // Don't crash - API can still serve some endpoints
 });
 
@@ -187,31 +189,38 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   res.json({ success: true });
 });
 
-// Start server
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
-  console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Configured" : "⚠️ Not configured"}`);
-  console.log(`   CORS: ✅ Enabled (allowing all origins)`);
-  console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-});
-
-// Handle server errors
-server.on("error", (err: any) => {
-  console.error("❌ Server error:", err);
-  if (err.code === "EADDRINUSE") {
-    console.error(`   Port ${PORT} is already in use`);
-  }
-});
-
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully...");
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
+// Start server with error handling
+try {
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌐 API server listening on http://0.0.0.0:${PORT}`);
+    console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
+    console.log(`   Database: ${process.env.DATABASE_URL ? "✅ Configured" : "⚠️ Not configured"}`);
+    console.log(`   CORS: ✅ Enabled (allowing all origins)`);
+    console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`   ✅ Server started successfully!`);
   });
-});
+
+  // Handle server errors
+  server.on("error", (err: any) => {
+    console.error("❌ Server error:", err);
+    if (err.code === "EADDRINUSE") {
+      console.error(`   Port ${PORT} is already in use`);
+    }
+    process.exit(1);
+  });
+
+  // Graceful shutdown
+  process.on("SIGTERM", () => {
+    console.log("SIGTERM received, shutting down gracefully...");
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(0);
+    });
+  });
+} catch (error) {
+  console.error("❌ Failed to start server:", error);
+  process.exit(1);
+}
 
 // Handle errors
 process.on("uncaughtException", (err) => {
