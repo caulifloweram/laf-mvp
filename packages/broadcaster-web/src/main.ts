@@ -37,8 +37,9 @@ const TIERS = [
   { tier: 4, bitrate: 48_000 }  // 48 kbps - best for music
 ];
 
-// Default tier - use tier 3 for music quality (32 kbps with Opus)
-const DEFAULT_TIER = 3;
+// Default tier - use tier 2 to match client's starting tier
+// Client starts at tier 2, so we should send tier 2 packets
+const DEFAULT_TIER = 2;
 const MAX_TIER = 4;
 
 interface Channel {
