@@ -164,7 +164,7 @@ app.get("/api/channels/live", async (_req, res) => {
 
     // CRITICAL: Check relay for actually active streams (has broadcaster connected)
     // This is the source of truth - database might be stale
-    let activeStreamIdsFromRelay: number[] = [];
+    let activeStreamIdsFromRelay: number[] | null = null; // null = relay check failed, use DB fallback
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -180,15 +180,16 @@ app.get("/api/channels/live", async (_req, res) => {
         activeStreamIdsFromRelay = Array.isArray(relayData.activeStreamIds) ? relayData.activeStreamIds : [];
         console.log(`📡 Relay reports ${activeStreamIdsFromRelay.length} active stream(s): ${activeStreamIdsFromRelay.join(", ")}`);
       } else {
-        console.warn(`⚠️ Failed to check relay for active streams: HTTP ${relayResponse.status}`);
+        console.warn(`⚠️ Failed to check relay for active streams: HTTP ${relayResponse.status} - falling back to database`);
+        activeStreamIdsFromRelay = null; // Use DB fallback
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.warn(`⚠️ Relay check timed out after 2s`);
+        console.warn(`⚠️ Relay check timed out after 2s - falling back to database`);
       } else {
-        console.warn(`⚠️ Could not check relay for active streams: ${err.message}`);
+        console.warn(`⚠️ Could not check relay for active streams: ${err.message} - falling back to database`);
       }
-      // Continue with database check as fallback
+      activeStreamIdsFromRelay = null; // Use DB fallback
     }
 
     // Only get streams that are actually active (ended_at IS NULL)
@@ -212,15 +213,20 @@ app.get("/api/channels/live", async (_req, res) => {
     
     // CRITICAL: Filter to only include streams that have active broadcasters on relay
     // This ensures we only show streams that are actually broadcasting
-    // If relay check failed (empty array), we still filter - only show if explicitly in relay list
+    // If relay check failed (null), fall back to database (show all active streams from DB)
     const filteredChannels = result.rows.filter((row: any) => {
-      // If we got relay data, only include streams that are active on relay
-      // If relay check failed, be conservative and don't show any (safer than showing stale data)
-      const isActiveOnRelay = activeStreamIdsFromRelay.length > 0 && activeStreamIdsFromRelay.includes(row.streamId);
-      if (!isActiveOnRelay) {
-        console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
+      if (activeStreamIdsFromRelay === null) {
+        // Relay check failed - fall back to database (show all active streams)
+        console.log(`   ⚠️ Relay check failed, using DB fallback for channel ${row.id} (streamId=${row.streamId})`);
+        return true; // Include all streams from DB when relay check fails
+      } else {
+        // Relay check succeeded - only include streams that are active on relay
+        const isActiveOnRelay = activeStreamIdsFromRelay.includes(row.streamId);
+        if (!isActiveOnRelay) {
+          console.log(`   ❌ Filtering out channel ${row.id} (streamId=${row.streamId}) - not active on relay`);
+        }
+        return isActiveOnRelay;
       }
-      return isActiveOnRelay;
     });
     
     console.log(`✅ After relay filter: ${filteredChannels.length} actually live channels`);
