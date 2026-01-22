@@ -507,6 +507,7 @@ async function startListening() {
   // CRITICAL: Reset stopping flag and fade out state when starting a new stream
   isStopping = false;
   fadeOutStartTime = null;
+  (window as any).lastShownCountdown = null; // Reset countdown tracker
   
   // CRITICAL: Ensure all state is reset before starting
   // Reset playheadTime to current time (fresh start)
@@ -642,6 +643,7 @@ async function startListening() {
           // Start fade out
           fadeOutStartTime = performance.now();
           fadeOutDuration = countdown * 1000; // Convert to milliseconds
+          (window as any).lastShownCountdown = countdown + 1; // Initialize countdown tracker
           
           // Update UI to show countdown
           updatePlayerStatus("playing", `Stream ending in ${countdown}...`);
