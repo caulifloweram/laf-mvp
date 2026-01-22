@@ -895,10 +895,17 @@ async function loop() {
   const lossPercent = total === 0 ? 0 : (lossCountWindow / total) * 100;
   const lateRate = total === 0 ? 0 : lateCountWindow / total;
 
+  // CRITICAL: Sync ABR state with the tier we're actually using
+  // This prevents ABR from making decisions based on wrong tier's buffer
+  if (tierToUse !== abrState.currentTier) {
+    console.log(`🔄 Syncing ABR state: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
+    abrState.currentTier = tierToUse;
+  }
+  
   const oldTier = abrState.currentTier;
   abrState = updateAbr(abrState, {
     lossPercent2s: lossPercent,
-    bufferMs: stats.bufferMs,
+    bufferMs: stats.bufferMs, // This is from tierToUse's buffer (the tier we're actually playing)
     lateRate,
     deltaMs
   }, tierBuf, tiers);
@@ -906,6 +913,16 @@ async function loop() {
   // Log tier changes
   if (abrState.currentTier !== oldTier) {
     console.log(`🔄 ABR tier changed: ${oldTier} → ${abrState.currentTier}`);
+  }
+  
+  // After ABR update, if ABR switched to a tier without packets, revert to tier with packets
+  if (abrState.currentTier !== tierToUse) {
+    const newTierBuf = tiers.get(abrState.currentTier);
+    const newTierHasPackets = newTierBuf && ((newTierBuf as any).packets.size > 0 || (newTierBuf as any).playbackSeq !== null);
+    if (!newTierHasPackets) {
+      console.warn(`⚠️ ABR switched to tier ${abrState.currentTier} but it has no packets, reverting to tier ${tierToUse}`);
+      abrState.currentTier = tierToUse;
+    }
   }
 
   if (Math.floor(now / 1000) !== Math.floor((now - deltaMs) / 1000)) {
