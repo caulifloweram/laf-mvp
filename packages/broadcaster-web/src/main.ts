@@ -529,10 +529,45 @@ async function startBroadcast() {
 
     // Connect to relay
     ws = new WebSocket(wsUrl);
+    
     await new Promise<void>((res, rej) => {
-      ws!.onopen = () => res();
-      ws!.onerror = (e) => rej(e);
+      const timeout = setTimeout(() => {
+        rej(new Error("WebSocket connection timeout"));
+      }, 10000);
+      
+      ws!.onopen = () => {
+        clearTimeout(timeout);
+        console.log("✅ WebSocket connected successfully");
+        res();
+      };
+      
+      ws!.onerror = (e) => {
+        clearTimeout(timeout);
+        console.error("WebSocket error during connection:", e);
+        updateBroadcastStatus("stopped", "WebSocket error - check console");
+        rej(e);
+      };
     });
+    
+    // Add WebSocket event handlers for debugging (after connection is established)
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      updateBroadcastStatus("stopped", "WebSocket error - check console");
+    };
+    
+    ws.onclose = (event) => {
+      console.error("WebSocket closed:", event.code, event.reason || "No reason");
+      console.error("Close was clean:", event.wasClean);
+      updateBroadcastStatus("stopped", `Connection closed (code: ${event.code})`);
+      // Stop audio processing if WebSocket closes
+      const processor = (audioCtx as any)?.processor;
+      if (processor) {
+        processor.disconnect();
+        if ((processor as any).keepAliveInterval) {
+          clearInterval((processor as any).keepAliveInterval);
+        }
+      }
+    };
 
     startTime = performance.now();
 
@@ -543,14 +578,23 @@ async function startBroadcast() {
     let lastProcessTime = performance.now();
     let errorCount = 0;
     
+    let lastPacketTime = performance.now();
+    let packetsSent = 0;
+    
     processor.onaudioprocess = (ev) => {
       try {
+        const now = performance.now();
+        
+        // Check WebSocket state
         if (!ws || ws.readyState !== WebSocket.OPEN || !streamId) {
-          // If WebSocket is closed, try to reconnect or stop
-          if (ws && ws.readyState === WebSocket.CLOSED) {
-            console.warn("WebSocket closed, stopping audio processing");
-            processor.disconnect();
-            return;
+          // If WebSocket is closed, log and stop
+          if (ws) {
+            console.error(`WebSocket not ready: state=${ws.readyState}, streamId=${streamId}`);
+            if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+              console.error("WebSocket closed, stopping audio processing");
+              processor.disconnect();
+              return;
+            }
           }
           return;
         }
@@ -591,12 +635,19 @@ async function startBroadcast() {
           });
           
           try {
-            ws.send(laf);
-            broadcastPacketCount++;
-            errorCount = 0; // Reset error count on success
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(laf);
+              broadcastPacketCount++;
+              packetsSent++;
+              errorCount = 0; // Reset error count on success
+              lastPacketTime = now;
+            } else {
+              console.error(`Cannot send: WebSocket state is ${ws.readyState}`);
+              errorCount++;
+            }
           } catch (sendErr) {
             errorCount++;
-            console.error("Failed to send packet:", sendErr);
+            console.error("Failed to send packet:", sendErr, "WebSocket state:", ws?.readyState);
             if (errorCount > 10) {
               console.error("Too many send errors, stopping");
               processor.disconnect();
@@ -605,11 +656,17 @@ async function startBroadcast() {
           }
         }
         
-        // Log processing health periodically
-        const now = performance.now();
-        if (now - lastProcessTime > 5000) {
-          console.log(`Audio processing healthy: buffer=${sampleBuffer.length}, seq=${seq}, errors=${errorCount}`);
+        // Log processing health every 2 seconds
+        if (now - lastProcessTime > 2000) {
+          const timeSinceLastPacket = now - lastPacketTime;
+          console.log(`Audio processing: buffer=${sampleBuffer.length}, seq=${seq}, packetsSent=${packetsSent}, errors=${errorCount}, wsState=${ws?.readyState}, timeSinceLastPacket=${timeSinceLastPacket.toFixed(0)}ms`);
           lastProcessTime = now;
+          packetsSent = 0;
+          
+          // Warn if no packets sent recently
+          if (timeSinceLastPacket > 100) {
+            console.warn(`⚠️ No packets sent for ${timeSinceLastPacket.toFixed(0)}ms`);
+          }
         }
       } catch (err) {
         errorCount++;
@@ -632,11 +689,25 @@ async function startBroadcast() {
     // This helps prevent ScriptProcessor from stopping after a few seconds
     const keepAlive = setInterval(() => {
       if (audioCtx.state === 'suspended') {
+        console.warn("AudioContext suspended, resuming...");
         audioCtx.resume().catch(console.error);
       }
-      // Log health check every 5 seconds
-      if (ws && ws.readyState === WebSocket.OPEN && seq % 250 === 0) {
-        console.log(`Keep-alive: audioCtx=${audioCtx.state}, ws=${ws.readyState}, seq=${seq}`);
+      // Log health check every 2 seconds
+      console.log(`Keep-alive: audioCtx=${audioCtx.state}, ws=${ws?.readyState}, seq=${seq}, processor connected=${source.context === audioCtx}`);
+      
+      // Check if processor is still connected
+      if (!processor.numberOfInputs || !processor.numberOfOutputs) {
+        console.error("⚠️ ScriptProcessor disconnected! Reconnecting...");
+        // Try to reconnect
+        try {
+          source.disconnect();
+          processor.disconnect();
+          source.connect(processor);
+          processor.connect(audioCtx.destination);
+          console.log("✅ ScriptProcessor reconnected");
+        } catch (reconnectErr) {
+          console.error("Failed to reconnect ScriptProcessor:", reconnectErr);
+        }
       }
     }, 2000);
     
