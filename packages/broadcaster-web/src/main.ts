@@ -659,10 +659,41 @@ async function startBroadcast() {
       async function processAudioChunk() {
         try {
           while (processingActive) {
+            // Check if track is still active before reading
+            if (audioTrack.readyState === 'ended') {
+              console.error("❌ Audio track ended unexpectedly! Track state:", audioTrack.readyState);
+              console.error("   Track enabled:", audioTrack.enabled, "muted:", audioTrack.muted);
+              processingActive = false;
+              break;
+            }
+            
             const { done, value } = await reader.read();
             if (done) {
-              console.log("Audio track ended");
-              break;
+              console.warn("⚠️ Reader finished (done=true)");
+              console.warn("   Track state:", audioTrack.readyState, "enabled:", audioTrack.enabled);
+              console.warn("   Processing active:", processingActive, "WS state:", ws?.readyState);
+              
+              // If track is still active but reader finished, try to restart
+              if (audioTrack.readyState === 'live' && processingActive) {
+                console.log("🔄 Track still live but reader finished, attempting to restart reader...");
+                try {
+                  // Release old reader
+                  reader.releaseLock();
+                  // Get new reader
+                  const newReader = readable.getReader();
+                  reader = newReader;
+                  console.log("✅ Reader restarted successfully");
+                  continue; // Continue processing with new reader
+                } catch (restartErr) {
+                  console.error("❌ Failed to restart reader:", restartErr);
+                  processingActive = false;
+                  break;
+                }
+              } else {
+                // Track actually ended or we're stopping
+                console.log("Audio track ended");
+                break;
+              }
             }
             
             if (!ws || ws.readyState !== WebSocket.OPEN || !streamId || !processingActive) {
