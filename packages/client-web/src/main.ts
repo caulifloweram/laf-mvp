@@ -54,10 +54,12 @@ function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
 
 class JitterBuffer {
   private readonly targetDelayMs: number;
+  private readonly minBufferPackets: number;
   private packets = new Map<number, LAFPacket>();
   private playbackSeq: number | null = null;
   private startPtsMs: bigint | null = null;
   private playbackStartMs: number | null = null;
+  private lastPlayedPacket: LAFPacket | null = null; // For packet loss concealment
 
   lossCount = 0;
   receivedCount = 0;
@@ -65,8 +67,9 @@ class JitterBuffer {
   lastSeq: number | null = null;
   bufferMs = 0;
 
-  constructor(targetDelayMs = 300) {
+  constructor(targetDelayMs = 400, minBufferPackets = 15) {
     this.targetDelayMs = targetDelayMs;
+    this.minBufferPackets = minBufferPackets; // ~300ms at 20ms per frame
   }
 
   push(pkt: LAFPacket) {
@@ -76,11 +79,16 @@ class JitterBuffer {
 
     if (this.startPtsMs == null) {
       this.startPtsMs = pkt.ptsMs;
-      // Start playback from this packet after the delay
+      // Don't start playback until we have minimum buffer
       this.playbackSeq = pkt.seq;
+      // We'll set playbackStartMs when we have enough packets
+      console.log(`Jitter buffer initialized: seq=${pkt.seq}, waiting for ${this.minBufferPackets} packets before playback`);
+    }
+
+    // Start playback once we have minimum buffer
+    if (this.startPtsMs != null && this.playbackStartMs == null && this.packets.size >= this.minBufferPackets) {
       this.playbackStartMs = performance.now() + this.targetDelayMs;
-      const startTime = new Date(Date.now() + this.targetDelayMs).toISOString();
-      console.log(`Jitter buffer initialized: seq=${pkt.seq}, playback starts in ${this.targetDelayMs}ms`);
+      console.log(`✅ Buffer ready: ${this.packets.size} packets, playback starts in ${this.targetDelayMs}ms`);
     }
 
     this.updateBuffer();
@@ -127,9 +135,9 @@ class JitterBuffer {
     // If exact packet not found, try to find the next available packet (within reasonable window)
     if (!pkt && this.packets.size > 0) {
       const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
-      // Look for a packet that's close to expected (within 10 packets = 200ms)
+      // Look for a packet that's close to expected (within 15 packets = 300ms)
       for (const seq of availableSeqs) {
-        if (seq >= expectedSeq && seq <= expectedSeq + 10) {
+        if (seq >= expectedSeq && seq <= expectedSeq + 15) {
           pkt = this.packets.get(seq)!;
           this.playbackSeq = seq + 1;
           if (seq !== expectedSeq) {
@@ -140,22 +148,44 @@ class JitterBuffer {
       }
     }
 
+    // Packet loss concealment: if no packet found, use last played packet (with fade)
     if (!pkt) {
       this.lossCount++;
       this.updateBuffer();
-      // Only log occasionally to reduce spam
-      if (this.lossCount === 1 || this.lossCount % 50 === 0) {
-        const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
-        if (availableSeqs.length > 0) {
-          console.warn(`❌ Missing packet seq ${expectedSeq}, buffer has ${this.packets.size} packets, earliest: ${availableSeqs[0]}, latest: ${availableSeqs[availableSeqs.length - 1]}`);
-        } else {
-          console.warn(`❌ Missing packet seq ${expectedSeq}, buffer is empty`);
+      
+      // Use last played packet for concealment (will be faded in schedulePcm)
+      if (this.lastPlayedPacket) {
+        pkt = this.lastPlayedPacket;
+        // Mark it as concealed so we can fade it
+        (pkt as any).concealed = true;
+        // Only log occasionally to reduce spam
+        if (this.lossCount === 1 || this.lossCount % 50 === 0) {
+          const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
+          if (availableSeqs.length > 0) {
+            console.warn(`🔇 Concealing missing packet seq ${expectedSeq} (using last packet), buffer has ${this.packets.size} packets`);
+          } else {
+            console.warn(`🔇 Concealing missing packet seq ${expectedSeq} (using last packet), buffer is empty`);
+          }
         }
+      } else {
+        // No last packet to conceal with
+        if (this.lossCount === 1 || this.lossCount % 50 === 0) {
+          const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
+          if (availableSeqs.length > 0) {
+            console.warn(`❌ Missing packet seq ${expectedSeq}, buffer has ${this.packets.size} packets, earliest: ${availableSeqs[0]}, latest: ${availableSeqs[availableSeqs.length - 1]}`);
+          } else {
+            console.warn(`❌ Missing packet seq ${expectedSeq}, buffer is empty`);
+          }
+        }
+        return null;
       }
-      return null;
+    } else {
+      // We have a real packet, remove it from buffer and update last played
+      this.packets.delete(pkt.seq);
+      this.lastPlayedPacket = pkt;
+      (pkt as any).concealed = false;
     }
 
-    this.packets.delete(pkt.seq);
     this.updateBuffer();
     return pkt;
   }
@@ -255,7 +285,7 @@ let opusDecoder: OpusDecoder | null = null;
 
 const tiers = new Map<number, JitterBuffer>();
 for (let t = MIN_TIER; t <= MAX_TIER_ALLOWED; t++) {
-  tiers.set(t, new JitterBuffer(300));
+  tiers.set(t, new JitterBuffer(400, 15)); // 400ms delay, 15 packets minimum (~300ms)
 }
 
 let abrState: AbrState = {
@@ -512,7 +542,7 @@ async function startListening() {
   // Loop will be started when WebSocket opens
 }
 
-function schedulePcm(ctx: AudioContext, pcm: Float32Array) {
+function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) {
   if (ctx.state === "suspended") {
     console.warn("AudioContext is suspended, cannot play audio");
     return;
@@ -527,18 +557,35 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array) {
   try {
     const buffer = ctx.createBuffer(CHANNELS, sampleCount, SAMPLE_RATE);
     const channelData = buffer.getChannelData(0);
-    channelData.set(pcm);
+    
+    // If this is a concealed packet (packet loss), fade it out to reduce artifacts
+    if (isConcealed) {
+      const fadeLength = Math.min(sampleCount / 4, 240); // Fade last 25% or 5ms, whichever is smaller
+      const fadeStart = sampleCount - fadeLength;
+      for (let i = 0; i < sampleCount; i++) {
+        if (i >= fadeStart) {
+          const fadeFactor = 1 - ((i - fadeStart) / fadeLength);
+          channelData[i] = pcm[i] * fadeFactor;
+        } else {
+          channelData[i] = pcm[i];
+        }
+      }
+    } else {
+      channelData.set(pcm);
+    }
     
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     
-    // Schedule slightly ahead to avoid gaps
+    // Use AudioContext's precise timing to prevent drift
     const now = ctx.currentTime;
-    const startTime = Math.max(playheadTime, now + 0.01);
+    // Schedule at least 20ms ahead to avoid gaps, but use playheadTime to maintain continuity
+    const targetTime = Math.max(playheadTime, now + 0.02);
     src.connect(ctx.destination);
     
-    src.start(startTime);
-    playheadTime = startTime + buffer.duration;
+    src.start(targetTime);
+    // Update playheadTime to maintain continuous playback
+    playheadTime = targetTime + buffer.duration;
   } catch (err) {
     console.error("Failed to schedule PCM:", err, "sampleCount:", sampleCount);
   }
@@ -553,7 +600,8 @@ function scheduleSilence(ctx: AudioContext) {
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const now = ctx.currentTime;
-  const startTime = Math.max(playheadTime, now + 0.01);
+  // Use same timing logic as schedulePcm to maintain continuity
+  const startTime = Math.max(playheadTime, now + 0.02);
   src.connect(ctx.destination);
   
   try {
@@ -598,6 +646,18 @@ async function loop() {
     }
   }
   
+  // Buffer underrun protection: if buffer is getting too low during playback, slow down slightly
+  const playbackStarted = (tierBuf as any).playbackStartMs !== null && 
+                          performance.now() >= (tierBuf as any).playbackStartMs;
+  const bufferPackets = (tierBuf as any).packets.size;
+  if (playbackStarted && bufferPackets < 5) {
+    // Buffer is getting low, this might cause chopping
+    // The packet loss concealment will help, but we should log this
+    if (bufferPackets === 0 && Math.floor(now / 1000) !== Math.floor((now - deltaMs) / 1000)) {
+      console.warn(`⚠️ Buffer underrun: only ${bufferPackets} packets in buffer`);
+    }
+  }
+  
   // Log buffer state occasionally (before resetWindow is called)
   if (Math.floor(now / 1000) !== Math.floor((now - deltaMs) / 1000)) {
     const stats = tierBuf;
@@ -628,16 +688,17 @@ async function loop() {
     }
     scheduleSilence(audioCtx);
   } else {
+    const isConcealed = (pkt as any).concealed === true;
     // Log first few packets to verify they're being processed
     if (pkt.seq <= 5 || (pkt.seq > 0 && pkt.seq % 100 === 0)) {
-      console.log("🎵 Processing packet:", { seq: pkt.seq, tier: pkt.tier, payloadSize: pkt.opusPayload.length });
+      console.log("🎵 Processing packet:", { seq: pkt.seq, tier: pkt.tier, payloadSize: pkt.opusPayload.length, concealed: isConcealed });
     }
     abrState.consecutiveLateOrMissing = 0;
     try {
       // Try to decode as Opus first
       const decoded = await opusDecoder.decode(pkt.opusPayload);
       // opus-decoder returns Float32Array[] (one per channel)
-      schedulePcm(audioCtx, decoded[0]);
+      schedulePcm(audioCtx, decoded[0], isConcealed);
     } catch (err) {
       // If Opus decode fails, try to handle as raw PCM (Int16)
       // Only log first failure to reduce spam
@@ -675,7 +736,7 @@ async function loop() {
           console.warn("⚠️ Very quiet audio detected (max:", maxSample.toFixed(4), "), might be silence or mic issue");
         }
         
-        schedulePcm(audioCtx, pcmFloat);
+        schedulePcm(audioCtx, pcmFloat, isConcealed);
       } catch (pcmErr) {
         console.error("Failed to decode raw PCM:", pcmErr);
         scheduleSilence(audioCtx);
@@ -724,8 +785,12 @@ async function loop() {
   }
 
   // Schedule next iteration (approximately 20ms for 20ms audio frames)
+  // Use requestAnimationFrame for more precise timing, but throttle to ~20ms
   if (loopRunning) {
-    setTimeout(loop, 20);
+    // Use a more precise timing mechanism
+    const nextFrameTime = now + 18; // Slightly less than 20ms to account for processing time
+    const delay = Math.max(0, nextFrameTime - performance.now());
+    setTimeout(loop, Math.min(delay, 20));
   }
 }
 

@@ -597,8 +597,6 @@ async function stopBroadcast() {
   }
   
   streamId = null;
-  
-  streamId = null;
   seq = 0;
   btnStopLive.disabled = false;
 }
@@ -631,11 +629,6 @@ btnSaveChannel.onclick = createChannel;
 btnCancelCreate.onclick = () => showSection("main");
 btnGoLive.onclick = startBroadcast;
 btnStopLive.onclick = stopBroadcast;
-btnLogout.onclick = logout;
-btnSettings.onclick = () => showSection("settings");
-btnCloseSettings.onclick = () => showSection("main");
-btnChangePassword.onclick = handleChangePassword;
-btnDeleteAccount.onclick = handleDeleteAccount;
 btnLogout.onclick = logout;
 btnSettings.onclick = () => showSection("settings");
 btnCloseSettings.onclick = () => showSection("main");
