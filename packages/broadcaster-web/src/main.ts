@@ -623,6 +623,10 @@ async function startBroadcast() {
     // This is simpler and more reliable than Opus encoding
     // 8-bit PCM = 384 kbps vs 16-bit PCM = 768 kbps (2x reduction)
     console.log("🎙️ Using 8-bit PCM encoding (2x bandwidth reduction, 384 kbps)");
+    console.log("📊 AudioContext state:", audioCtx.state);
+    console.log("📊 MediaStream tracks:", mediaStream.getAudioTracks().length);
+    console.log("📊 WebSocket state:", ws?.readyState);
+    console.log("📊 Stream ID:", streamId);
     
     let sampleBuffer = new Float32Array(0);
     let lastPacketTime = performance.now();
@@ -630,7 +634,9 @@ async function startBroadcast() {
     let processingActive = true;
     
     // Use ScriptProcessor to capture audio at 48kHz
+    console.log("🎤 Creating ScriptProcessor...");
     const processor = audioCtx.createScriptProcessor(4096, CHANNELS, CHANNELS);
+    console.log("✅ ScriptProcessor created");
     
     // Create a dummy destination to keep processor alive without playing audio
     const dummyGain = audioCtx.createGain();
@@ -774,12 +780,32 @@ async function startBroadcast() {
     broadcastPacketCount = 0;
     updateBroadcastStatus("live", "🔴 Broadcasting live");
     updateBroadcastStats();
+    
+    console.log("✅ Broadcast started successfully!");
+    console.log("📊 All systems ready - audio processing should begin shortly");
   } catch (err: any) {
-    console.error("Broadcast start error:", err);
+    console.error("❌ Broadcast start error:", err);
+    console.error("   Error name:", err.name);
+    console.error("   Error message:", err.message);
+    console.error("   Error stack:", err.stack);
     alert(`Failed to start broadcast: ${err.message}`);
     updateBroadcastStatus("ready", `Error: ${err.message}`);
     btnGoLive.disabled = false;
     goLiveIcon.textContent = "▶️";
+    
+    // Clean up on error
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop());
+      mediaStream = null;
+    }
+    if (audioCtx) {
+      await audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
   }
 }
 
