@@ -504,6 +504,27 @@ async function startBroadcast() {
       sampleRate: SAMPLE_RATE,
       latencyHint: 'interactive' // Low latency for real-time streaming
     });
+    
+    // CRITICAL: Ensure AudioContext is running (browsers require user interaction)
+    if (audioCtx.state === 'suspended') {
+      console.log("AudioContext suspended, attempting to resume...");
+      await audioCtx.resume();
+      console.log("AudioContext state after resume:", audioCtx.state);
+    }
+    
+    // Keep AudioContext alive with periodic resume attempts
+    const audioContextKeepAlive = setInterval(() => {
+      if (audioCtx && audioCtx.state === 'suspended') {
+        console.warn("⚠️ AudioContext suspended, attempting to resume...");
+        audioCtx.resume().then(() => {
+          console.log("✅ AudioContext resumed");
+        }).catch(err => {
+          console.error("Failed to resume AudioContext:", err);
+        });
+      }
+    }, 2000); // Check every 2 seconds
+    (audioCtx as any).keepAliveInterval = audioContextKeepAlive;
+    
     const source = audioCtx.createMediaStreamSource(mediaStream);
 
     // Create analyzer for meter
