@@ -580,19 +580,23 @@ async function stopBroadcast() {
   broadcastStartTime = null;
   broadcastPacketCount = 0;
   
-  if (currentChannel && streamId) {
+  if (currentChannel) {
     try {
-      await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
+      const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
         method: "POST",
       });
-      updateBroadcastStatus("ready", "Ready to go live again");
-    } catch (err) {
+      console.log("Stop-live result:", result);
+      updateBroadcastStatus("ready", "Stream stopped successfully");
+    } catch (err: any) {
       console.error("Failed to stop stream:", err);
+      alert(`Failed to stop stream: ${err.message || "Unknown error"}`);
       updateBroadcastStatus("ready", "Ready to go live (server stop failed)");
     }
   } else {
     updateBroadcastStatus("ready", "Ready to go live");
   }
+  
+  streamId = null;
   
   streamId = null;
   seq = 0;

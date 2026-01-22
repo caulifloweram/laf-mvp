@@ -276,11 +276,36 @@ let loopRunning = false;
 
 async function loadChannels() {
   try {
-    const res = await fetch(`${API_URL}/api/channels/live`);
+    const res = await fetch(`${API_URL}/api/channels/live`, {
+      cache: "no-cache",
+      headers: {
+        "Cache-Control": "no-cache"
+      }
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
     const channels: LiveChannel[] = await res.json();
+    console.log(`Loaded ${channels.length} live channels`);
+    
     channelsGrid.innerHTML = "";
     if (channels.length === 0) {
       channelsGrid.innerHTML = "<p style='opacity: 0.7;'>No live channels at the moment.</p>";
+      // If we were listening to a channel that's no longer live, stop listening
+      if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
+        console.log("Current channel is no longer live, stopping...");
+        if (ws) {
+          loopRunning = false;
+          ws.close();
+          ws = null;
+        }
+        updatePlayerStatus("stopped", "Stream ended");
+        btnStart.classList.remove("hidden");
+        btnStop.classList.add("hidden");
+        playerLiveBadge.classList.add("hidden");
+        playIcon.textContent = "▶️";
+        playText.textContent = "Start";
+      }
       return;
     }
     channels.forEach((c) => {
@@ -294,6 +319,23 @@ async function loadChannels() {
       card.onclick = () => selectChannel(c);
       channelsGrid.appendChild(card);
     });
+    
+    // If current channel is no longer in the list, stop listening
+    if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
+      console.log("Current channel is no longer live, stopping...");
+      if (ws) {
+        loopRunning = false;
+        ws.close();
+        ws = null;
+      }
+      updatePlayerStatus("stopped", "Stream ended");
+      btnStart.classList.remove("hidden");
+      btnStop.classList.add("hidden");
+      playerLiveBadge.classList.add("hidden");
+      playIcon.textContent = "▶️";
+      playText.textContent = "Start";
+      currentChannel = null;
+    }
   } catch (err) {
     console.error("Failed to load channels:", err);
   }

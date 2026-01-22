@@ -150,13 +150,14 @@ app.get("/api/channels/live", async (_req, res) => {
       c.id,
       c.title,
       c.description,
-      s.stream_id as "streamId",
-      COUNT(DISTINCT s.id) as listener_count
+      s.stream_id as "streamId"
     FROM channels c
     INNER JOIN streams s ON s.channel_id = c.id
     WHERE s.ended_at IS NULL
     GROUP BY c.id, c.title, c.description, s.stream_id
+    ORDER BY s.started_at DESC
   `);
+  console.log(`Live channels query returned ${result.rows.length} channels`);
   res.json(result.rows);
 });
 
@@ -233,12 +234,19 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
     return res.status(404).json({ error: "Channel not found" });
   }
 
-  await pool.query(
-    "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL",
+  const updateResult = await pool.query(
+    "UPDATE streams SET ended_at = NOW() WHERE channel_id = $1 AND ended_at IS NULL RETURNING stream_id",
     [channelId]
   );
 
-  res.json({ success: true });
+  if (updateResult.rows.length === 0) {
+    console.log(`No active stream found for channel ${channelId}`);
+    // Stream might already be stopped, return success anyway
+    return res.json({ success: true, message: "Stream already stopped" });
+  }
+
+  console.log(`Stream stopped for channel ${channelId}, stream_id: ${updateResult.rows[0].stream_id}`);
+  res.json({ success: true, message: "Stream stopped successfully" });
 });
 
 // Protected: Change password
