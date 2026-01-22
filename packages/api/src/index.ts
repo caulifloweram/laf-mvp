@@ -10,21 +10,30 @@ const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map(o => o.trim())
   : ["http://localhost:5173", "http://localhost:3000"]; // Default to local dev
 
+console.log("🌐 CORS allowed origins:", allowedOrigins);
+
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log("CORS: No origin header, allowing");
+      return callback(null, true);
+    }
     
     if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+      console.log(`CORS: Allowing origin: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow for now, but log it
+      console.warn(`CORS: Blocked origin: ${origin} (not in allowed list)`);
+      // For now, allow it but log a warning
+      callback(null, true);
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions));
 app.use(express.json());
