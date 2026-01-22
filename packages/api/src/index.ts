@@ -37,11 +37,22 @@ app.use(express.json());
 
 // Log all requests for debugging
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  const startTime = Date.now();
+  console.log(`📥 ${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  
   // Log response when it finishes
   res.on("finish", () => {
-    console.log(`${req.method} ${req.path} - Status: ${res.statusCode}`);
+    const duration = Date.now() - startTime;
+    console.log(`📤 ${req.method} ${req.path} - Status: ${res.statusCode} (${duration}ms)`);
   });
+  
+  // Log if response is closed without finishing
+  res.on("close", () => {
+    if (!res.headersSent) {
+      console.log(`⚠️ ${req.method} ${req.path} - Response closed without headers sent`);
+    }
+  });
+  
   next();
 });
 
@@ -75,6 +86,15 @@ const healthCheckHandler = (req: express.Request, res: express.Response) => {
 
 app.get("/health", healthCheckHandler);
 app.head("/health", healthCheckHandler);
+
+// Root endpoint for testing
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "LAF MVP API",
+    status: "running",
+    version: "0.1.0"
+  });
+});
 
 // Initialize database on startup (non-blocking)
 // Don't block server startup if DB fails
