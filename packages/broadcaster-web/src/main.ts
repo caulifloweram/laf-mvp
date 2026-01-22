@@ -489,21 +489,49 @@ async function startBroadcast() {
     const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}`;
     console.log("Connecting to relay:", wsUrl);
 
-    // Get microphone with optimized audio constraints
-    // Keep some processing enabled for better quality, but optimize for music
-    mediaStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: true,  // Keep enabled for better quality
-        noiseSuppression: false,  // Disable for music (preserves dynamics)
-        autoGainControl: false,   // Disable for music (preserves natural dynamics)
+    // CRITICAL: Reuse existing mediaStream and AudioContext if available (for restart)
+    // Only request new mediaStream if we don't have one
+    if (!mediaStream) {
+      console.log("📱 Requesting microphone access...");
+      // Get microphone with optimized audio constraints
+      mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,  // Keep enabled for better quality
+          noiseSuppression: false,  // Disable for music (preserves dynamics)
+          autoGainControl: false,   // Disable for music (preserves natural dynamics)
+          sampleRate: SAMPLE_RATE,
+          channelCount: CHANNELS
+        } 
+      });
+      console.log("✅ Microphone access granted");
+    } else {
+      console.log("✅ Reusing existing mediaStream (restart)");
+      // Check if tracks are still active
+      const tracks = mediaStream.getAudioTracks();
+      if (tracks.length === 0 || tracks[0].readyState === 'ended') {
+        console.log("⚠️ MediaStream tracks ended, requesting new stream...");
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: false,
+            sampleRate: SAMPLE_RATE,
+            channelCount: CHANNELS
+          } 
+        });
+      }
+    }
+    
+    // Reuse or create AudioContext
+    if (!audioCtx) {
+      audioCtx = new AudioContext({ 
         sampleRate: SAMPLE_RATE,
-        channelCount: CHANNELS
-      } 
-    });
-    audioCtx = new AudioContext({ 
-      sampleRate: SAMPLE_RATE,
-      latencyHint: 'interactive' // Low latency for real-time streaming
-    });
+        latencyHint: 'interactive' // Low latency for real-time streaming
+      });
+      console.log("✅ Created new AudioContext");
+    } else {
+      console.log("✅ Reusing existing AudioContext (restart)");
+    }
     
     // CRITICAL: Ensure AudioContext is running (browsers require user interaction)
     if (audioCtx.state === 'suspended') {
