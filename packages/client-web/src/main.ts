@@ -221,6 +221,20 @@ class JitterBuffer {
     this.receivedCount = 0;
     this.lateCount = 0;
   }
+  
+  // Reset all buffer state (for stop/start cycles)
+  reset() {
+    this.packets.clear();
+    this.playbackSeq = null;
+    this.startPtsMs = null;
+    this.playbackStartMs = null;
+    this.lastPlayedPacket = null;
+    this.lossCount = 0;
+    this.receivedCount = 0;
+    this.lateCount = 0;
+    this.lastSeq = null;
+    this.bufferMs = 0;
+  }
 }
 
 interface AbrState {
@@ -1074,18 +1088,7 @@ function stopListening() {
   
   // Reset all jitter buffers - CRITICAL: clear old packets
   for (const [tier, buf] of tiers.entries()) {
-    // Clear all packets from buffer
-    (buf as any).packets.clear();
-    (buf as any).playbackSeq = null;
-    (buf as any).startPtsMs = null;
-    (buf as any).playbackStartMs = null;
-    (buf as any).lastPlayedPacket = null;
-    buf.lossCount = 0;
-    buf.receivedCount = 0;
-    buf.lateCount = 0;
-    buf.lastSeq = null;
-    buf.bufferMs = 0;
-    buf.resetWindow();
+    buf.reset(); // Use the reset method to clean up all state
   }
   
   // Reset playheadTime - CRITICAL: reset audio scheduling
