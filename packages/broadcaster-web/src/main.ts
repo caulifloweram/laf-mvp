@@ -660,7 +660,6 @@ async function startBroadcast() {
     let sampleBuffer = new Float32Array(0);
     let lastPacketTime = performance.now();
     let packetsSent = 0;
-    let processingActive = true;
     
     // SIMPLIFIED: Use ScriptProcessor (deprecated but simple and reliable)
     // Workaround for 2-second stop: reconnect processor periodically
@@ -674,7 +673,7 @@ async function startBroadcast() {
     sampleBuffer = new Float32Array(0);
     packetsSent = 0;
     lastPacketTime = performance.now();
-    processingActive = true;
+    processingActive = true; // Use module-level variable
     
     function createProcessor() {
       const processor = audioCtx!.createScriptProcessor(4096, CHANNELS, CHANNELS);
