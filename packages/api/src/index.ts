@@ -335,13 +335,13 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
   );
 
   if (updateResult.rows.length === 0) {
-    console.log(`⚠️ No active stream found for channel ${channelId} - might already be stopped`);
-    // Stream might already be stopped, return success anyway
-    return res.json({ success: true, message: "Stream already stopped", stoppedStreamIds: [] });
+    console.log(`⚠️ No active stream found for channel ${channelId} - might already be finished`);
+    // Stream might already be finished, return success anyway
+    return res.json({ success: true, message: "Stream already finished", stoppedStreamIds: [] });
   }
 
   const stoppedStreamIds = updateResult.rows.map((r: any) => r.stream_id);
-  console.log(`✅ Stopped ${updateResult.rows.length} stream(s) for channel ${channelId}: ${stoppedStreamIds.join(", ")}`);
+  console.log(`✅ Finished ${updateResult.rows.length} stream(s) for channel ${channelId}: ${stoppedStreamIds.join(", ")}`);
   
   // CRITICAL: Verify the streams are actually ended with a fresh query
   const verifyResult = await pool.query(
@@ -356,15 +356,16 @@ app.post("/api/me/channels/:channelId/stop-live", authMiddleware, async (req, re
       console.error(`   Stream ${r.stream_id}: ended_at=${r.ended_at}`);
     });
   } else {
-    console.log(`✅ Verification: All ${verifyResult.rows.length} stream(s) verified as ended`);
+    console.log(`✅ Verification: All ${verifyResult.rows.length} stream(s) verified as finished`);
   }
   
   // Force a small delay to ensure database transaction is committed
+  // This ensures subsequent queries will see the updated state
   await new Promise(resolve => setTimeout(resolve, 100));
   
   res.json({ 
     success: true, 
-    message: "Stream stopped successfully",
+    message: "Stream finished successfully",
     stoppedStreamIds: stoppedStreamIds,
     verified: allEnded
   });
