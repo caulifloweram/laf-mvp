@@ -366,7 +366,6 @@ let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let playheadTime = 0;
 let loopRunning = false;
-let scheduledPackets = 0; // Track how many packets we've scheduled ahead
 const LOOKAHEAD_PACKETS = 5; // Schedule 5 packets (100ms) ahead for smooth playback
 
 async function loadChannels() {
@@ -685,7 +684,6 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     src.start(targetTime);
     // Update playheadTime for next packet (continuous scheduling)
     playheadTime = targetTime + buffer.duration;
-    scheduledPackets++;
   } catch (err) {
     console.error("Failed to schedule PCM:", err, "sampleCount:", sampleCount);
   }
@@ -833,10 +831,13 @@ async function loop() {
   // This prevents glitches by ensuring we always have audio scheduled ahead
   const nowAudioTime = audioCtx.currentTime;
   const timeUntilPlayhead = playheadTime - nowAudioTime;
-  const packetsNeeded = Math.ceil(timeUntilPlayhead / 0.02); // How many 20ms packets we need ahead
   
-  // Schedule packets until we have enough lookahead
-  while (scheduledPackets < LOOKAHEAD_PACKETS || timeUntilPlayhead < 0.1) {
+  // Calculate how many packets we have scheduled ahead
+  // Each packet is 20ms, so we need to check how many are scheduled
+  const packetsAhead = Math.floor(timeUntilPlayhead / 0.02);
+  
+  // Schedule packets until we have enough lookahead (5 packets = 100ms)
+  while (packetsAhead < LOOKAHEAD_PACKETS || timeUntilPlayhead < 0.1) {
     const pkt = tierBuf.popForPlayback(now);
 
     if (!pkt) {
@@ -943,10 +944,12 @@ async function loop() {
       }
     }
     
-    // Check if we need to schedule more packets for lookahead
+    // Recalculate lookahead after scheduling this packet
     const newTimeUntilPlayhead = playheadTime - audioCtx.currentTime;
-    if (newTimeUntilPlayhead >= 0.1 && scheduledPackets >= LOOKAHEAD_PACKETS) {
-      // We have enough lookahead, break out of scheduling loop
+    const newPacketsAhead = Math.floor(newTimeUntilPlayhead / 0.02);
+    
+    // If we have enough lookahead, break out of scheduling loop
+    if (newPacketsAhead >= LOOKAHEAD_PACKETS && newTimeUntilPlayhead >= 0.1) {
       break;
     }
     // Otherwise continue scheduling more packets
