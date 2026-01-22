@@ -626,10 +626,33 @@ async function startListening() {
     }
   }, 2000);
   
-  ws.onmessage = (ev) => {
+  ws.onmessage = async (ev) => {
     lastMessageTime = performance.now();
     messageCount++;
     
+    // Handle text messages (control messages like "stream ending")
+    if (typeof ev.data === "string") {
+      try {
+        const message = JSON.parse(ev.data);
+        if (message.type === "stream_ending") {
+          const countdown = message.countdown || 5;
+          console.log(`📢 Stream ending notification received - ${countdown} seconds until end`);
+          console.log(`🎵 Starting graceful fade out over ${countdown} seconds...`);
+          
+          // Start fade out
+          fadeOutStartTime = performance.now();
+          fadeOutDuration = countdown * 1000; // Convert to milliseconds
+          
+          // Update UI to show countdown
+          updatePlayerStatus("playing", `Stream ending in ${countdown}...`);
+        }
+      } catch (err) {
+        console.warn("Failed to parse control message:", err);
+      }
+      return;
+    }
+    
+    // Handle binary messages (audio packets)
     if (!(ev.data instanceof ArrayBuffer)) {
       console.warn("Received non-ArrayBuffer message");
       return;
