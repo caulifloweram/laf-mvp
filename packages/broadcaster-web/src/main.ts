@@ -22,8 +22,10 @@ const TIERS = [
   { tier: 4, bitrate: 48_000 }  // 48 kbps - high quality (best for music)
 ];
 
-// Default tier for music - use tier 3 or 4 for better quality
-const DEFAULT_TIER = 3; // 32 kbps - good balance for music
+// Default tier for music - use tier 2 for now to reduce bandwidth
+// TODO: Once Opus encoding is implemented, we can use tier 3 or 4
+// Raw PCM is ~768 kbps, so we need to be careful with bandwidth
+const DEFAULT_TIER = 2; // 24 kbps equivalent (but raw PCM is much higher)
 const MAX_TIER = 4; // Support up to tier 4
 
 interface Channel {
@@ -643,15 +645,44 @@ async function startBroadcast() {
               
               try {
                 if (ws.readyState === WebSocket.OPEN) {
+                  // Check WebSocket bufferedAmount to avoid backpressure
+                  // If buffer is too large, skip this packet to prevent connection issues
+                  if (ws.bufferedAmount > 1024 * 1024) { // 1MB buffer limit
+                    console.warn(`⚠️ WebSocket buffer too large: ${ws.bufferedAmount} bytes, skipping packet`);
+                    errorCount++;
+                    if (errorCount > 50) {
+                      console.error("Too many buffered packets, connection may be stuck");
+                      processingActive = false;
+                      break;
+                    }
+                    continue;
+                  }
+                  
                   ws.send(laf);
                   broadcastPacketCount++;
                   packetsSent++;
                   errorCount = 0;
                   lastPacketTime = performance.now();
+                  
+                  // Log bandwidth every 5 seconds
+                  if (seq % 250 === 0) {
+                    const packetSize = laf.byteLength;
+                    const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
+                    console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps, packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
+                  }
+                } else {
+                  console.error(`WebSocket not open: state=${ws.readyState}`);
+                  processingActive = false;
+                  break;
                 }
               } catch (sendErr) {
                 errorCount++;
                 console.error("Failed to send packet:", sendErr);
+                if (errorCount > 10) {
+                  console.error("Too many send errors, stopping");
+                  processingActive = false;
+                  break;
+                }
               }
             }
           }
@@ -715,15 +746,43 @@ async function startBroadcast() {
             
             try {
               if (ws.readyState === WebSocket.OPEN) {
+                // Check WebSocket bufferedAmount to avoid backpressure
+                if (ws.bufferedAmount > 1024 * 1024) { // 1MB buffer limit
+                  console.warn(`⚠️ WebSocket buffer too large: ${ws.bufferedAmount} bytes, skipping packet`);
+                  errorCount++;
+                  if (errorCount > 50) {
+                    console.error("Too many buffered packets, connection may be stuck");
+                    processingActive = false;
+                    return;
+                  }
+                  continue;
+                }
+                
                 ws.send(laf);
                 broadcastPacketCount++;
                 packetsSent++;
                 errorCount = 0;
                 lastPacketTime = now;
+                
+                // Log bandwidth every 5 seconds
+                if (seq % 250 === 0) {
+                  const packetSize = laf.byteLength;
+                  const kbps = (packetSize * 50 * 8) / 1000; // 50 packets/sec
+                  console.log(`📊 Bandwidth: ${kbps.toFixed(0)} kbps, packet size: ${packetSize} bytes, buffer: ${ws.bufferedAmount} bytes`);
+                }
+              } else {
+                console.error(`WebSocket not open: state=${ws.readyState}`);
+                processingActive = false;
+                return;
               }
             } catch (sendErr) {
               errorCount++;
               console.error("Failed to send packet:", sendErr);
+              if (errorCount > 10) {
+                console.error("Too many send errors, stopping");
+                processingActive = false;
+                return;
+              }
             }
           }
           
