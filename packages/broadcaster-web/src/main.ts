@@ -6,6 +6,19 @@ const CHANNELS = 1;
 const FRAME_DURATION_MS = 20;
 const SAMPLES_PER_FRAME = (SAMPLE_RATE * FRAME_DURATION_MS) / 1000;
 
+// Tier configurations matching the Node broadcaster
+// For music, we want higher quality tiers
+const TIERS = [
+  { tier: 1, bitrate: 12_000 }, // 12 kbps - lowest quality
+  { tier: 2, bitrate: 24_000 }, // 24 kbps - low quality
+  { tier: 3, bitrate: 32_000 }, // 32 kbps - medium quality (good for music)
+  { tier: 4, bitrate: 48_000 }  // 48 kbps - high quality (best for music)
+];
+
+// Default tier for music - use tier 3 or 4 for better quality
+const DEFAULT_TIER = 3; // 32 kbps - good balance for music
+const MAX_TIER = 4; // Support up to tier 4
+
 interface Channel {
   id: string;
   title: string;
@@ -432,17 +445,37 @@ function buildLafPacket(opts: {
   return buf;
 }
 
-// Simple PCM to "fake Opus" for MVP (just send PCM chunks)
-// In production, replace with real Opus encoding
-function encodePcmToFakeOpus(pcm: Float32Array): Uint8Array {
-  // Convert float32 to int16 PCM
+// Improved PCM to Int16 encoding with dithering for better quality
+// TODO: Replace with real Opus encoding for production
+function encodePcmToInt16(pcm: Float32Array): Int16Array {
   const pcm16 = new Int16Array(pcm.length);
+  const scale = 0x7fff;
+  
   for (let i = 0; i < pcm.length; i++) {
-    const s = Math.max(-1, Math.min(1, pcm[i]));
-    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    // Clamp to [-1, 1] range
+    let sample = Math.max(-1, Math.min(1, pcm[i]));
+    
+    // Add triangular dithering for better quality (reduces quantization artifacts)
+    // Dithering helps preserve audio quality, especially for music
+    const dither = (Math.random() - Math.random()) * (1 / scale);
+    sample += dither;
+    
+    // Convert to Int16 with proper scaling
+    // Use symmetric scaling for better quality
+    if (sample >= 0) {
+      pcm16[i] = Math.min(0x7fff, Math.round(sample * scale));
+    } else {
+      pcm16[i] = Math.max(-0x8000, Math.round(sample * scale));
+    }
   }
-  // For MVP, just send raw PCM (relay/client will need to handle this)
-  // In production, encode with Opus here
+  
+  return pcm16;
+}
+
+// Encode PCM to "fake Opus" (raw PCM for now, will be replaced with real Opus)
+function encodePcmToFakeOpus(pcm: Float32Array): Uint8Array {
+  const pcm16 = encodePcmToInt16(pcm);
+  // Return as Uint8Array for compatibility
   return new Uint8Array(pcm16.buffer);
 }
 
@@ -472,9 +505,20 @@ async function startBroadcast() {
     const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}`;
     console.log("Connecting to relay:", wsUrl);
 
-    // Get microphone
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+    // Get microphone with better audio constraints for music quality
+    mediaStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: false, // Disable for music (preserves quality)
+        noiseSuppression: false,  // Disable for music (preserves quality)
+        autoGainControl: false,   // Disable for music (preserves dynamics)
+        sampleRate: SAMPLE_RATE,
+        channelCount: CHANNELS
+      } 
+    });
+    audioCtx = new AudioContext({ 
+      sampleRate: SAMPLE_RATE,
+      latencyHint: 'interactive' // Low latency for real-time streaming
+    });
     const source = audioCtx.createMediaStreamSource(mediaStream);
 
     // Create analyzer for meter
@@ -515,8 +559,13 @@ async function startBroadcast() {
         const fakeOpus = encodePcmToFakeOpus(frame);
         seq++;
 
+        // For music quality, use tier 3 (32 kbps equivalent) or tier 4 (48 kbps equivalent)
+        // Note: Since we're sending raw PCM (not Opus), the actual bitrate is much higher
+        // TODO: Implement real Opus encoding to reduce bandwidth and improve quality
+        const tier = DEFAULT_TIER; // Use tier 3 for better music quality
+        
         const laf = buildLafPacket({
-          tier: 2, // Start with tier 2
+          tier,
           flags: 0,
           streamId,
           seq,
