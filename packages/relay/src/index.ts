@@ -61,11 +61,19 @@ const httpServer = http.createServer((req, res) => {
         const ws = room.broadcaster.ws;
         // Check if WebSocket is OPEN (readyState === 1)
         // Also verify it's not in the process of closing
-        if (ws.readyState === 1) { // WebSocket.OPEN = 1
+        const wsState = ws.readyState;
+        if (wsState === 1) { // WebSocket.OPEN = 1
           activeStreamIds.push(streamId);
+          // Log periodically to debug connection issues
+          if (Math.random() < 0.1) { // Log ~10% of requests to avoid spam
+            console.log(`[${streamId}] Broadcaster WebSocket is OPEN and active`);
+          }
         } else {
-          console.log(`[${streamId}] Broadcaster WebSocket not open (state: ${ws.readyState})`);
+          console.log(`[${streamId}] Broadcaster WebSocket not open (state: ${wsState}, 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+          // If WebSocket is CLOSING or CLOSED, it will be cleaned up in the onclose handler
         }
+      } else {
+        console.log(`[${streamId}] No broadcaster in room (${room.listeners.size} listeners)`);
       }
     }
     

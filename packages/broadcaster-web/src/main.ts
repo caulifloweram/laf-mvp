@@ -655,7 +655,7 @@ async function startBroadcast() {
       meterBar.style.width = "0%";
     };
     
-    // WebSocket health monitor
+    // WebSocket health monitor - keep connection alive and detect issues
     let lastWsCheck = performance.now();
     const wsHealthMonitor = setInterval(() => {
       if (!ws) {
@@ -670,14 +670,28 @@ async function startBroadcast() {
       
       if (wsState !== WebSocket.OPEN) {
         console.error(`⚠️ WebSocket not open: state=${wsState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+        console.error(`   This will cause the stream to disappear from client page!`);
       } else {
         const buffered = ws.bufferedAmount;
         if (buffered > 0) {
           console.warn(`⚠️ WebSocket buffer: ${buffered} bytes (${(buffered / 1024).toFixed(1)} KB)`);
         }
-        // Log health every 10 seconds
+        // Log health every 10 seconds (every 500 packets at ~50 packets/sec = 10 seconds)
         if (packetsSent % 500 === 0 && packetsSent > 0) {
-          console.log(`✅ WebSocket healthy: state=${wsState}, buffer=${buffered} bytes, packets=${packetsSent}`);
+          console.log(`✅ WebSocket healthy: state=${wsState}, buffer=${buffered} bytes, packets=${packetsSent}, timeSinceLastCheck=${timeSinceLastCheck.toFixed(0)}ms`);
+        }
+        
+        // CRITICAL: Send a keep-alive ping if no packets sent recently
+        // This ensures the connection stays alive even if audio processing stops temporarily
+        const timeSinceLastPacket = lastPacketTime ? (performance.now() - lastPacketTime) : Infinity;
+        if (timeSinceLastPacket > 1000 && processingActive) {
+          // Send a small keep-alive message to prevent connection timeout
+          try {
+            ws.send(new Uint8Array([0])); // Send minimal binary data as keep-alive
+            console.log(`💓 Sent WebSocket keep-alive (no packets for ${timeSinceLastPacket.toFixed(0)}ms)`);
+          } catch (err) {
+            console.error("⚠️ Failed to send keep-alive:", err);
+          }
         }
       }
     }, 2000); // Check every 2 seconds
