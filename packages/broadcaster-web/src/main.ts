@@ -684,13 +684,16 @@ async function startBroadcast() {
         // CRITICAL: Send a keep-alive ping if no packets sent recently
         // This ensures the connection stays alive even if audio processing stops temporarily
         const timeSinceLastPacket = lastPacketTime ? (performance.now() - lastPacketTime) : Infinity;
-        if (timeSinceLastPacket > 1000 && processingActive) {
-          // Send a small keep-alive message to prevent connection timeout
+        if (timeSinceLastPacket > 2000 && processingActive) {
+          // Send a text keep-alive message to prevent connection timeout
+          // Use text message so it doesn't interfere with audio packet processing
           try {
-            ws.send(new Uint8Array([0])); // Send minimal binary data as keep-alive
+            ws.send(JSON.stringify({ type: "keepalive", timestamp: Date.now() }));
             console.log(`💓 Sent WebSocket keep-alive (no packets for ${timeSinceLastPacket.toFixed(0)}ms)`);
           } catch (err) {
             console.error("⚠️ Failed to send keep-alive:", err);
+            // If send fails, WebSocket might be closing - log for debugging
+            console.error(`   WebSocket state: ${ws.readyState}, buffered: ${ws.bufferedAmount}`);
           }
         }
       }
