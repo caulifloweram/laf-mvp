@@ -483,6 +483,10 @@ async function startListening() {
   if (!currentChannel) return;
   btnStart.disabled = true;
 
+  console.log("▶️ Starting listening - initializing fresh state...");
+  
+  // CRITICAL: Ensure all state is reset before starting
+  // Reset playheadTime to current time (fresh start)
   if (!audioCtx) {
     audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
     // Resume audio context if suspended (browser autoplay policy)
@@ -491,10 +495,23 @@ async function startListening() {
       console.log("Audio context resumed");
     }
     playheadTime = audioCtx.currentTime;
-  } else if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-    console.log("Audio context resumed");
+  } else {
+    // Reset playheadTime to current time for fresh start
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+      console.log("Audio context resumed");
+    }
+    playheadTime = audioCtx.currentTime;
   }
+  
+  // Ensure ABR state is reset
+  abrState = {
+    currentTier: START_TIER,
+    minTier: MIN_TIER,
+    maxTierAllowed: MAX_TIER_ALLOWED,
+    stableMs: 0,
+    consecutiveLateOrMissing: 0
+  };
   
   if (!opusDecoder) {
     opusDecoder = new OpusDecoder({
@@ -1040,14 +1057,59 @@ function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: st
 }
 
 function stopListening() {
+  console.log("🛑 Stopping listening and cleaning up...");
+  
+  // Stop the loop first
+  loopRunning = false;
+  
+  // Close WebSocket
   if (ws) {
-    loopRunning = false;
+    // Clean up message monitor
+    if ((ws as any).messageMonitor) {
+      clearInterval((ws as any).messageMonitor);
+    }
     ws.close();
     ws = null;
   }
+  
+  // Reset all jitter buffers - CRITICAL: clear old packets
+  for (const [tier, buf] of tiers.entries()) {
+    // Clear all packets from buffer
+    (buf as any).packets.clear();
+    (buf as any).playbackSeq = null;
+    (buf as any).startPtsMs = null;
+    (buf as any).playbackStartMs = null;
+    (buf as any).lastPlayedPacket = null;
+    buf.lossCount = 0;
+    buf.receivedCount = 0;
+    buf.lateCount = 0;
+    buf.lastSeq = null;
+    buf.bufferMs = 0;
+    buf.resetWindow();
+  }
+  
+  // Reset playheadTime - CRITICAL: reset audio scheduling
+  if (audioCtx) {
+    playheadTime = audioCtx.currentTime;
+  } else {
+    playheadTime = 0;
+  }
+  
+  // Reset ABR state to initial values
+  abrState = {
+    currentTier: START_TIER,
+    minTier: MIN_TIER,
+    maxTierAllowed: MAX_TIER_ALLOWED,
+    stableMs: 0,
+    consecutiveLateOrMissing: 0
+  };
+  
+  // Suspend AudioContext (but don't close it - we'll reuse it)
   if (audioCtx && audioCtx.state !== "closed") {
     audioCtx.suspend();
   }
+  
+  console.log("✅ Cleanup complete - all state reset");
   updatePlayerStatus("stopped", "Stopped");
   btnStart.disabled = false;
   btnStart.classList.remove("hidden");
