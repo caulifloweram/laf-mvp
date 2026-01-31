@@ -5,392 +5,283 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LAF - Listen</title>
     <style>
-      * { 
-        margin: 0; 
-        padding: 0; 
-        box-sizing: border-box; 
-      }
-      
+      /* Macintosh 1984–inspired UI: black & white, striped title bars, Chicago-style */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
       :root {
-        --bg-primary: #0a0e1a;
-        --bg-secondary: #151b2e;
-        --bg-tertiary: #1a2138;
-        --accent-primary: #6366f1;
-        --accent-secondary: #8b5cf6;
-        --accent-success: #10b981;
-        --accent-danger: #ef4444;
-        --text-primary: #f1f5f9;
-        --text-secondary: #cbd5e1;
-        --text-muted: #94a3b8;
-        --border-color: rgba(99, 102, 241, 0.2);
-        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-        --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+        --mac-white: #fff;
+        --mac-black: #000;
+        --mac-gray: #808080;
+        --mac-light-gray: #c0c0c0;
+        --mac-bg: #a0a0a0;
+        --mac-title-stripe: #e0e0e0;
       }
-      
+
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
-        background: linear-gradient(135deg, #0a0e1a 0%, #1a1f3a 50%, #0f1419 100%);
-        background-attachment: fixed;
-        color: var(--text-primary);
-        padding: 2rem;
+        font-family: Chicago, "Charcoal", "Lucida Grande", system-ui, -apple-system, sans-serif;
+        background: var(--mac-bg);
+        color: var(--mac-black);
         min-height: 100vh;
+        padding: 0;
+        -webkit-font-smoothing: none;
+        font-smoothing: none;
+      }
+
+      /* Menu bar (classic Mac top strip) */
+      .menu-bar {
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 6px 12px 8px 20px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .menu-bar .apple { font-size: 16px; }
+      .menu-bar span { cursor: default; }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      /* Window: white content, black border, striped title bar */
+      .mac-window {
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        box-shadow: 2px 2px 0 var(--mac-gray);
+      }
+
+      .mac-window-title {
+        background: repeating-linear-gradient(
+          180deg,
+          var(--mac-white) 0,
+          var(--mac-white) 2px,
+          var(--mac-title-stripe) 2px,
+          var(--mac-title-stripe) 4px
+        );
+        border-bottom: 1px solid var(--mac-black);
+        padding: 6px 10px 6px 28px;
+        font-size: 13px;
+        font-weight: bold;
         position: relative;
-        overflow-x: hidden;
       }
-      
-      body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: 
-          radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: 0;
+      .mac-window-title .live-badge { margin-left: 8px; }
+      .mac-window-title .close-box {
+        position: absolute;
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--mac-black);
+        border-radius: 1px;
+        background: var(--mac-white);
       }
-      
-      .container { 
-        max-width: 1200px; 
-        margin: 0 auto; 
-        position: relative;
-        z-index: 1;
+
+      .mac-window-body { padding: 16px 20px 20px; }
+
+      h1 {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        color: var(--mac-black);
       }
-      
-      h1 { 
-        font-size: 3rem; 
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-      }
-      
+
       .channels-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 3rem;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
       }
-      
+
       .channel-card {
-        background: rgba(21, 27, 46, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 1.75rem;
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        padding: 0;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
         overflow: hidden;
-        box-shadow: var(--shadow-md);
+        box-shadow: 2px 2px 0 var(--mac-gray);
       }
-      
-      .channel-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-        opacity: 0;
-        transition: opacity 0.3s;
+      .channel-card:hover { background: var(--mac-light-gray); }
+      .channel-card .mac-window-title { padding: 6px 10px 6px 28px; }
+      .channel-card .mac-window-body { padding: 12px 14px; }
+
+      .channel-title {
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: var(--mac-black);
       }
-      
-      .channel-card:hover {
-        transform: translateY(-4px);
-        border-color: rgba(99, 102, 241, 0.4);
-        box-shadow: var(--shadow-lg), var(--shadow-glow);
+
+      .channel-desc {
+        font-size: 12px;
+        color: var(--mac-gray);
+        line-height: 1.4;
       }
-      
-      .channel-card:hover::before {
-        opacity: 1;
-      }
-      
-      .channel-title { 
-        font-size: 1.3rem; 
-        font-weight: 700; 
-        margin-bottom: 0.75rem;
-        color: var(--text-primary);
-        letter-spacing: -0.01em;
-      }
-      
-      .channel-desc { 
-        font-size: 0.95rem; 
-        color: var(--text-muted);
-        margin-bottom: 1rem;
-        line-height: 1.5;
-      }
-      
+
       .live-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        padding: 0.4rem 1rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-        animation: pulse-glow 2s ease-in-out infinite;
+        display: inline-block;
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-top: 6px;
       }
-      
-      @keyframes pulse-glow {
-        0%, 100% { 
-          opacity: 1;
-          box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-        }
-        50% { 
-          opacity: 0.9;
-          box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
-        }
-      }
-      
+
       .player-section {
-        background: rgba(21, 27, 46, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--border-color);
-        border-radius: 20px;
-        padding: 2.5rem;
-        margin-top: 2rem;
-        box-shadow: var(--shadow-lg);
-        position: relative;
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        background: var(--mac-white);
         overflow: hidden;
+        margin-top: 20px;
+        box-shadow: 2px 2px 0 var(--mac-gray);
       }
-      
-      .player-section::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-primary));
-        background-size: 200% 100%;
-        animation: shimmer 3s linear infinite;
-      }
-      
-      @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      
+      .player-section .mac-window-body { padding: 20px; }
+
       .player-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
+        align-items: flex-start;
+        margin-bottom: 16px;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 12px;
       }
-      
+
+      .player-header h2 { font-size: 14px; margin: 0 0 4px 0; }
+      .player-header p { font-size: 12px; color: var(--mac-gray); }
+
       .stat-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 1.25rem;
-        margin-top: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        margin-top: 16px;
       }
-      
+
       .stat-item {
-        background: rgba(15, 20, 35, 0.6);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        padding: 1.25rem;
-        border-radius: 12px;
-        transition: all 0.3s;
-        position: relative;
-        overflow: hidden;
+        background: var(--mac-light-gray);
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        padding: 10px 12px;
       }
-      
-      .stat-item::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 3px;
-        height: 100%;
-        background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      
-      .stat-item:hover {
-        border-color: rgba(99, 102, 241, 0.3);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
-      
-      .stat-item:hover::before {
-        opacity: 1;
-      }
-      
+
       .stat-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
+        font-size: 10px;
+        color: var(--mac-gray);
+        margin-bottom: 4px;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
       }
-      
+
       .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        font-size: 14px;
+        font-weight: bold;
         font-variant-numeric: tabular-nums;
       }
-      
+
+      /* Classic Mac buttons: rounded rect, black border, white fill */
       button {
-        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-        color: white;
-        border: none;
-        padding: 0.875rem 1.75rem;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 600;
+        background: var(--mac-white);
+        color: var(--mac-black);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 12px;
+        font-weight: bold;
+        font-family: inherit;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: var(--shadow-sm);
-        position: relative;
-        overflow: hidden;
-        letter-spacing: 0.01em;
+        box-shadow: 2px 2px 0 var(--mac-black);
       }
-      
-      button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s;
-      }
-      
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md), var(--shadow-glow);
-      }
-      
-      button:hover::before {
-        left: 100%;
-      }
-      
+      button:hover { background: var(--mac-light-gray); }
       button:active {
-        transform: translateY(0);
+        box-shadow: none;
+        transform: translate(1px, 1px);
       }
-      
-      button:disabled { 
-        opacity: 0.5; 
+      button:disabled {
+        background: var(--mac-light-gray);
+        color: var(--mac-gray);
         cursor: not-allowed;
-        transform: none;
+        box-shadow: 1px 1px 0 var(--mac-gray);
       }
-      
-      button[style*="background: #ef4444"] {
-        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      button[style*="background: #ef4444"],
+      button.danger {
+        background: var(--mac-white) !important;
+        color: var(--mac-black) !important;
+        border: 2px solid var(--mac-black) !important;
       }
-      
-      button[style*="background: #ef4444"]:hover {
-        box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.4);
-      }
-      
+      button.danger:hover { background: var(--mac-light-gray) !important; }
+
       .status {
-        padding: 1.25rem;
-        border-radius: 12px;
-        border: 1px solid;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s;
+        padding: 10px 14px;
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        font-size: 12px;
+        margin-bottom: 12px;
       }
-      
-      .status.success { 
-        background: rgba(16, 185, 129, 0.1);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #10b981;
-      }
-      
-      .status.error { 
-        background: rgba(239, 68, 68, 0.1);
-        border-color: rgba(239, 68, 68, 0.3);
-        color: #ef4444;
-      }
-      
-      .status.info { 
-        background: rgba(99, 102, 241, 0.1);
-        border-color: rgba(99, 102, 241, 0.3);
-        color: var(--accent-primary);
-      }
-      
-      .status.playing { 
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.5);
-        color: #10b981;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
-      }
-      
-      .status.stopped { 
-        background: rgba(239, 68, 68, 0.15);
-        border-color: rgba(239, 68, 68, 0.5);
-        color: #ef4444;
-      }
-      
+      .status.success { background: var(--mac-light-gray); }
+      .status.error { background: var(--mac-white); }
+      .status.info { background: var(--mac-light-gray); }
+      .status.playing { background: var(--mac-light-gray); }
+      .status.stopped { background: var(--mac-white); }
+
       .hidden { display: none; }
-      
+
       @media (max-width: 768px) {
-        body { padding: 1rem; }
-        h1 { font-size: 2rem; }
-        .channels-grid {
-          grid-template-columns: 1fr;
-        }
-        .player-section {
-          padding: 1.5rem;
-        }
-        .stat-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
+        .container { padding: 12px; }
+        .channels-grid { grid-template-columns: 1fr; }
+        .stat-grid { grid-template-columns: repeat(2, 1fr); }
       }
     </style>
   </head>
   <body>
+    <div class="menu-bar">
+      <span class="apple">&#63743;</span>
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Special</span>
+      <span>Help</span>
+    </div>
     <div class="container">
-      <h1>🎵 Live Channels</h1>
-      <div id="channels-grid" class="channels-grid"></div>
+      <div class="mac-window">
+        <div class="mac-window-title">
+          <span class="close-box"></span>
+          Live Channels
+        </div>
+        <div class="mac-window-body">
+          <div id="channels-grid" class="channels-grid"></div>
+        </div>
+      </div>
       <div id="player-section" class="player-section hidden">
+        <div class="mac-window-title">
+          <span class="close-box"></span>
+          <span id="now-playing-title">Not playing</span>
+          <span id="player-live-badge" class="live-badge hidden">LIVE</span>
+        </div>
+        <div class="mac-window-body">
         <div class="player-header">
           <div style="flex: 1;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-              <h2 id="now-playing-title" style="margin: 0;">Not playing</h2>
-              <span id="player-live-badge" class="live-badge hidden">🔴 LIVE</span>
-            </div>
-            <p id="now-playing-desc" style="opacity: 0.7;"></p>
+            <p id="now-playing-desc" style="font-size: 12px; color: #808080;"></p>
           </div>
-          <div style="display: flex; gap: 0.5rem;">
-            <button id="btn-start" style="min-width: 140px;">
-              <span id="play-icon">▶️</span> <span id="play-text">Start</span>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-start" style="min-width: 100px;">
+              <span id="play-icon">&#9654;</span> <span id="play-text">Start</span>
             </button>
-            <button id="btn-stop" class="hidden" style="min-width: 140px; background: #ef4444;">
-              <span>⏹️</span> Stop
+            <button id="btn-stop" class="hidden danger" style="min-width: 100px;">
+              <span>&#9632;</span> Stop
             </button>
           </div>
         </div>
         
-        <div id="player-status" class="status info" style="margin-bottom: 1.5rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span id="player-status-icon">⏸️</span>
-            <span id="player-status-text">Ready to listen</span>
-          </div>
+        <div id="player-status" class="status info">
+          <span id="player-status-icon">&#10074;&#10074;</span>
+          <span id="player-status-text">Ready to listen</span>
         </div>
         <div class="stat-grid">
           <div class="stat-item">
@@ -417,6 +308,7 @@
             <div class="stat-label">Bitrate</div>
             <div id="stat-kbps" class="stat-value">-</div>
           </div>
+        </div>
         </div>
       </div>
     </div>

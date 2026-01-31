@@ -5,448 +5,256 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LAF - Broadcast</title>
     <style>
-      * { 
-        margin: 0; 
-        padding: 0; 
-        box-sizing: border-box; 
-      }
-      
+      /* Macintosh 1984–inspired UI */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
       :root {
-        --bg-primary: #0a0e1a;
-        --bg-secondary: #151b2e;
-        --bg-tertiary: #1a2138;
-        --accent-primary: #6366f1;
-        --accent-secondary: #8b5cf6;
-        --accent-success: #10b981;
-        --accent-danger: #ef4444;
-        --text-primary: #f1f5f9;
-        --text-secondary: #cbd5e1;
-        --text-muted: #94a3b8;
-        --border-color: rgba(99, 102, 241, 0.2);
-        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-        --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+        --mac-white: #fff;
+        --mac-black: #000;
+        --mac-gray: #808080;
+        --mac-light-gray: #c0c0c0;
+        --mac-bg: #a0a0a0;
+        --mac-title-stripe: #e0e0e0;
       }
-      
+
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
-        background: linear-gradient(135deg, #0a0e1a 0%, #1a1f3a 50%, #0f1419 100%);
-        background-attachment: fixed;
-        color: var(--text-primary);
-        padding: 2rem;
+        font-family: Chicago, "Charcoal", "Lucida Grande", system-ui, -apple-system, sans-serif;
+        background: var(--mac-bg);
+        color: var(--mac-black);
         min-height: 100vh;
-        position: relative;
-        overflow-x: hidden;
+        padding: 0;
+        -webkit-font-smoothing: none;
+        font-smoothing: none;
       }
-      
-      body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: 
-          radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-          radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: 0;
+
+      .menu-bar {
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 6px 12px 8px 20px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }
-      
-      .container { 
-        max-width: 800px; 
-        margin: 0 auto;
-        position: relative;
-        z-index: 1;
-      }
-      
-      h1 { 
-        font-size: 3rem; 
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-      }
-      
-      h2 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin-bottom: 1.5rem;
-        color: var(--text-primary);
-        letter-spacing: -0.01em;
-      }
-      
-      h3 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-      
+      .menu-bar span { cursor: default; }
+
+      .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+
+      h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
+      h3 { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+
       .card {
-        background: rgba(21, 27, 46, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--border-color);
-        border-radius: 20px;
-        padding: 2.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: var(--shadow-lg);
-        position: relative;
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
         overflow: hidden;
-        transition: all 0.3s;
+        margin-bottom: 16px;
+        box-shadow: 2px 2px 0 var(--mac-gray);
       }
-      
-      .card::before {
-        content: '';
+
+      .mac-window-title {
+        background: repeating-linear-gradient(
+          180deg,
+          var(--mac-white) 0,
+          var(--mac-white) 2px,
+          var(--mac-title-stripe) 2px,
+          var(--mac-title-stripe) 4px
+        );
+        border-bottom: 1px solid var(--mac-black);
+        padding: 6px 10px 6px 28px;
+        font-size: 13px;
+        font-weight: bold;
+        position: relative;
+      }
+      .mac-window-title .live-badge { margin-left: 8px; }
+      .mac-window-title .close-box {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-primary));
-        background-size: 200% 100%;
-        animation: shimmer 3s linear infinite;
-        opacity: 0;
-        transition: opacity 0.3s;
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--mac-black);
+        border-radius: 1px;
+        background: var(--mac-white);
       }
-      
-      .card:hover::before {
-        opacity: 1;
-      }
-      
-      @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      
-      .form-group {
-        margin-bottom: 1.5rem;
-      }
-      
+      .mac-window-body { padding: 16px 20px 20px; }
+
+      .form-group { margin-bottom: 14px; }
       label {
         display: block;
-        margin-bottom: 0.75rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        font-size: 0.95rem;
+        margin-bottom: 6px;
+        font-weight: bold;
+        font-size: 12px;
       }
-      
+
       input, textarea {
         width: 100%;
-        padding: 0.875rem 1rem;
-        border-radius: 12px;
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        background: rgba(15, 20, 35, 0.6);
-        backdrop-filter: blur(5px);
-        color: var(--text-primary);
-        font-size: 1rem;
-        transition: all 0.3s;
+        padding: 8px 10px;
+        border: 2px solid var(--mac-black);
+        border-radius: 4px;
+        background: var(--mac-white);
+        color: var(--mac-black);
+        font-size: 12px;
         font-family: inherit;
       }
-      
       input:focus, textarea:focus {
         outline: none;
-        border-color: var(--accent-primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        background: rgba(15, 20, 35, 0.8);
+        background: var(--mac-light-gray);
       }
-      
-      textarea {
-        min-height: 100px;
-        resize: vertical;
-      }
-      
-      small {
-        display: block;
-        margin-top: 0.5rem;
-        color: var(--text-muted);
-        font-size: 0.85rem;
-        line-height: 1.4;
-      }
-      
+      textarea { min-height: 80px; resize: vertical; }
+
+      small { display: block; margin-top: 4px; font-size: 11px; color: var(--mac-gray); }
+
       button {
-        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-        color: white;
-        border: none;
-        padding: 0.875rem 1.75rem;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 600;
+        background: var(--mac-white);
+        color: var(--mac-black);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 12px;
+        font-weight: bold;
+        font-family: inherit;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: var(--shadow-sm);
-        position: relative;
-        overflow: hidden;
-        letter-spacing: 0.01em;
+        box-shadow: 2px 2px 0 var(--mac-black);
         width: 100%;
       }
-      
-      button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s;
-      }
-      
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md), var(--shadow-glow);
-      }
-      
-      button:hover::before {
-        left: 100%;
-      }
-      
-      button:active {
-        transform: translateY(0);
-      }
-      
-      button:disabled { 
-        opacity: 0.5; 
+      button:hover { background: var(--mac-light-gray); }
+      button:active { box-shadow: none; transform: translate(1px, 1px); }
+      button:disabled {
+        background: var(--mac-light-gray);
+        color: var(--mac-gray);
         cursor: not-allowed;
-        transform: none;
+        box-shadow: 1px 1px 0 var(--mac-gray);
       }
-      
-      button.danger { 
-        background: linear-gradient(135deg, #ef4444, #dc2626);
+      button.danger {
+        background: var(--mac-white);
+        color: var(--mac-black);
+        border: 2px solid var(--mac-black);
       }
-      
-      button.danger:hover { 
-        box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.4);
-      }
-      
-      button[style*="width: auto"] {
-        width: auto;
-      }
-      
+      button.danger:hover { background: var(--mac-light-gray); }
+      button[style*="width: auto"] { width: auto; }
       button[style*="background: #4b5563"],
       button[style*="background: #6b7280"] {
-        background: rgba(75, 85, 99, 0.8) !important;
+        background: var(--mac-light-gray) !important;
+        color: var(--mac-black) !important;
+        border: 2px solid var(--mac-black) !important;
       }
-      
-      button[style*="background: #4b5563"]:hover,
-      button[style*="background: #6b7280"]:hover {
-        background: rgba(75, 85, 99, 1) !important;
-      }
-      
+
       .status {
-        padding: 1.25rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        border: 1px solid;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s;
+        padding: 10px 14px;
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        font-size: 12px;
+        margin-bottom: 12px;
       }
-      
-      .status.success { 
-        background: rgba(16, 185, 129, 0.1);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #10b981;
-      }
-      
-      .status.error { 
-        background: rgba(239, 68, 68, 0.1);
-        border-color: rgba(239, 68, 68, 0.3);
-        color: #ef4444;
-      }
-      
-      .status.info { 
-        background: rgba(99, 102, 241, 0.1);
-        border-color: rgba(99, 102, 241, 0.3);
-        color: var(--accent-primary);
-      }
-      
-      .status.live { 
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.5);
-        color: #10b981;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
-      }
-      
-      .status.stopped { 
-        background: rgba(239, 68, 68, 0.15);
-        border-color: rgba(239, 68, 68, 0.5);
-        color: #ef4444;
-      }
-      
-      .status.ready { 
-        background: rgba(99, 102, 241, 0.15);
-        border-color: rgba(99, 102, 241, 0.3);
-        color: var(--accent-primary);
-      }
-      
-      .channels-list {
-        margin-top: 1rem;
-      }
-      
+      .status.success, .status.live, .status.ready { background: var(--mac-light-gray); }
+      .status.error, .status.stopped { background: var(--mac-white); }
+      .status.info { background: var(--mac-light-gray); }
+
+      .channels-list { margin-top: 10px; }
+
       .channel-item {
-        background: rgba(15, 20, 35, 0.6);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        padding: 1.25rem;
-        border-radius: 12px;
-        margin-bottom: 0.75rem;
+        background: var(--mac-light-gray);
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: all 0.3s;
         cursor: pointer;
       }
-      
-      .channel-item:hover {
-        border-color: rgba(99, 102, 241, 0.3);
-        transform: translateX(4px);
-        box-shadow: var(--shadow-sm);
-      }
-      
+      .channel-item:hover { background: var(--mac-white); }
+
       .meter {
         width: 100%;
-        height: 12px;
-        background: rgba(15, 20, 35, 0.6);
-        border-radius: 8px;
+        height: 14px;
+        background: var(--mac-light-gray);
+        border: 2px solid var(--mac-black);
+        border-radius: 4px;
         overflow: hidden;
-        margin-top: 0.75rem;
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        margin: 12px 0;
       }
-      
       .meter-bar {
         height: 100%;
-        background: linear-gradient(90deg, #10b981, #22c55e, #10b981);
-        background-size: 200% 100%;
+        background: var(--mac-black);
         transition: width 0.1s;
-        animation: meter-shimmer 2s linear infinite;
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
       }
-      
-      @keyframes meter-shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      
+
       .live-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-        animation: pulse-glow 2s ease-in-out infinite;
+        display: inline-block;
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
       }
-      
-      @keyframes pulse-glow {
-        0%, 100% { 
-          opacity: 1;
-          box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-        }
-        50% { 
-          opacity: 0.9;
-          box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
-        }
-      }
-      
-      a {
-        color: var(--accent-primary);
-        text-decoration: none;
-        transition: color 0.2s;
-      }
-      
-      a:hover {
-        color: var(--accent-secondary);
-      }
-      
+
+      a { color: var(--mac-black); text-decoration: underline; }
+      a:hover { color: var(--mac-gray); }
+
       .hidden { display: none; }
-      
+
       #broadcast-stats {
-        background: rgba(15, 20, 35, 0.4);
-        border-radius: 12px;
-        padding: 1.5rem;
+        background: var(--mac-light-gray);
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        padding: 14px;
       }
-      
       #broadcast-stats > div {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
       }
-      
       #broadcast-stats > div > div {
-        background: rgba(21, 27, 46, 0.6);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        padding: 1.25rem;
-        border-radius: 12px;
-        transition: all 0.3s;
+        background: var(--mac-white);
+        border: 1px solid var(--mac-black);
+        padding: 10px 12px;
+        border-radius: 4px;
       }
-      
-      #broadcast-stats > div > div:hover {
-        border-color: rgba(99, 102, 241, 0.3);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-sm);
-      }
-      
       #broadcast-stats > div > div > div:first-child {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
+        font-size: 10px;
+        color: var(--mac-gray);
+        margin-bottom: 4px;
       }
-      
       #broadcast-stats > div > div > div:last-child {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: bold;
         font-variant-numeric: tabular-nums;
       }
-      
+
       #user-info {
-        background: rgba(15, 20, 35, 0.6);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        border-radius: 12px;
-        padding: 1.5rem;
+        background: var(--mac-light-gray);
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        padding: 14px;
       }
-      
-      #user-info p {
-        margin-bottom: 0.5rem;
-      }
-      
-      #user-info strong {
-        color: var(--text-secondary);
-      }
-      
+      #user-info p { margin-bottom: 6px; font-size: 12px; }
+
       @media (max-width: 768px) {
-        body { padding: 1rem; }
-        h1 { font-size: 2rem; }
-        .card {
-          padding: 1.5rem;
-        }
-        #broadcast-stats > div {
-          grid-template-columns: 1fr;
-        }
+        .container { padding: 12px; }
+        #broadcast-stats > div { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
+    <div class="menu-bar">
+      <span class="apple">&#63743;</span>
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Special</span>
+      <span>Help</span>
+    </div>
     <div class="container">
-      <h1>🎙️ Broadcast</h1>
-
       <div id="login-section" class="card">
-        <h2>Login</h2>
+        <div class="mac-window-title">
+          <span class="close-box"></span>
+          Login
+        </div>
+        <div class="mac-window-body">
         <div class="form-group">
           <label>Email</label>
           <input type="email" id="login-email" placeholder="your@email.com" />
@@ -456,13 +264,18 @@
           <input type="password" id="login-password" placeholder="password" />
         </div>
         <button id="btn-login">Login</button>
-        <p style="margin-top: 1rem; opacity: 0.7; text-align: center;">
-          Don't have an account? <a href="#" id="link-register" style="color: #60a5fa;">Register</a>
+        <p style="margin-top: 12px; text-align: center; font-size: 12px;">
+          Don't have an account? <a href="#" id="link-register">Register</a>
         </p>
+        </div>
       </div>
 
       <div id="register-section" class="card hidden">
-        <h2>Register</h2>
+        <div class="mac-window-title">
+          <span class="close-box"></span>
+          Register
+        </div>
+        <div class="mac-window-body">
         <div class="form-group">
           <label>Email</label>
           <input type="email" id="register-email" placeholder="your@email.com" />
@@ -475,27 +288,41 @@
           </small>
         </div>
         <button id="btn-register">Register</button>
-        <p style="margin-top: 1rem; opacity: 0.7; text-align: center;">
-          Already have an account? <a href="#" id="link-login" style="color: #60a5fa;">Login</a>
+        <p style="margin-top: 12px; text-align: center; font-size: 12px;">
+          Already have an account? <a href="#" id="link-login">Login</a>
         </p>
+        </div>
       </div>
 
       <div id="main-section" class="hidden">
-        <div class="card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h2 style="margin: 0;">My Channels</h2>
-          <div style="display: flex; gap: 0.5rem;">
-            <button id="btn-settings" style="width: auto; padding: 0.5rem 1rem; background: #4b5563;">⚙️ Settings</button>
-            <button id="btn-logout" style="width: auto; padding: 0.5rem 1rem; background: #6b7280;">Logout</button>
+        <div class="card">
+          <div class="mac-window-title">
+            <span class="close-box"></span>
+            My Channels
+          </div>
+          <div class="mac-window-body" style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button id="btn-settings" style="width: auto;">Settings</button>
+            <button id="btn-logout" style="width: auto;">Logout</button>
           </div>
         </div>
-        
+
         <div class="card">
+          <div class="mac-window-title">
+            <span class="close-box"></span>
+            Channels
+          </div>
+          <div class="mac-window-body">
           <div id="channels-list" class="channels-list"></div>
           <button id="btn-create-channel">+ Create New Channel</button>
+          </div>
         </div>
 
         <div id="create-channel-section" class="card hidden">
-          <h2>Create Channel</h2>
+          <div class="mac-window-title">
+            <span class="close-box"></span>
+            Create Channel
+          </div>
+          <div class="mac-window-body">
           <div class="form-group">
             <label>Title</label>
             <input type="text" id="channel-title" placeholder="My Awesome Stream" />
@@ -505,63 +332,65 @@
             <textarea id="channel-desc" placeholder="What's this stream about?"></textarea>
           </div>
           <button id="btn-save-channel">Create Channel</button>
-          <button id="btn-cancel-create" style="margin-top: 0.5rem; background: #4b5563;">Cancel</button>
+          <button id="btn-cancel-create" style="margin-top: 8px;">Cancel</button>
+          </div>
         </div>
 
         <div id="broadcast-section" class="card hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div>
-              <h2 id="broadcast-channel-title" style="margin: 0;">Broadcasting</h2>
-              <p id="broadcast-channel-desc" style="margin-top: 0.5rem; opacity: 0.7; font-size: 0.9rem;"></p>
-            </div>
-            <div id="live-indicator" class="hidden" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span class="live-badge" style="animation: pulse 2s infinite;">🔴 LIVE</span>
-            </div>
+          <div class="mac-window-title">
+            <span class="close-box"></span>
+            <span id="broadcast-channel-title">Broadcasting</span>
+            <span id="live-indicator" class="live-badge hidden">LIVE</span>
           </div>
-          
-          <div class="meter" style="margin-bottom: 1rem;">
+          <div class="mac-window-body">
+          <p id="broadcast-channel-desc" style="font-size: 12px; color: #808080; margin-bottom: 12px;"></p>
+
+          <div class="meter">
             <div id="meter-bar" class="meter-bar" style="width: 0%"></div>
           </div>
-          
-          <div id="broadcast-status" class="status info" style="margin-bottom: 1.5rem;">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span id="status-icon">⏸️</span>
-              <span id="status-text">Ready to go live</span>
-            </div>
+
+          <div id="broadcast-status" class="status info">
+            <span id="status-icon">&#10074;&#10074;</span>
+            <span id="status-text">Ready to go live</span>
           </div>
 
-          <div style="display: flex; gap: 1rem;">
-            <button id="btn-go-live" style="flex: 1; font-size: 1.1rem; padding: 1rem;">
-              <span id="go-live-icon">▶️</span> Go Live
+          <div style="display: flex; gap: 12px;">
+            <button id="btn-go-live" style="flex: 1;">
+              <span id="go-live-icon">&#9654;</span> Go Live
             </button>
-            <button id="btn-stop-live" class="danger hidden" style="flex: 1; font-size: 1.1rem; padding: 1rem;">
-              <span>⏹️</span> Stop Streaming
+            <button id="btn-stop-live" class="danger hidden" style="flex: 1;">
+              <span>&#9632;</span> Stop Streaming
             </button>
           </div>
 
-          <div id="broadcast-stats" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #2a2f40;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
-              <div style="background: #0f1419; padding: 1rem; border-radius: 8px;">
-                <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Duration</div>
-                <div id="broadcast-duration" style="font-size: 1.25rem; font-weight: 600;">00:00</div>
+          <div id="broadcast-stats" class="hidden" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #000;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+              <div>
+                <div style="font-size: 10px; color: #808080; margin-bottom: 4px;">Duration</div>
+                <div id="broadcast-duration" style="font-size: 14px; font-weight: bold;">00:00</div>
               </div>
-              <div style="background: #0f1419; padding: 1rem; border-radius: 8px;">
-                <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Packets Sent</div>
-                <div id="broadcast-packets" style="font-size: 1.25rem; font-weight: 600;">0</div>
+              <div>
+                <div style="font-size: 10px; color: #808080; margin-bottom: 4px;">Packets Sent</div>
+                <div id="broadcast-packets" style="font-size: 14px; font-weight: bold;">0</div>
               </div>
-              <div style="background: #0f1419; padding: 1rem; border-radius: 8px;">
-                <div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 0.25rem;">Audio Level</div>
-                <div id="broadcast-level" style="font-size: 1.25rem; font-weight: 600;">-</div>
+              <div>
+                <div style="font-size: 10px; color: #808080; margin-bottom: 4px;">Audio Level</div>
+                <div id="broadcast-level" style="font-size: 14px; font-weight: bold;">-</div>
               </div>
             </div>
+          </div>
           </div>
         </div>
 
         <div id="settings-section" class="card hidden">
-          <h2>Account Settings</h2>
-          <div id="user-info" style="margin-bottom: 2rem; padding: 1rem; background: #0f1419; border-radius: 8px;">
+          <div class="mac-window-title">
+            <span class="close-box"></span>
+            Account Settings
+          </div>
+          <div class="mac-window-body">
+          <div id="user-info" style="margin-bottom: 20px;">
             <p><strong>Email:</strong> <span id="user-email">-</span></p>
-            <p style="margin-top: 0.5rem; opacity: 0.7; font-size: 0.9rem;">Member since: <span id="user-created">-</span></p>
+            <p style="margin-top: 6px; font-size: 12px; color: #808080;">Member since: <span id="user-created">-</span></p>
           </div>
 
           <div style="margin-bottom: 2rem;">
@@ -585,8 +414,8 @@
             <div id="password-change-status" style="margin-top: 1rem;"></div>
           </div>
 
-          <div style="border-top: 1px solid #2a2f40; padding-top: 2rem;">
-            <h3 style="margin-bottom: 1rem; color: #ef4444;">Danger Zone</h3>
+          <div style="border-top: 2px solid #000; padding-top: 16px; margin-top: 16px;">
+            <h3 style="margin-bottom: 8px;">Danger Zone</h3>
             <div class="form-group">
               <label>Delete Account</label>
               <p style="margin-bottom: 0.5rem; opacity: 0.8; font-size: 0.9rem;">
@@ -598,7 +427,8 @@
             <div id="delete-account-status" style="margin-top: 1rem;"></div>
           </div>
 
-          <button id="btn-close-settings" style="margin-top: 1.5rem; background: #4b5563;">Close Settings</button>
+          <button id="btn-close-settings" style="margin-top: 16px;">Close Settings</button>
+          </div>
         </div>
       </div>
     </div>

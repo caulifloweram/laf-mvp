@@ -445,9 +445,11 @@ async function loadChannels() {
       const card = document.createElement("div");
       card.className = "channel-card";
       card.innerHTML = `
-        <div class="channel-title">${escapeHtml(c.title || "Untitled")}</div>
-        <div class="channel-desc">${escapeHtml(c.description || "")}</div>
-        <span class="live-badge">LIVE</span>
+        <div class="mac-window-title"><span class="close-box"></span>${escapeHtml(c.title || "Untitled")}</div>
+        <div class="mac-window-body">
+          <div class="channel-desc">${escapeHtml(c.description || "")}</div>
+          <span class="live-badge">LIVE</span>
+        </div>
       `;
       card.onclick = () => {
         console.log(`[loadChannels] Channel clicked:`, c);
