@@ -6,7 +6,8 @@
   "scripts": {
     "build": "pnpm -C ../client-web run build && pnpm -C ../broadcaster-web run build && vite build && node scripts/copy-apps.cjs",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve": "npx --yes serve dist -p $PORT"
   },
   "devDependencies": {
     "vite": "^5.2.0",
