@@ -5,11 +5,15 @@ const distDir = path.join(__dirname, "..", "dist");
 const configPath = path.join(distDir, "config.json");
 
 const apiUrl = process.env.API_URL || process.env.VITE_API_URL || "http://localhost:4000";
-const relayWsUrl = process.env.RELAY_WS_URL || process.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+let relayWsUrl = process.env.RELAY_WS_URL || process.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+relayWsUrl = relayWsUrl.replace(/\/$/, "");
+if (!relayWsUrl.startsWith("ws://") && !relayWsUrl.startsWith("wss://")) {
+  relayWsUrl = "wss://" + relayWsUrl;
+}
 
 const config = {
   apiUrl: apiUrl.replace(/\/$/, ""),
-  relayWsUrl: relayWsUrl.replace(/\/$/, ""),
+  relayWsUrl,
 };
 
 if (!fs.existsSync(distDir)) {

@@ -15,6 +15,11 @@ function floatToPCM16(pcm: Float32Array): Int16Array {
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+function ensureRelayWsUrl(url: string): string {
+  const trimmed = url.replace(/\/$/, "");
+  if (/^wss?:/i.test(trimmed)) return trimmed;
+  return (typeof window !== "undefined" && window.location?.protocol === "https:" ? "wss:" : "ws:") + "//" + trimmed;
+}
 
 async function loadRuntimeConfig(): Promise<void> {
   try {
@@ -23,7 +28,12 @@ async function loadRuntimeConfig(): Promise<void> {
     if (!res.ok) return;
     const config = await res.json() as { apiUrl?: string; relayWsUrl?: string };
     if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
-    if (config.relayWsUrl) RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
+    if (config.relayWsUrl) {
+      RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
+      if (!/^wss?:/i.test(RELAY_BASE)) {
+        RELAY_BASE = (window.location.protocol === "https:" ? "wss:" : "ws:") + "//" + RELAY_BASE;
+      }
+    }
     console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE);
   } catch (_) {
     console.log("[config] Using build-time defaults");
@@ -657,7 +667,7 @@ async function startBroadcast() {
     
     streamId = result.streamId;
     broadcastChatMessages.innerHTML = "";
-    const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
+    const wsUrl = `${ensureRelayWsUrl(RELAY_BASE)}/?role=broadcaster&streamId=${streamId}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
     console.log("Connecting to relay:", wsUrl);
 
     // CRITICAL: Reuse existing mediaStream and AudioContext if available (for restart)
