@@ -1004,7 +1004,7 @@ function renderUnifiedStations(): void {
         });
       }
       stationsGrid.appendChild(card);
-    } else {
+    } else if (item.type === "external") {
       const station = item.station;
       const card = document.createElement("div");
       card.className = "external-station-card";
@@ -1055,7 +1055,7 @@ function renderUnifiedStations(): void {
         });
       }
       stationsGrid.appendChild(card);
-    } else {
+    } else if (item.type === "external_multi") {
       const config = item.config;
       const hasLogo = !!config.logoUrl;
       const initial = (config.name.trim().charAt(0) || "?").toUpperCase();
