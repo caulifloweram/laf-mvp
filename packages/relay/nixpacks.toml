@@ -5,7 +5,8 @@ nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
 cmds = [
-  "cd /app && if [ -d packages/relay ]; then pnpm install --frozen-lockfile; else pnpm install; fi",
+  "cd /app && if [ -d packages/relay ]; then pnpm install --frozen-lockfile; else pnpm install || true; fi",
+  "cd /app && if [ ! -d packages/relay ] && [ ! -d node_modules/ws ]; then echo 'Installing ws (relay isolated build)...' && npm install ws; fi",
   "echo 'Install complete'"
 ]
 
