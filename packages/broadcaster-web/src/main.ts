@@ -71,6 +71,10 @@ const channelSettingsSection = document.getElementById("channel-settings-section
 const broadcastSection = document.getElementById("broadcast-section")!;
 const settingsSection = document.getElementById("settings-section")!;
 const channelsList = document.getElementById("channels-list")!;
+const btnOpenChannelSettings = document.getElementById("btn-open-channel-settings")!;
+const channelSettingsPicker = document.getElementById("channel-settings-picker")!;
+const channelSettingsPickerList = document.getElementById("channel-settings-picker-list")!;
+const btnCloseChannelPicker = document.getElementById("btn-close-channel-picker")!;
 const broadcastChannelTitle = document.getElementById("broadcast-channel-title")!;
 const broadcastChannelDesc = document.getElementById("broadcast-channel-desc")!;
 const meterBar = document.getElementById("meter-bar")!;
@@ -338,29 +342,46 @@ async function loadChannels() {
         ? `<img src="${escapeAttr(ch.cover_url)}" alt="" class="channel-item-cover" />`
         : "";
       item.innerHTML = `
-        <button type="button" class="channel-row-btn" data-channel-id="${escapeAttr(ch.id)}">
-          <span class="channel-item-info" style="display: flex; align-items: center; gap: 12px; flex: 1; text-align: left;">
-            ${coverHtml}
-            <span>
-              <strong>${escapeHtml(ch.title)}</strong>
-              <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
-            </span>
-          </span>
-        </button>
-        <button type="button" class="btn-go-live" data-channel-id="${escapeAttr(ch.id)}" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
+        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+          ${coverHtml}
+          <div>
+            <strong>${escapeHtml(ch.title)}</strong>
+            <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
       `;
-      const rowBtn = item.querySelector(".channel-row-btn") as HTMLButtonElement;
       const goLiveBtn = item.querySelector(".btn-go-live") as HTMLButtonElement;
-      rowBtn.addEventListener("click", () => openChannelSettings(ch));
-      goLiveBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        selectChannel(ch);
-      });
+      goLiveBtn.addEventListener("click", () => selectChannel(ch));
       channelsList.appendChild(item);
     });
   } catch (err) {
     console.error("Failed to load channels:", err);
   }
+}
+
+function showChannelSettingsPicker() {
+  channelSettingsPickerList.innerHTML = "";
+  if (latestChannels.length === 0) {
+    channelSettingsPickerList.innerHTML = "<p style='opacity: 0.7;'>No channels yet.</p>";
+  } else {
+    latestChannels.forEach((ch) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "channel-picker-item";
+      btn.textContent = ch.title;
+      btn.addEventListener("click", () => {
+        channelSettingsPicker.classList.add("hidden");
+        openChannelSettings(ch);
+      });
+      channelSettingsPickerList.appendChild(btn);
+    });
+  }
+  channelSettingsPicker.classList.remove("hidden");
+}
+
+function hideChannelSettingsPicker() {
+  channelSettingsPicker.classList.add("hidden");
 }
 
 
@@ -1142,6 +1163,8 @@ linkLogin.onclick = (e) => {
 };
 
 btnCreateChannel.onclick = () => showSection("create");
+btnOpenChannelSettings.onclick = () => showChannelSettingsPicker();
+btnCloseChannelPicker.onclick = () => hideChannelSettingsPicker();
 btnSaveChannel.onclick = createChannel;
 btnCancelCreate.onclick = () => showSection("main");
 btnGoLive.onclick = startBroadcast;

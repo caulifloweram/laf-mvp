@@ -198,23 +198,20 @@
         gap: 8px;
       }
       .channel-item:hover { background: var(--mac-white); }
-      .channel-row-btn {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        min-width: 0;
-        padding: 0;
-        margin: 0;
-        border: none;
-        border-radius: 0;
-        background: transparent;
-        cursor: pointer;
-        font: inherit;
-        color: inherit;
-        text-align: left;
-        box-shadow: none;
+      .channel-settings-picker {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        background: var(--mac-light-gray);
       }
-      .channel-row-btn:hover { background: transparent; }
+      .channel-settings-picker .channel-picker-item {
+        display: block;
+        width: 100%;
+        margin-bottom: 6px;
+        text-align: left;
+        padding: 8px 10px;
+      }
 
       .channel-cover-preview {
         min-height: 60px;
@@ -382,7 +379,15 @@
           </div>
           <div class="mac-window-body">
           <div id="channels-list" class="channels-list"></div>
-          <button id="btn-create-channel">+ Create New Channel</button>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btn-create-channel" style="width: auto;">+ Create New Channel</button>
+            <button id="btn-open-channel-settings" type="button" style="width: auto;">Channel settings</button>
+          </div>
+          <div id="channel-settings-picker" class="channel-settings-picker hidden">
+            <div style="font-weight: bold; margin-bottom: 8px;">Select a channel to edit:</div>
+            <div id="channel-settings-picker-list"></div>
+            <button type="button" id="btn-close-channel-picker" style="margin-top: 8px; width: auto;">Close</button>
+          </div>
           </div>
         </div>
 
