@@ -721,6 +721,7 @@ function renderExternalStations() {
   EXTERNAL_STATIONS.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
+    card.dataset.streamUrl = station.streamUrl;
     if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
     const logoHtml = station.logoUrl
       ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
@@ -730,12 +731,48 @@ function renderExternalStations() {
       <div class="ext-name">${escapeHtml(station.name)}</div>
       <div class="ext-desc">${escapeHtml(station.description)}</div>
       <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
+      <div class="ext-stream-status status-checking" aria-live="polite">Checking…</div>
     `;
     card.onclick = (e) => {
       e.preventDefault();
       selectExternalStation(station);
     };
     externalStationsGrid.appendChild(card);
+  });
+  checkExternalStationsStreams();
+}
+
+async function checkExternalStationsStreams() {
+  const cards = externalStationsGrid.querySelectorAll<HTMLElement>(".external-station-card");
+  const results = await Promise.allSettled(
+    EXTERNAL_STATIONS.map(async (station) => {
+      try {
+        const res = await fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`);
+        const data = (await res.json()) as { ok?: boolean; status?: string };
+        return { streamUrl: station.streamUrl, ok: !!data.ok, status: data.status || "error" };
+      } catch {
+        return { streamUrl: station.streamUrl, ok: false, status: "error" };
+      }
+    })
+  );
+  results.forEach((outcome, i) => {
+    if (outcome.status !== "fulfilled") return;
+    const { streamUrl, ok, status } = outcome.value;
+    const card = Array.from(cards).find((c) => c.dataset.streamUrl === streamUrl);
+    if (!card) return;
+    const el = card.querySelector(".ext-stream-status");
+    if (!el) return;
+    el.classList.remove("status-checking", "status-live", "status-offline", "status-error", "status-timeout");
+    if (ok) {
+      el.textContent = "LIVE";
+      el.classList.add("status-live");
+      card.classList.remove("stream-offline");
+    } else {
+      const label = status === "timeout" ? "Timeout" : status === "unavailable" ? "Offline" : "Error";
+      el.textContent = label;
+      el.classList.add(status === "timeout" ? "status-timeout" : status === "unavailable" ? "status-offline" : "status-error");
+      card.classList.add("stream-offline");
+    }
   });
 }
 

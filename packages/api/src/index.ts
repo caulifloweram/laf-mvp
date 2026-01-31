@@ -99,6 +99,30 @@ app.get("/", (req, res) => {
   });
 });
 
+// Check if a stream URL is reachable (returns quickly; does not read full body)
+app.get("/api/stream-check", async (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    return res.status(400).json({ ok: false, status: "invalid_url" });
+  }
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { "Icy-MetaData": "1" },
+    });
+    clearTimeout(t);
+    // Don't read body; just check we got a successful response (streams often return 200)
+    const ok = response.ok || response.status === 200 || response.status === 206;
+    res.json({ ok: !!ok, status: ok ? "live" : "unavailable" });
+  } catch (err: unknown) {
+    const status = err instanceof Error && err.name === "AbortError" ? "timeout" : "error";
+    res.json({ ok: false, status });
+  }
+});
+
 // Proxy for ICY stream metadata (CORS blocks client from reading stream headers directly)
 app.get("/api/stream-metadata", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";

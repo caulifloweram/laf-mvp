@@ -277,6 +277,15 @@
       .external-station-card .ext-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--mac-black); }
       .external-station-card .ext-desc { font-size: 12px; color: var(--mac-gray); line-height: 1.4; }
       .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--mac-gray); }
+      .external-station-card .ext-stream-status {
+        font-size: 11px; margin-top: 6px; font-weight: bold;
+      }
+      .external-station-card .ext-stream-status.status-checking { color: var(--mac-gray); }
+      .external-station-card .ext-stream-status.status-live { color: #0a7c0a; }
+      .external-station-card .ext-stream-status.status-offline,
+      .external-station-card .ext-stream-status.status-error,
+      .external-station-card .ext-stream-status.status-timeout { color: #c00; }
+      .external-station-card.stream-offline { opacity: 0.85; }
 
       .player-section {
         min-width: 380px;
