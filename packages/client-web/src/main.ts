@@ -899,28 +899,79 @@ function renderUnifiedStations(): void {
   stationsGrid.innerHTML = "";
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
   const onlyFavorites = favoritesFilter?.checked ?? false;
-  const externalList = allExternalStations.filter((s) => {
+
+  type Item =
+    | { type: "laf"; channel: LiveChannel }
+    | { type: "external"; station: ExternalStation }
+    | { type: "external_multi"; config: ExternalStationConfig };
+  const items: Item[] = [
+    ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
+  ];
+
+  for (const config of EXTERNAL_STATION_CONFIGS) {
+    if (config.channels && config.channels.length > 0) {
+      const atLeastOneLive = config.channels.some((ch) => {
+        const c = streamStatusCache[ch.streamUrl];
+        return !c || c.ok;
+      });
+      if (atLeastOneLive) items.push({ type: "external_multi", config });
+    } else {
+      const c = streamStatusCache[config.streamUrl];
+      if (!c || c.ok) {
+        items.push({
+          type: "external",
+          station: {
+            name: config.name,
+            description: config.description,
+            websiteUrl: config.websiteUrl,
+            streamUrl: config.streamUrl,
+            logoUrl: config.logoUrl,
+          },
+        });
+      }
+    }
+  }
+
+  const userStationsLive = allExternalStations.filter((s) => {
+    if (!s.id) return false;
     const cached = streamStatusCache[s.streamUrl];
     return !cached || cached.ok;
   });
-  type Item = { type: "laf"; channel: LiveChannel } | { type: "external"; station: ExternalStation };
-  const items: Item[] = [
-    ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
-    ...externalList.map((station) => ({ type: "external" as const, station })),
-  ];
+  for (const station of userStationsLive) {
+    items.push({ type: "external", station });
+  }
+
   let filtered = items.filter((item) => {
-    const name = item.type === "laf" ? item.channel.title : item.station.name;
-    const desc = item.type === "laf" ? (item.channel.description || "") : (item.station.description || "");
+    const name =
+      item.type === "laf"
+        ? item.channel.title
+        : item.type === "external"
+          ? item.station.name
+          : item.config.name;
+    const desc =
+      item.type === "laf"
+        ? item.channel.description || ""
+        : item.type === "external"
+          ? item.station.description || ""
+          : item.config.description || "";
     if (q && !name.toLowerCase().includes(q) && !desc.toLowerCase().includes(q)) return false;
     if (onlyFavorites && token) {
-      const ref = item.type === "laf" ? item.channel.id : item.station.streamUrl;
-      if (!favoriteRefs.has(`${item.type}:${ref}`)) return false;
+      if (item.type === "laf") {
+        if (!favoriteRefs.has(`laf:${item.channel.id}`)) return false;
+      } else if (item.type === "external") {
+        if (!favoriteRefs.has(`external:${item.station.streamUrl}`)) return false;
+      } else {
+        const anyFav = item.config.channels?.some((ch) => favoriteRefs.has(`external:${ch.streamUrl}`));
+        if (!anyFav) return false;
+      }
     }
     return true;
   });
   filtered.sort((a, b) => {
-    const na = a.type === "laf" ? a.channel.title : a.station.name;
-    const nb = b.type === "laf" ? b.channel.title : b.station.name;
+    const na =
+      a.type === "laf" ? a.channel.title : a.type === "external" ? a.station.name : a.config.name;
+    const nb =
+      b.type === "laf" ? b.channel.title : b.type === "external" ? b.station.name : b.config.name;
     return na.localeCompare(nb, undefined, { sensitivity: "base" });
   });
   filtered.forEach((item) => {
@@ -1003,6 +1054,68 @@ function renderUnifiedStations(): void {
           toggleFavorite("external", station.streamUrl);
         });
       }
+      stationsGrid.appendChild(card);
+    } else {
+      const config = item.config;
+      const hasLogo = !!config.logoUrl;
+      const initial = (config.name.trim().charAt(0) || "?").toUpperCase();
+      const logoFailed = hasLogo && logoLoadFailed.has(config.logoUrl);
+      const logoHtml = hasLogo
+        ? logoFailed
+          ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
+          : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
+        : `<div class="ext-station-name-only">${escapeHtml(config.name)}</div>`;
+      const channelRows = (config.channels || [])
+        .map((ch) => {
+          const cached = streamStatusCache[ch.streamUrl];
+          const { text: statusText, statusClass } = getStatusLabel(cached);
+          const isPlaying = currentExternalStation?.streamUrl === ch.streamUrl;
+          return `<button type="button" class="ext-channel-row ${isPlaying ? "now-playing" : ""}" data-stream-url="${escapeAttr(ch.streamUrl)}">
+            <span class="ext-channel-name">${escapeHtml(ch.name)}</span>
+            <span class="ext-stream-status ${statusClass}">${escapeHtml(statusText)}</span>
+          </button>`;
+        })
+        .join("");
+      const card = document.createElement("div");
+      card.className = "external-station-card external-station-card-multi";
+      card.style.position = "relative";
+      card.innerHTML = `
+        ${logoHtml}
+        ${hasLogo ? `<div class="ext-name">${escapeHtml(config.name)}</div>` : ""}
+        <div class="ext-desc">${escapeHtml(config.description)}</div>
+        <a class="ext-link" href="${escapeAttr(config.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
+        <div class="ext-channels-list">${channelRows}</div>
+      `;
+      if (hasLogo && !logoFailed) {
+        const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
+        const fallback = card.querySelector(".ext-station-initial");
+        if (img && fallback) {
+          img.onerror = () => {
+            logoLoadFailed.add(config.logoUrl);
+            renderUnifiedStations();
+          };
+        }
+      }
+      card.onclick = (e) => {
+        if ((e.target as HTMLElement).closest("a.ext-link")) return;
+        const row = (e.target as HTMLElement).closest(".ext-channel-row");
+        if (row) {
+          e.preventDefault();
+          const streamUrl = row.getAttribute("data-stream-url");
+          if (streamUrl) {
+            const ch = config.channels?.find((c) => c.streamUrl === streamUrl);
+            if (ch) {
+              selectExternalStation({
+                name: `${config.name}: ${ch.name}`,
+                description: config.description,
+                websiteUrl: config.websiteUrl,
+                streamUrl: ch.streamUrl,
+                logoUrl: config.logoUrl,
+              });
+            }
+          }
+        }
+      };
       stationsGrid.appendChild(card);
     }
   });

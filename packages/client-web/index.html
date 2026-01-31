@@ -319,6 +319,17 @@
       .external-station-card .ext-stream-status.status-error,
       .external-station-card .ext-stream-status.status-timeout { color: var(--status-offline); }
       .external-station-card.stream-offline { opacity: 0.85; }
+      .external-station-card-multi .ext-channels-list { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+      .ext-channel-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 6px 10px; text-align: left; font-size: 12px; font-family: inherit;
+        background: var(--bg); border: 1px solid var(--border); color: var(--text);
+        cursor: pointer; width: 100%; box-sizing: border-box;
+      }
+      .ext-channel-row:hover { background: var(--card-hover); }
+      .ext-channel-row.now-playing { border-width: 2px; font-weight: bold; }
+      .ext-channel-row .ext-channel-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ext-channel-row .ext-stream-status { margin: 0; font-size: 10px; flex-shrink: 0; }
 
       /* Fixed footer player */
       .footer-player {
