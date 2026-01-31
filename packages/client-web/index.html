@@ -63,7 +63,7 @@
         color: var(--topbar-text);
         border-bottom: 2px solid var(--border);
         display: grid;
-        grid-template-columns: 1fr auto 1fr;
+        grid-template-columns: 1fr auto;
         align-items: center;
         padding: 0 16px;
         z-index: 20;
@@ -310,7 +310,8 @@
       }
       .external-station-card .ext-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; }
       .external-station-card .ext-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
-      .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--text-muted); }
+      .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--text-muted); text-decoration: underline; }
+      .external-station-card .ext-link:hover { color: var(--text); }
       .external-station-card .ext-stream-status { font-size: 11px; margin-top: 6px; font-weight: bold; }
       .external-station-card .ext-stream-status.status-checking { color: var(--text-muted); }
       .external-station-card .ext-stream-status.status-live { color: var(--status-live); }
@@ -524,25 +525,25 @@
     <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
-        <a href="#live" class="topbar-logo" id="nav-logo">LAF</a>
+        <a href="/" class="topbar-logo" id="nav-logo">LAF</a>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
           <a href="#about" class="topbar-nav-item" id="nav-about">About</a>
           <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
         </div>
       </div>
-      <div class="topbar-center" id="topbar-search-wrap">
-        <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
-      </div>
       <div class="topbar-right" id="client-topbar-right">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">Dark</button>
         <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item hidden"></span>
         <button type="button" id="client-logout-btn" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
+        <div id="topbar-search-wrap">
+          <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
+        </div>
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
-      <a href="#live" class="topbar-nav-item" data-nav="live">LAF</a>
+      <a href="/" class="topbar-nav-item" data-nav="live">LAF</a>
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
       <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>

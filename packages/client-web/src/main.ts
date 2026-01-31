@@ -156,6 +156,13 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     logoUrl: "https://noodsradio.com/favicon.ico",
   },
   {
+    name: "Veneno",
+    description: "Radio online vanguarda. São Paulo-based station. New music, electronic, Brazilian, house, techno and more.",
+    websiteUrl: "https://veneno.live/",
+    streamUrl: "https://veneno.out.airtime.pro/veneno_a",
+    logoUrl: "https://veneno.live/wp-content/uploads/2024/02/veneno-v.svg",
+  },
+  {
     name: "Kiosk Radio",
     description: "24/7 from a wooden kiosk in Brussels' Parc Royal. Eclectic music from DJs and artists.",
     websiteUrl: "https://kioskradio.com/",
@@ -967,7 +974,7 @@ function renderUnifiedStations(): void {
         ${logoHtml}
         ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
         <div class="ext-desc">${escapeHtml(station.description)}</div>
-        <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
+        <a class="ext-link" href="${escapeAttr(station.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
         <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
         ${token ? `<button type="button" class="station-card-fav ${favoriteRefs.has("external:" + station.streamUrl) ? "favorited" : ""}" data-kind="external" data-ref="${escapeAttr(station.streamUrl)}" aria-label="Favorite">${favoriteRefs.has("external:" + station.streamUrl) ? "♥" : "♡"}</button>` : ""}
       `;
@@ -985,7 +992,7 @@ function renderUnifiedStations(): void {
       }
       if (cached && !cached.ok) card.classList.add("stream-offline");
       card.onclick = (e) => {
-        if ((e.target as HTMLElement).closest(".station-card-fav")) return;
+        if ((e.target as HTMLElement).closest(".station-card-fav") || (e.target as HTMLElement).closest("a.ext-link")) return;
         selectExternalStation(station);
       };
       const favBtn = card.querySelector(".station-card-fav");
@@ -2080,19 +2087,27 @@ btnPlayPause.onclick = () => {
 };
 
 btnPrevStation.onclick = () => {
-  const stations = getExternalStationsFlat();
-  if (!currentExternalStation || stations.length === 0) return;
-  const idx = stations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const prevIdx = (idx - 1 + stations.length) % stations.length;
-  selectExternalStation(stations[prevIdx]);
+  const allStations = allExternalStations.filter((s) => {
+    const c = streamStatusCache[s.streamUrl];
+    return !c || c.ok;
+  });
+  if (!currentExternalStation || allStations.length === 0) return;
+  const idx = allStations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  if (idx < 0) return;
+  const prevIdx = (idx - 1 + allStations.length) % allStations.length;
+  selectExternalStation(allStations[prevIdx]);
 };
 
 btnNextStation.onclick = () => {
-  const stations = getExternalStationsFlat();
-  if (!currentExternalStation || stations.length === 0) return;
-  const idx = stations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const nextIdx = (idx + 1) % stations.length;
-  selectExternalStation(stations[nextIdx]);
+  const allStations = allExternalStations.filter((s) => {
+    const c = streamStatusCache[s.streamUrl];
+    return !c || c.ok;
+  });
+  if (!currentExternalStation || allStations.length === 0) return;
+  const idx = allStations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  if (idx < 0) return;
+  const nextIdx = (idx + 1) % allStations.length;
+  selectExternalStation(allStations[nextIdx]);
 };
 
 function sendChatMessage() {
