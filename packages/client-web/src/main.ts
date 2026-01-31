@@ -557,25 +557,35 @@ async function getOrCreateAudioContext(): Promise<AudioContext | null> {
 function startSoundwaveAnimation() {
   if (soundwaveRafId != null) return;
   const bars = document.querySelectorAll<HTMLElement>("#player-soundwave .sw-bar");
-  if (bars.length !== SOUNDWAVE_BARS || !analyserNode) return;
-  const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+  if (bars.length !== SOUNDWAVE_BARS) return;
+  const freqData = analyserNode ? new Uint8Array(analyserNode.frequencyBinCount) : null;
 
   function tick() {
     soundwaveRafId = requestAnimationFrame(tick);
-    const playing = (ws && ws.readyState === WebSocket.OPEN && loopRunning) ||
-      (currentExternalStation != null && externalAudio != null && !externalAudio.paused);
-    if (!analyserNode || !playing) {
+    const playingLaf = ws && ws.readyState === WebSocket.OPEN && loopRunning;
+    const playingExternal = currentExternalStation != null && externalAudio != null && !externalAudio.paused;
+    const playing = playingLaf || playingExternal;
+
+    if (!playing) {
       bars.forEach((bar) => { bar.style.transform = "scaleY(0.2)"; });
       return;
     }
-    analyserNode.getByteFrequencyData(freqData);
-    const step = Math.floor(freqData.length / SOUNDWAVE_BARS);
-    for (let i = 0; i < SOUNDWAVE_BARS; i++) {
-      let sum = 0;
-      for (let j = 0; j < step; j++) sum += freqData[i * step + j] ?? 0;
-      const avg = sum / step;
-      const scale = 0.15 + 0.85 * (avg / 255);
-      bars[i].style.transform = `scaleY(${scale})`;
+    if (playingLaf && analyserNode && freqData) {
+      analyserNode.getByteFrequencyData(freqData);
+      const step = Math.floor(freqData.length / SOUNDWAVE_BARS);
+      for (let i = 0; i < SOUNDWAVE_BARS; i++) {
+        let sum = 0;
+        for (let j = 0; j < step; j++) sum += freqData[i * step + j] ?? 0;
+        const avg = sum / step;
+        const scale = 0.15 + 0.85 * (avg / 255);
+        bars[i].style.transform = `scaleY(${scale})`;
+      }
+    } else {
+      const t = Date.now() / 120;
+      for (let i = 0; i < SOUNDWAVE_BARS; i++) {
+        const scale = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t + i * 0.3));
+        bars[i].style.transform = `scaleY(${scale})`;
+      }
     }
   }
   tick();
@@ -717,7 +727,7 @@ function renderExternalStations() {
   });
 }
 
-async function selectExternalStation(station: ExternalStation) {
+function selectExternalStation(station: ExternalStation) {
   if (currentExternalStation?.streamUrl === station.streamUrl) return;
   if (currentChannel || ws) {
     stopListening();
@@ -762,11 +772,6 @@ async function selectExternalStation(station: ExternalStation) {
     mediaSource = null;
   }
   externalAudio = new Audio(station.streamUrl);
-  await getOrCreateAudioContext();
-  if (audioCtx && analyserNode) {
-    mediaSource = audioCtx.createMediaElementSource(externalAudio);
-    mediaSource.connect(analyserNode);
-  }
   startSoundwaveAnimation();
   fetchStreamMetadata(station.streamUrl).then((program) => {
     if (currentExternalStation?.streamUrl === station.streamUrl && program) {
