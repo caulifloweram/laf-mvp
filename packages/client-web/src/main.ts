@@ -588,8 +588,11 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 }
 
 // DOM refs
-const channelsGrid = document.getElementById("channels-grid")!;
-const channelsGridHome = document.getElementById("channels-grid-home")!;
+const stationsGrid = document.getElementById("stations-grid")!;
+const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
+const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
+const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
+const topbarSearchWrap = document.getElementById("topbar-search-wrap");
 const footerPlayer = document.getElementById("footer-player")!;
 const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
@@ -616,10 +619,6 @@ const externalStreamActions = document.getElementById("external-stream-actions")
 const externalVisitWebsite = document.getElementById("external-visit-website")! as HTMLAnchorElement;
 const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
-const externalStationsGrid = document.getElementById("external-stations-grid")!;
-const externalStationsGridHome = document.getElementById("external-stations-grid-home")!;
-const stationsSearchInput = document.getElementById("stations-search") as HTMLInputElement | null;
-const stationsSearchHomeInput = document.getElementById("stations-search-home") as HTMLInputElement | null;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
 const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
 const btnPrevStation = document.getElementById("btn-prev-station")!;
@@ -659,6 +658,8 @@ function updateTopBarAuth() {
     if (logoutBtnDrawer) logoutBtnDrawer.classList.remove("hidden");
     chatSigninPrompt.classList.add("hidden");
     chatInputRow.classList.remove("hidden");
+    if (favoritesFilterWrap) favoritesFilterWrap.classList.remove("hidden");
+    loadFavorites().then(() => renderUnifiedStations());
   } else {
     signinLink.classList.remove("hidden");
     userEmailEl.classList.add("hidden");
@@ -668,6 +669,8 @@ function updateTopBarAuth() {
     if (logoutBtnDrawer) logoutBtnDrawer.classList.add("hidden");
     chatSigninPrompt.classList.remove("hidden");
     chatInputRow.classList.add("hidden");
+    if (favoritesFilterWrap) favoritesFilterWrap.classList.add("hidden");
+    favoriteRefs = new Set();
   }
 }
 
@@ -752,6 +755,10 @@ let recvCountWindow = 0;
 let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let currentExternalStation: ExternalStation | null = null;
+/** Currently live LAF channels (from /api/channels/live). */
+let liveChannelsList: LiveChannel[] = [];
+/** User favorites: Set of "kind:ref" (e.g. "laf:uuid", "external:https://..."). */
+let favoriteRefs = new Set<string>();
 /** Cache stream status so we don't re-show "Checking…" on every re-render. */
 const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
 /** Stations whose logo failed to load; show initial letter from the start on re-render (no blink). */
@@ -803,15 +810,14 @@ async function loadChannels() {
     if (!res.ok) {
       const errorText = await res.text();
       console.error(`[loadChannels] Failed to fetch live channels: HTTP ${res.status}`, errorText);
-      channelsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error loading channels: HTTP ${res.status}</p>`;
+      stationsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error loading channels: HTTP ${res.status}</p>`;
       return;
     }
     
     const channels: LiveChannel[] = await res.json();
     console.log(`[loadChannels] Loaded ${channels.length} live channels:`, channels);
-
-    renderChannelsToGrid(channelsGrid, channels);
-  renderChannelsToGrid(channelsGridHome, channels);
+    liveChannelsList = channels;
+    renderUnifiedStations();
   if (channels.length === 0) {
     renderExternalStations();
     if (currentChannel) {
@@ -837,39 +843,165 @@ async function loadChannels() {
     }
   } catch (err: any) {
     console.error("[loadChannels] Exception caught:", err);
-    console.error("[loadChannels] Error details:", err.message, err.stack);
     const errMsg = err.message || "Failed to load channels";
-    channelsGrid.innerHTML = `<p style='opacity: 0.7; color: var(--status-offline, #c00);'>Error: ${escapeHtml(errMsg)}</p>`;
-    channelsGridHome.innerHTML = channelsGrid.innerHTML;
+    stationsGrid.innerHTML = `<p style='opacity: 0.7; color: var(--status-offline, #c00);'>Error: ${escapeHtml(errMsg)}</p>`;
     renderExternalStations();
   }
 }
 
-function renderChannelsToGrid(container: HTMLElement, channels: LiveChannel[]) {
-  container.innerHTML = "";
-  if (channels.length === 0) {
-    container.innerHTML = "<p style='opacity: 0.7;'>No live channels at the moment.</p>";
-    return;
+async function loadFavorites(): Promise<void> {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_URL}/api/me/favorites`, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) return;
+    const list = (await res.json()) as Array<{ kind: string; ref: string }>;
+    favoriteRefs = new Set(list.map((r) => `${r.kind}:${r.ref}`));
+  } catch {
+    favoriteRefs = new Set();
   }
-  channels.forEach((c) => {
-    if (!c.id || !c.streamId) return;
-    const card = document.createElement("div");
-    card.className = "channel-card";
-    if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
-    const coverHtml = c.coverUrl
-      ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />`
-      : "";
-    card.innerHTML = `
-      <div class="card-title">${escapeHtml(c.title || "Untitled")}</div>
-      <div class="card-body">
-        ${coverHtml}
-        <div class="channel-desc">${escapeHtml(c.description || "")}</div>
-        <span class="live-badge">LIVE</span>
-      </div>
-    `;
-    card.onclick = () => selectChannel(c);
-    container.appendChild(card);
+}
+
+async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<void> {
+  if (!token) return;
+  const key = `${kind}:${ref}`;
+  const isFav = favoriteRefs.has(key);
+  try {
+    if (isFav) {
+      await fetch(`${API_URL}/api/me/favorites?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      favoriteRefs.delete(key);
+    } else {
+      await fetch(`${API_URL}/api/me/favorites`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind, ref }),
+      });
+      favoriteRefs.add(key);
+    }
+    renderUnifiedStations();
+  } catch (e) {
+    console.error("Failed to toggle favorite:", e);
+  }
+}
+
+function renderUnifiedStations(): void {
+  stationsGrid.innerHTML = "";
+  const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
+  const onlyFavorites = favoritesFilter?.checked ?? false;
+  const externalList = allExternalStations.filter((s) => {
+    const cached = streamStatusCache[s.streamUrl];
+    return !cached || cached.ok;
   });
+  type Item = { type: "laf"; channel: LiveChannel } | { type: "external"; station: ExternalStation };
+  const items: Item[] = [
+    ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
+    ...externalList.map((station) => ({ type: "external" as const, station })),
+  ];
+  let filtered = items.filter((item) => {
+    const name = item.type === "laf" ? item.channel.title : item.station.name;
+    const desc = item.type === "laf" ? (item.channel.description || "") : (item.station.description || "");
+    if (q && !name.toLowerCase().includes(q) && !desc.toLowerCase().includes(q)) return false;
+    if (onlyFavorites && token) {
+      const ref = item.type === "laf" ? item.channel.id : item.station.streamUrl;
+      if (!favoriteRefs.has(`${item.type}:${ref}`)) return false;
+    }
+    return true;
+  });
+  filtered.sort((a, b) => {
+    const na = a.type === "laf" ? a.channel.title : a.station.name;
+    const nb = b.type === "laf" ? b.channel.title : b.station.name;
+    return na.localeCompare(nb, undefined, { sensitivity: "base" });
+  });
+  filtered.forEach((item) => {
+    if (item.type === "laf") {
+      const c = item.channel;
+      const card = document.createElement("div");
+      card.className = "channel-card";
+      card.style.position = "relative";
+      if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
+      const coverHtml = c.coverUrl ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />` : "";
+      card.innerHTML = `
+        <div class="card-title">${escapeHtml(c.title || "Untitled")}</div>
+        <div class="card-body">
+          ${coverHtml}
+          <div class="channel-desc">${escapeHtml(c.description || "")}</div>
+          <span class="live-badge">LIVE</span>
+        </div>
+        ${token ? `<button type="button" class="station-card-fav ${favoriteRefs.has("laf:" + c.id) ? "favorited" : ""}" data-kind="laf" data-ref="${escapeAttr(c.id)}" aria-label="Favorite">${favoriteRefs.has("laf:" + c.id) ? "♥" : "♡"}</button>` : ""}
+      `;
+      card.onclick = (e) => {
+        if ((e.target as HTMLElement).closest(".station-card-fav")) return;
+        selectChannel(c);
+      };
+      const favBtn = card.querySelector(".station-card-fav");
+      if (favBtn) {
+        favBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite("laf", c.id);
+        });
+      }
+      stationsGrid.appendChild(card);
+    } else {
+      const station = item.station;
+      const card = document.createElement("div");
+      card.className = "external-station-card";
+      card.dataset.streamUrl = station.streamUrl;
+      card.style.position = "relative";
+      if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
+      const cached = streamStatusCache[station.streamUrl];
+      const { text: statusText, statusClass } = getStatusLabel(cached);
+      const hasLogo = !!station.logoUrl;
+      const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
+      const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
+      const logoHtml = hasLogo
+        ? logoFailed
+          ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
+          : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
+        : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
+      card.innerHTML = `
+        ${logoHtml}
+        ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
+        <div class="ext-desc">${escapeHtml(station.description)}</div>
+        <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
+        <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
+        ${token ? `<button type="button" class="station-card-fav ${favoriteRefs.has("external:" + station.streamUrl) ? "favorited" : ""}" data-kind="external" data-ref="${escapeAttr(station.streamUrl)}" aria-label="Favorite">${favoriteRefs.has("external:" + station.streamUrl) ? "♥" : "♡"}</button>` : ""}
+      `;
+      if (hasLogo && !logoFailed) {
+        const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
+        const fallback = card.querySelector(".ext-station-initial");
+        if (img && fallback) {
+          img.onerror = () => {
+            logoLoadFailed.add(station.streamUrl);
+            img.style.display = "none";
+            fallback.classList.remove("hidden");
+            renderUnifiedStations();
+          };
+        }
+      }
+      if (cached && !cached.ok) card.classList.add("stream-offline");
+      card.onclick = (e) => {
+        if ((e.target as HTMLElement).closest(".station-card-fav")) return;
+        selectExternalStation(station);
+      };
+      const favBtn = card.querySelector(".station-card-fav");
+      if (favBtn) {
+        favBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite("external", station.streamUrl);
+        });
+      }
+      stationsGrid.appendChild(card);
+    }
+  });
+  if (filtered.length === 0) {
+    stationsGrid.innerHTML = "<p style='opacity: 0.7;'>No stations to show.</p>";
+  }
 }
 
 function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { text: string; statusClass: string } {
@@ -880,59 +1012,9 @@ function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { 
   return { text: label, statusClass };
 }
 
-function renderExternalStationsToGrid(container: HTMLElement) {
-  container.innerHTML = "";
-  const all = getExternalStationsFlat();
-  const stations = all.filter((s) => {
-    const cached = streamStatusCache[s.streamUrl];
-    return !cached || cached.ok;
-  });
-  stations.forEach((station) => {
-    const card = document.createElement("div");
-    card.className = "external-station-card";
-    card.dataset.streamUrl = station.streamUrl;
-    if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
-    const cached = streamStatusCache[station.streamUrl];
-    const { text: statusText, statusClass } = getStatusLabel(cached);
-    const hasLogo = !!station.logoUrl;
-    const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
-    const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
-    const logoHtml = hasLogo
-      ? logoFailed
-        ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
-        : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
-      : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
-    card.innerHTML = `
-      ${logoHtml}
-      ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
-      <div class="ext-desc">${escapeHtml(station.description)}</div>
-      <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
-      <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
-    `;
-    if (hasLogo && !logoFailed) {
-      const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
-      const fallback = card.querySelector(".ext-station-initial");
-      if (img && fallback) {
-        img.onerror = () => {
-          logoLoadFailed.add(station.streamUrl);
-          img.style.display = "none";
-          fallback.classList.remove("hidden");
-        };
-      }
-    }
-    if (cached && !cached.ok) card.classList.add("stream-offline");
-    card.onclick = (e) => {
-      e.preventDefault();
-      selectExternalStation(station);
-    };
-    container.appendChild(card);
-  });
-}
-
 function renderExternalStations() {
   const needCheck = Object.keys(streamStatusCache).length === 0;
-  renderExternalStationsToGrid(externalStationsGrid);
-  renderExternalStationsToGrid(externalStationsGridHome);
+  renderUnifiedStations();
   if (needCheck) checkExternalStationsStreams();
 }
 
@@ -978,8 +1060,7 @@ async function checkExternalStationsStreams() {
       )
     );
   }
-  renderExternalStationsToGrid(externalStationsGrid);
-  renderExternalStationsToGrid(externalStationsGridHome);
+  renderUnifiedStations();
 }
 
 function selectExternalStation(station: ExternalStation) {
@@ -2172,10 +2253,9 @@ function setActiveView(route: RouteId) {
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   const view = document.getElementById(`view-${route}`);
   if (view) view.classList.add("active");
-  ["home", "live", "about"].forEach((r) => {
-    const el = document.getElementById(`nav-${r}`);
-    if (el) el.classList.toggle("active", r === route);
-  });
+  const navAbout = document.getElementById("nav-about");
+  if (navAbout) navAbout.classList.toggle("active", route === "about");
+  if (topbarSearchWrap) topbarSearchWrap.classList.toggle("hidden", route !== "live");
 }
 
 function updateThemeButtonText() {
@@ -2220,11 +2300,10 @@ function initMobileNav() {
 }
 
 function applyStationsSearch() {
-  const v = (stationsSearchInput?.value ?? "").trim() || (stationsSearchHomeInput?.value ?? "").trim();
+  const v = (stationsSearchTopbar?.value ?? "").trim();
   stationsSearchQuery = v;
-  if (stationsSearchInput) stationsSearchInput.value = v;
-  if (stationsSearchHomeInput) stationsSearchHomeInput.value = v;
-  renderExternalStations();
+  if (stationsSearchTopbar) stationsSearchTopbar.value = v;
+  renderUnifiedStations();
 }
 loadRuntimeConfig().then(async () => {
   updateTopBarAuth();
@@ -2233,8 +2312,10 @@ loadRuntimeConfig().then(async () => {
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
   await loadExternalStations();
+  if (token) await loadFavorites();
   loadChannels();
   setInterval(loadChannels, 3000);
-  stationsSearchInput?.addEventListener("input", applyStationsSearch);
-  stationsSearchHomeInput?.addEventListener("input", applyStationsSearch);
+  stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
+  favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
+  if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
 });

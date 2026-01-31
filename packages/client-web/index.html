@@ -94,7 +94,16 @@
       }
       .topbar-nav-item:hover { background: rgba(255,255,255,0.1); }
       .topbar-nav-item.active { background: rgba(255,255,255,0.2); }
-      .topbar-center { justify-self: center; }
+      .topbar-center { justify-self: center; display: flex; align-items: center; }
+      .topbar-search { width: 200px; max-width: 100%; padding: 6px 10px; font-size: 13px; margin: 0; }
+      .live-view-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+      .live-view-toolbar .page-header { margin-bottom: 0; }
+      .favorites-filter-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+      .favorites-filter-wrap input { width: auto; margin: 0; }
+      .stations-grid-unified { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--grid-gap); }
+      .station-card-fav { position: absolute; top: 8px; right: 8px; z-index: 2; background: transparent; border: none; padding: 4px; cursor: pointer; font-size: 18px; line-height: 1; opacity: 0.8; }
+      .station-card-fav:hover { opacity: 1; }
+      .station-card-fav.favorited { opacity: 1; }
       .topbar-right {
         display: flex;
         align-items: center;
@@ -486,7 +495,9 @@
         .section-title { font-size: 12px; margin: 20px 0 10px; }
         .channels-grid { grid-template-columns: 1fr; gap: 12px; }
         .external-stations-grid { grid-template-columns: 1fr; gap: 12px; }
+        .stations-grid-unified { grid-template-columns: 1fr; gap: 12px; }
         .stations-search { max-width: 100%; margin-bottom: 12px; }
+        .topbar-search { width: 140px; }
         .footer-player {
           grid-template-columns: 48px 1fr auto;
           gap: 10px;
@@ -513,16 +524,16 @@
     <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
-        <a href="#home" class="topbar-logo" id="nav-logo">LAF</a>
+        <a href="#live" class="topbar-logo" id="nav-logo">LAF</a>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
-          <a href="#home" class="topbar-nav-item" id="nav-home">Home</a>
-          <a href="#live" class="topbar-nav-item" id="nav-live">Live Stations</a>
           <a href="#about" class="topbar-nav-item" id="nav-about">About</a>
           <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
         </div>
       </div>
-      <div class="topbar-center"></div>
+      <div class="topbar-center" id="topbar-search-wrap">
+        <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
+      </div>
       <div class="topbar-right" id="client-topbar-right">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">Dark</button>
         <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
@@ -531,8 +542,7 @@
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
-      <a href="#home" class="topbar-nav-item" data-nav="home">Home</a>
-      <a href="#live" class="topbar-nav-item" data-nav="live">Live Stations</a>
+      <a href="#live" class="topbar-nav-item" data-nav="live">LAF</a>
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
       <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
@@ -542,27 +552,15 @@
     </div>
 
     <main class="main">
-      <div id="view-home" class="view" role="main">
-        <h1 class="page-header">Welcome to LAF</h1>
-        <div class="page-content">
-          <p>Listen to live audio streams or start your own broadcast.</p>
-          <p><a href="/broadcaster/">Broadcast</a> — Go live and stream audio to listeners.</p>
-          <p><a href="#live">Live Stations</a> — Browse and listen to live stations.</p>
-        </div>
-        <h2 class="section-title">Live channels</h2>
-        <div id="channels-grid-home" class="channels-grid"></div>
-        <h2 class="section-title">Other stations</h2>
-        <input type="text" id="stations-search-home" class="stations-search" placeholder="Search stations..." aria-label="Search stations" />
-        <div id="external-stations-grid-home" class="external-stations-grid"></div>
-      </div>
-
       <div id="view-live" class="view" role="main">
-        <h1 class="page-header">Live Stations</h1>
-        <h2 class="section-title">Live channels</h2>
-        <div id="channels-grid" class="channels-grid"></div>
-        <h2 class="section-title">Other stations</h2>
-        <input type="text" id="stations-search" class="stations-search" placeholder="Search stations..." aria-label="Search stations" />
-        <div id="external-stations-grid" class="external-stations-grid"></div>
+        <div class="live-view-toolbar">
+          <h1 class="page-header">LIVE</h1>
+          <label class="favorites-filter-wrap" id="favorites-filter-wrap">
+            <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
+            <span>Favorites only</span>
+          </label>
+        </div>
+        <div id="stations-grid" class="stations-grid-unified"></div>
       </div>
 
       <div id="view-about" class="view" role="main">

@@ -73,5 +73,19 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_external_stations_name ON external_stations(name);
   `).catch(() => {});
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_favorites (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind VARCHAR(20) NOT NULL CHECK (kind IN ('laf', 'external')),
+      ref TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, kind, ref)
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id);
+  `).catch(() => {});
+
   console.log("✅ Database tables initialized");
 }

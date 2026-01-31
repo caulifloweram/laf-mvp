@@ -329,6 +329,66 @@ app.delete("/api/external-stations/:id", authMiddleware, async (req, res) => {
   }
 });
 
+// Protected: Favorites (requires login)
+app.get("/api/me/favorites", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  try {
+    const result = await pool.query(
+      `SELECT kind, ref FROM user_favorites WHERE user_id = $1 ORDER BY created_at ASC`,
+      [user.id]
+    );
+    res.json(result.rows.map((r: any) => ({ kind: r.kind, ref: r.ref })));
+  } catch (err: any) {
+    console.error("Error fetching favorites:", err);
+    res.status(500).json({ error: "Failed to fetch favorites", details: err.message });
+  }
+});
+
+app.post("/api/me/favorites", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { kind, ref } = req.body;
+  if (!kind || !ref || typeof kind !== "string" || typeof ref !== "string") {
+    return res.status(400).json({ error: "kind and ref are required" });
+  }
+  if (kind !== "laf" && kind !== "external") {
+    return res.status(400).json({ error: "kind must be 'laf' or 'external'" });
+  }
+  const refTrim = ref.trim();
+  if (!refTrim) return res.status(400).json({ error: "ref cannot be empty" });
+  try {
+    await pool.query(
+      `INSERT INTO user_favorites (user_id, kind, ref) VALUES ($1, $2, $3) ON CONFLICT (user_id, kind, ref) DO NOTHING`,
+      [user.id, kind, refTrim]
+    );
+    res.status(201).json({ kind, ref: refTrim });
+  } catch (err: any) {
+    console.error("Error adding favorite:", err);
+    res.status(500).json({ error: "Failed to add favorite", details: err.message });
+  }
+});
+
+app.delete("/api/me/favorites", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const kind = typeof req.query.kind === "string" ? req.query.kind : null;
+  const ref = typeof req.query.ref === "string" ? req.query.ref : null;
+  if (!kind || !ref) {
+    return res.status(400).json({ error: "kind and ref query params are required" });
+  }
+  if (kind !== "laf" && kind !== "external") {
+    return res.status(400).json({ error: "kind must be 'laf' or 'external'" });
+  }
+  try {
+    await pool.query(
+      `DELETE FROM user_favorites WHERE user_id = $1 AND kind = $2 AND ref = $3`,
+      [user.id, kind, ref]
+    );
+    res.status(204).send();
+  } catch (err: any) {
+    console.error("Error removing favorite:", err);
+    res.status(500).json({ error: "Failed to remove favorite", details: err.message });
+  }
+});
+
 // Auth endpoints
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
