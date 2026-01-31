@@ -54,7 +54,7 @@ interface LiveChannel {
   streamId: number;
 }
 
-/** External online radio stations (stream URLs from [Radio Browser API](https://api.radio-browser.info/)); logoUrl = site favicon/apple-touch-icon */
+/** External online radio stations. Stream URLs from Radio Browser API or official sites. Add more from Are.na channels the same way. */
 interface ExternalStation {
   name: string;
   description: string;
@@ -85,15 +85,56 @@ const EXTERNAL_STATIONS: ExternalStation[] = [
     streamUrl: "https://radio80k.out.airtime.pro:8000/radio80k_a",
     logoUrl: "https://www.radio80k.de/app/uploads/2022/10/cropped-favicon-8000-192x192.gif",
   },
-];
-
-/**
- * Are.na channel slugs to load radios from. Each slug is the channel id from the URL
- * (e.g. https://www.are.na/user/online-radios-zlvblzsstly → "online-radios-zlvblzsstly").
- * Send more channel URLs or slugs to add them here.
- */
-const ARE_NA_CHANNEL_SLUGS: string[] = [
-  "online-radios-zlvblzsstly", // https://www.are.na/chia/online-radios-zlvblzsstly
+  // From Are.na channel online-radios-zlvblzsstly; stream URLs from Radio Browser API / official sites
+  {
+    name: "KEXP 90.3 FM",
+    description: "Where the Music Matters. Seattle-based listener-supported radio.",
+    websiteUrl: "https://www.kexp.org/",
+    streamUrl: "https://kexp.streamguys1.com/kexp160.aac",
+    logoUrl: "https://www.kexp.org/favicon.ico",
+  },
+  {
+    name: "SomaFM",
+    description: "Listener-supported, commercial-free internet radio.",
+    websiteUrl: "http://soma.fm/",
+    streamUrl: "https://ice5.somafm.com/live-128-mp3",
+    logoUrl: "https://somafm.com/img/somafm-logo-square.png",
+  },
+  {
+    name: "WFMU",
+    description: "Independent freeform radio. Jersey City 91.1 FM, Hudson Valley 90.1 FM.",
+    websiteUrl: "https://www.wfmu.org/",
+    streamUrl: "http://stream0.wfmu.org/freeform-128k",
+    logoUrl: "https://www.wfmu.org/favicon.ico",
+  },
+  {
+    name: "NTS Radio",
+    description: "Don't Assume. Two live channels, 24/7.",
+    websiteUrl: "https://www.nts.live/",
+    streamUrl: "https://stream-relay.nts.live/live",
+    logoUrl: "https://www.nts.live/favicon.ico",
+  },
+  {
+    name: "Manila Community Radio",
+    description: "Independent, not-for-profit radio platform by the community for the community.",
+    websiteUrl: "https://manilacommunityradio.live/",
+    streamUrl: "https://manilacommunityradio.out.airtime.pro/manilacommunityradio_a",
+    logoUrl: "https://www.google.com/s2/favicons?domain=manilacommunityradio.live&sz=128",
+  },
+  {
+    name: "dublab",
+    description: "Non-profit radio. Experimental, jazz, indie, hip-hop, dub. LA and worldwide.",
+    websiteUrl: "https://www.dublab.com/",
+    streamUrl: "https://stream.dublab.com/live",
+    logoUrl: "https://www.dublab.com/favicon.ico",
+  },
+  {
+    name: "Rinse FM",
+    description: "Underground music 24/7. London and Paris. Grime, dubstep, D&B, garage.",
+    websiteUrl: "https://rinse.fm/",
+    streamUrl: "http://admin.stream.rinse.fm:8820/stream.m3u",
+    logoUrl: "https://rinse.fm/favicon.ico",
+  },
 ];
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
@@ -555,12 +596,6 @@ let recvCountWindow = 0;
 let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let currentExternalStation: ExternalStation | null = null;
-/** Stations loaded from Are.na channel; only entries with streamUrl are playable. */
-let areNaStations: ExternalStation[] = [];
-
-function getAllPlayableExternalStations(): ExternalStation[] {
-  return [...EXTERNAL_STATIONS, ...areNaStations.filter((s) => s.streamUrl && s.streamUrl.trim())];
-}
 let externalAudio: HTMLAudioElement | null = null;
 let playheadTime = 0;
 let loopRunning = false;
@@ -673,7 +708,6 @@ async function loadChannels() {
       currentChannel = null;
     }
     renderExternalStations();
-    loadAreNaStations();
   } catch (err: any) {
     console.error("[loadChannels] Exception caught:", err);
     console.error("[loadChannels] Error details:", err.message, err.stack);
@@ -682,101 +716,30 @@ async function loadChannels() {
   }
 }
 
-function getAllExternalStations(): ExternalStation[] {
-  return [...EXTERNAL_STATIONS, ...areNaStations];
-}
-
 function renderExternalStations() {
   externalStationsGrid.innerHTML = "";
-  const all = getAllExternalStations();
-  all.forEach((station) => {
+  EXTERNAL_STATIONS.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
     if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
     const logoHtml = station.logoUrl
       ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
       : "";
-    const playable = !!(station.streamUrl && station.streamUrl.trim());
     card.innerHTML = `
       ${logoHtml}
       <div class="ext-name">${escapeHtml(station.name)}</div>
       <div class="ext-desc">${escapeHtml(station.description)}</div>
-      <div class="ext-link">${playable ? "Stream · " + escapeHtml(station.websiteUrl) : "Visit website to listen"}</div>
+      <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
     `;
-    if (playable) {
-      card.onclick = (e) => {
-        e.preventDefault();
-        selectExternalStation(station);
-      };
-    } else {
-      card.onclick = (e) => {
-        e.preventDefault();
-        window.open(station.websiteUrl, "_blank", "noopener");
-      };
-    }
+    card.onclick = (e) => {
+      e.preventDefault();
+      selectExternalStation(station);
+    };
     externalStationsGrid.appendChild(card);
   });
 }
 
-/** Parse Are.na channel slug from URL or return as-is if already a slug. */
-function parseAreNaSlug(urlOrSlug: string): string {
-  const s = urlOrSlug.trim();
-  try {
-    if (/^https?:\/\//i.test(s)) {
-      const path = new URL(s).pathname.replace(/^\/+|\/+$/, "");
-      const parts = path.split("/");
-      return parts[parts.length - 1] || s;
-    }
-  } catch {
-    // not a URL
-  }
-  return s.replace(/^\/+|\/+$/, "");
-}
-
-async function loadAreNaStations() {
-  const slugs = ARE_NA_CHANNEL_SLUGS.map(parseAreNaSlug).filter(Boolean);
-  if (slugs.length === 0) return;
-  const seen = new Set<string>();
-  const merged: ExternalStation[] = [];
-  try {
-    const results = await Promise.all(
-      slugs.map(async (slug) => {
-        try {
-          const res = await fetch(`${API_URL}/api/are-na-channel?slug=${encodeURIComponent(slug)}`);
-          if (!res.ok) return [];
-          const data = (await res.json()) as { stations?: Array<{ name: string; description: string; websiteUrl: string; streamUrl: string | null; logoUrl: string }> };
-          return data.stations || [];
-        } catch {
-          return [];
-        }
-      })
-    );
-    for (const list of results) {
-      for (const s of list) {
-        const key = (s.websiteUrl || "").toLowerCase();
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        merged.push({
-          name: s.name,
-          description: s.description,
-          websiteUrl: s.websiteUrl,
-          streamUrl: s.streamUrl && s.streamUrl.trim() ? s.streamUrl : "",
-          logoUrl: s.logoUrl || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.websiteUrl).hostname)}&sz=128`,
-        });
-      }
-    }
-    areNaStations = merged;
-    renderExternalStations();
-  } catch (e) {
-    console.warn("[Are.na] Failed to load channels:", e);
-  }
-}
-
 function selectExternalStation(station: ExternalStation) {
-  if (!station.streamUrl?.trim()) {
-    window.open(station.websiteUrl, "_blank", "noopener");
-    return;
-  }
   if (currentExternalStation?.streamUrl === station.streamUrl) return;
   if (currentChannel || ws) {
     stopListening();
@@ -1798,19 +1761,17 @@ btnPlayPause.onclick = () => {
 };
 
 btnPrevStation.onclick = () => {
-  const all = getAllPlayableExternalStations();
-  if (!currentExternalStation || all.length === 0) return;
-  const idx = all.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const prevIdx = (idx - 1 + all.length) % all.length;
-  selectExternalStation(all[prevIdx]);
+  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
+  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  const prevIdx = (idx - 1 + EXTERNAL_STATIONS.length) % EXTERNAL_STATIONS.length;
+  selectExternalStation(EXTERNAL_STATIONS[prevIdx]);
 };
 
 btnNextStation.onclick = () => {
-  const all = getAllPlayableExternalStations();
-  if (!currentExternalStation || all.length === 0) return;
-  const idx = all.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const nextIdx = (idx + 1) % all.length;
-  selectExternalStation(all[nextIdx]);
+  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
+  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  const nextIdx = (idx + 1) % EXTERNAL_STATIONS.length;
+  selectExternalStation(EXTERNAL_STATIONS[nextIdx]);
 };
 
 function sendChatMessage() {
