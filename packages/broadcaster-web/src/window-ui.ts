@@ -26,6 +26,8 @@ const WINDOW_IDS = [
 ];
 
 const VIEWPORT_PAD = 16;
+/** Minimum distance from viewport top so windows stay below the site top bar (44px) */
+const MIN_VIEWPORT_TOP = 44 + VIEWPORT_PAD; /* 60px */
 
 function px(num: number): string {
   return `${num}px`;
@@ -37,7 +39,7 @@ function clampWindowToViewport(win: HTMLElement) {
   const maxLeft = window.innerWidth - winRect.width - VIEWPORT_PAD;
   const maxTop = window.innerHeight - winRect.height - VIEWPORT_PAD;
   const vLeft = Math.max(VIEWPORT_PAD, Math.min(winRect.left, maxLeft));
-  const vTop = Math.max(VIEWPORT_PAD, Math.min(winRect.top, maxTop));
+  const vTop = Math.max(MIN_VIEWPORT_TOP, Math.min(winRect.top, maxTop));
   win.style.left = px(vLeft - deskRect.left);
   win.style.top = px(vTop - deskRect.top);
 }
