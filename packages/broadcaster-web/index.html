@@ -28,22 +28,24 @@
       }
 
       .broadcaster-topbar {
-        position: fixed;
+        position: sticky;
         top: 0;
         left: 0;
         right: 0;
         height: 44px;
-        background: var(--mac-light-gray);
+        background: var(--mac-black);
+        color: var(--mac-white);
         border-bottom: 2px solid var(--mac-black);
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 16px;
-        z-index: 15;
+        z-index: 5;
         font-size: 13px;
         font-weight: bold;
+        flex-shrink: 0;
       }
-      .broadcaster-topbar .topbar-title { color: var(--mac-black); }
+      .broadcaster-topbar .topbar-title { color: var(--mac-white); }
       .broadcaster-topbar .topbar-actions {
         display: flex;
         gap: 8px;
@@ -52,6 +54,12 @@
         width: auto;
         padding: 6px 12px;
         font-size: 12px;
+        background: transparent;
+        color: var(--mac-white);
+        border: 1px solid var(--mac-white);
+      }
+      .broadcaster-topbar .topbar-actions button:hover {
+        background: var(--mac-gray);
       }
 
       .desktop {
@@ -59,7 +67,9 @@
         min-height: 100vh;
         padding: 24px;
       }
-      body.has-topbar .desktop { padding-top: 52px; }
+      body.has-topbar .desktop {
+        min-height: calc(100vh - 44px);
+      }
 
       h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
       h3 { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
