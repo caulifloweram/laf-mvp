@@ -1241,15 +1241,23 @@ btnSaveChannelSettings.onclick = async () => {
 btnDeleteChannel.onclick = async () => {
   if (!editingChannel) return;
   if (!confirm(`Delete channel "${editingChannel.title}"? This cannot be undone.`)) return;
+  const channelIdToDelete = editingChannel.id;
   try {
-    await apiCall(`/api/me/channels/${editingChannel.id}`, { method: "DELETE" });
-    if (currentChannel?.id === editingChannel.id) currentChannel = null;
+    await apiCall(`/api/me/channels/${channelIdToDelete}`, { method: "DELETE" });
+    if (currentChannel?.id === channelIdToDelete) currentChannel = null;
     editingChannel = null;
     channelCoverDataUrl = null;
     await loadChannels();
     showSection("main");
   } catch (err: any) {
     channelSettingsStatus.textContent = err.message || "Failed to delete.";
+    // If 404, channel may already be deleted — refresh list and close settings
+    if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+      editingChannel = null;
+      channelCoverDataUrl = null;
+      await loadChannels().catch(() => {});
+      showSection("main");
+    }
   }
 };
 

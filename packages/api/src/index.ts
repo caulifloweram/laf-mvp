@@ -33,8 +33,8 @@ app.options("*", (req, res) => {
   res.sendStatus(204);
 });
 
-// Parse JSON bodies (higher limit for cover image base64)
-app.use(express.json({ limit: "2mb" }));
+// Parse JSON bodies (higher limit for cover image base64 uploads)
+app.use(express.json({ limit: "10mb" }));
 
 // Log all requests for debugging
 app.use((req, res, next) => {
