@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { Readable } from "stream";
 import { initDb, pool } from "./db";
 import { authMiddleware, login, register, changePassword, deleteUser } from "./auth";
 import { sendWelcomeEmail, sendPasswordChangedEmail, sendAccountDeletedEmail } from "./email";
@@ -125,6 +126,34 @@ app.get("/api/stream-check", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
   const result = await checkStreamUrl(url);
   res.json(result);
+});
+
+// Stream proxy: pipe radio stream through API so client avoids CORS when loading Audio()
+app.get("/api/stream-proxy", async (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    return res.status(400).send("Invalid url");
+  }
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 30000);
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { "Icy-MetaData": "1" },
+    });
+    clearTimeout(t);
+    const ct = response.headers.get("content-type");
+    if (ct) res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "no-store");
+    if (response.body) {
+      Readable.fromWeb(response.body).pipe(res);
+    } else {
+      res.status(502).send("No body");
+    }
+  } catch (err) {
+    if (!res.headersSent) res.status(502).send("Stream unavailable");
+  }
 });
 
 // Proxy for ICY stream metadata (CORS blocks client from reading stream headers directly)

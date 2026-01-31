@@ -10,12 +10,17 @@ function ensureRelayWsUrl(url: string): string {
   return (typeof window !== "undefined" && window.location?.protocol === "https:" ? "wss:" : "ws:") + "//" + trimmed;
 }
 
+const CONFIG_FETCH_TIMEOUT_MS = 3000;
+
 async function loadRuntimeConfig(): Promise<void> {
   try {
     const base = window.location.origin;
-    const res = await fetch(`${base}/config.json`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG_FETCH_TIMEOUT_MS);
+    const res = await fetch(`${base}/config.json`, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) return;
-    const config = await res.json() as { apiUrl?: string; relayWsUrl?: string };
+    const config = (await res.json()) as { apiUrl?: string; relayWsUrl?: string };
     if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
     if (config.relayWsUrl) {
       RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
@@ -23,9 +28,8 @@ async function loadRuntimeConfig(): Promise<void> {
         RELAY_BASE = (window.location.protocol === "https:" ? "wss:" : "ws:") + "//" + RELAY_BASE;
       }
     }
-    console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE);
   } catch (_) {
-    console.log("[config] Using build-time defaults");
+    // Use build-time defaults
   }
 }
 
@@ -321,9 +325,14 @@ function getExternalStationsFlat(): ExternalStation[] {
   );
 }
 
+const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 5000;
+
 async function loadExternalStations(): Promise<void> {
   try {
-    const res = await fetch(`${API_URL}/api/external-stations`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_STATIONS_FETCH_TIMEOUT_MS);
+    const res = await fetch(`${API_URL}/api/external-stations`, { signal: controller.signal });
+    clearTimeout(timeoutId);
     const rows = (await res.json()) as Array<{
       id?: string;
       name: string;
@@ -345,7 +354,6 @@ async function loadExternalStations(): Promise<void> {
     merged.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     allExternalStations = merged;
   } catch (e) {
-    console.warn("[external-stations] API failed, using built-in only:", e);
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
   renderExternalStations();
@@ -1273,7 +1281,10 @@ function selectExternalStation(station: ExternalStation) {
     try { mediaSource.disconnect(); } catch (_) {}
     mediaSource = null;
   }
-  externalAudio = new Audio(station.streamUrl);
+  const streamSrc = API_URL
+    ? `${API_URL}/api/stream-proxy?url=${encodeURIComponent(station.streamUrl)}`
+    : station.streamUrl;
+  externalAudio = new Audio(streamSrc);
   externalStreamConnectStartTime = Date.now();
   btnPrevStation.classList.remove("hidden");
   btnNextStation.classList.remove("hidden");
@@ -2480,14 +2491,14 @@ function applyStationsSearch() {
   if (stationsSearchTopbar) stationsSearchTopbar.value = v;
   renderUnifiedStations();
 }
-loadRuntimeConfig().then(async () => {
+loadRuntimeConfig().then(() => {
   updateTopBarAuth();
   initTheme();
   initMobileNav();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
-  await loadExternalStations();
-  if (token) await loadFavorites();
+  loadExternalStations();
+  if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();
   setInterval(loadChannels, 15000);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
