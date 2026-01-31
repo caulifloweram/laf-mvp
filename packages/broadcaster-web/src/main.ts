@@ -13,8 +13,22 @@ function floatToPCM16(pcm: Float32Array): Int16Array {
   return pcm16;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
-const RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+
+async function loadRuntimeConfig(): Promise<void> {
+  try {
+    const base = window.location.origin;
+    const res = await fetch(`${base}/config.json`);
+    if (!res.ok) return;
+    const config = await res.json() as { apiUrl?: string; relayWsUrl?: string };
+    if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
+    if (config.relayWsUrl) RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
+    console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE);
+  } catch (_) {
+    console.log("[config] Using build-time defaults");
+  }
+}
 
 const SAMPLE_RATE = 48000;
 const CHANNELS = 1;
@@ -1316,12 +1330,14 @@ btnDeleteChannel.onclick = async () => {
   }
 };
 
-if (token) {
-  loadChannels().then(() => showSection("main")).catch(() => {
-    token = null;
-    localStorage.removeItem("token");
+loadRuntimeConfig().then(() => {
+  if (token) {
+    loadChannels().then(() => showSection("main")).catch(() => {
+      token = null;
+      localStorage.removeItem("token");
+      showSection("login");
+    });
+  } else {
     showSection("login");
-  });
-} else {
-  showSection("login");
-}
+  }
+});

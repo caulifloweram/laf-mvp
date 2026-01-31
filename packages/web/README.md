@@ -10,14 +10,11 @@ The web package needs the full monorepo to build (client-web + broadcaster-web).
 
 1. In Railway, create a **new service** from this repo.
 2. Set **Root Directory** to **empty** (repo root). Leave the field blank; do **not** enter `packages/web`.
-3. In the service **Settings** → **Deploy** (or **Variables**), set **Custom Start Command** to:
-   ```bash
-   cd packages/web && npx --yes serve dist -p $PORT
-   ```
-4. Deploy. The root `nixpacks.toml` runs `pnpm install && pnpm build`, which builds the web package (and thus client-web, broadcaster-web, then launcher). The start command serves `packages/web/dist/`.
+3. **Required:** In the service **Variables**, set your API and relay URLs so Radio and Broadcaster can connect:
+   - `API_URL` – e.g. `https://your-api.up.railway.app` (no trailing slash)
+   - `RELAY_WS_URL` – e.g. `wss://your-relay.up.railway.app` (WebSocket URL, no trailing slash)
+   At container start, these are written to `dist/config.json`; the client and broadcaster fetch it and use these URLs.
+4. Deploy. The root `nixpacks.toml` runs `pnpm install && pnpm build`. The start command writes `config.json` from env, then serves `packages/web/dist/`.
 5. Your launcher URL is the service’s public URL (e.g. `https://your-web-service.up.railway.app`).
 
-**Env vars (optional):** If your API and relay are on different hosts, set these in the Railway service so the built Radio/Broadcaster apps use them:
-- `VITE_API_URL` – e.g. `https://your-api.up.railway.app`
-- `VITE_LAF_RELAY_URL` – e.g. `wss://your-relay.up.railway.app`
-These are applied at build time when client-web and broadcaster-web are built.
+**Optional:** You can also set `VITE_API_URL` and `VITE_LAF_RELAY_URL` for build-time fallbacks; runtime `config.json` (from `API_URL` and `RELAY_WS_URL`) takes precedence.

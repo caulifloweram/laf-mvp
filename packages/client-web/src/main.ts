@@ -1,7 +1,21 @@
 import { OpusDecoder } from "opus-decoder";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
-const RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+
+async function loadRuntimeConfig(): Promise<void> {
+  try {
+    const base = window.location.origin;
+    const res = await fetch(`${base}/config.json`);
+    if (!res.ok) return;
+    const config = await res.json() as { apiUrl?: string; relayWsUrl?: string };
+    if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
+    if (config.relayWsUrl) RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
+    console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE);
+  } catch (_) {
+    console.log("[config] Using build-time defaults");
+  }
+}
 
 const MIN_TIER = Number(import.meta.env.VITE_LAF_MIN_TIER || 1);
 const MAX_TIER_ALLOWED = Number(import.meta.env.VITE_LAF_MAX_TIER || 4);
@@ -1367,6 +1381,8 @@ btnStop.onclick = async () => {
   }
 };
 
-// Load channels on startup and refresh every 3s (more frequent to catch stream stops)
-loadChannels();
-setInterval(loadChannels, 3000);
+// Load runtime config (API/relay URLs from /config.json) then start
+loadRuntimeConfig().then(() => {
+  loadChannels();
+  setInterval(loadChannels, 3000);
+});
