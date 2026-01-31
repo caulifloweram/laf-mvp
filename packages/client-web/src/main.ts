@@ -730,15 +730,18 @@ async function startListening() {
     console.log(`   Was clean: ${event.wasClean}`);
     console.log(`   Total messages received: ${messageCount}, last seq: ${lastLoggedSeq}`);
     
-    // Clean up message monitor
+    if ((window as any).__streamEndCountdownInterval) {
+      clearInterval((window as any).__streamEndCountdownInterval);
+      (window as any).__streamEndCountdownInterval = null;
+    }
     if ((ws as any).messageMonitor) {
       clearInterval((ws as any).messageMonitor);
     }
     
-    // Properly stop listening to clean up all buffers and state
     stopListening();
     
-    updatePlayerStatus("stopped", "Disconnected");
+    const reason = event.reason || "";
+    updatePlayerStatus("stopped", reason.includes("Stream ended") ? "Stream ended" : "Disconnected");
     btnStart.disabled = false;
     btnStart.classList.remove("hidden");
     btnStop.classList.add("hidden");
@@ -782,8 +785,19 @@ async function startListening() {
           fadeOutDuration = countdown * 1000; // Convert to milliseconds
           (window as any).lastShownCountdown = countdown + 1; // Initialize countdown tracker
           
-          // Update UI to show countdown
+          // Update UI and tick countdown every second
           updatePlayerStatus("playing", `Stream ending in ${countdown}...`);
+          let remaining = countdown;
+          const countdownTick = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+              clearInterval(countdownTick);
+              updatePlayerStatus("playing", "Stream ending…");
+            } else {
+              updatePlayerStatus("playing", `Stream ending in ${remaining}...`);
+            }
+          }, 1000);
+          (window as any).__streamEndCountdownInterval = countdownTick;
         }
       } catch (err) {
         console.warn("Failed to parse control message:", err);

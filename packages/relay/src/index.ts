@@ -196,15 +196,15 @@ wss.on("connection", (ws, req) => {
       try {
         const parsed = JSON.parse(text) as { type?: string; text?: string };
         if (parsed.type === "chat" && typeof parsed.text === "string") {
-          if (!client.userId || !client.email) {
-            return; // Must be logged in to send chat
+          if (!client.userId) {
+            return; // Must be logged in (token with userId) to send chat
           }
           const trimmed = String(parsed.text).trim().slice(0, 2000);
           if (!trimmed) return;
           broadcastChatToRoom(r, streamId, {
             type: "chat",
             userId: client.userId,
-            email: client.email,
+            email: client.email || "User",
             text: trimmed,
             timestamp: Date.now()
           });
@@ -259,7 +259,12 @@ wss.on("connection", (ws, req) => {
     const r = rooms.get(streamId);
     if (!r) return;
     if (client.role === "broadcaster") {
-      console.log(`[${streamId}] Broadcaster disconnected`);
+      console.log(`[${streamId}] Broadcaster disconnected - closing all listeners so they stop`);
+      for (const listener of r.listeners) {
+        if (listener.ws.readyState === WebSocket.OPEN) {
+          listener.ws.close(1000, "Stream ended");
+        }
+      }
       r.broadcaster = null;
     } else {
       r.listeners.delete(client);
