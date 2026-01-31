@@ -186,7 +186,9 @@ const topbarAccount = document.getElementById("topbar-account")!;
 const SECTION_IDS: Record<string, string> = {
   login: "login-section",
   register: "register-section",
+  hub: "hub-section",
   main: "main-section",
+  "add-radio": "add-radio-section",
   create: "create-channel-section",
   "channel-settings": "channel-settings-section",
   broadcast: "broadcast-section",
@@ -200,7 +202,7 @@ function showSection(section: string) {
     const el = document.getElementById(id);
     if (el) el.classList.add("active");
   }
-  const isLoggedInSection = ["main", "create", "channel-settings", "broadcast", "settings"].includes(section);
+  const isLoggedInSection = ["hub", "main", "add-radio", "create", "channel-settings", "broadcast", "settings"].includes(section);
   if (isLoggedInSection) {
     topbarAccount.classList.remove("hidden");
   } else {
@@ -249,7 +251,7 @@ async function login(email: string, password: string) {
   token = result.token;
   localStorage.setItem("token", token);
   await loadChannels();
-  showSection("main");
+  showSection("hub");
 }
 
 async function register(email: string, password: string) {
@@ -261,7 +263,7 @@ async function register(email: string, password: string) {
     token = result.token;
     localStorage.setItem("token", token);
     await loadChannels();
-    showSection("main");
+    showSection("hub");
   } catch (err: any) {
     throw new Error(err.message || "Registration failed");
   }
@@ -1411,6 +1413,10 @@ function initMobileNav() {
   });
 }
 
+document.getElementById("btn-hub-live-stream")?.addEventListener("click", () => showSection("main"));
+document.getElementById("btn-hub-add-radio")?.addEventListener("click", () => showSection("add-radio"));
+document.getElementById("btn-add-radio-back")?.addEventListener("click", () => showSection("hub"));
+
 const addRadioStreamUrl = document.getElementById("add-radio-stream-url") as HTMLInputElement | null;
 const addRadioName = document.getElementById("add-radio-name") as HTMLInputElement | null;
 const addRadioWebsite = document.getElementById("add-radio-website") as HTMLInputElement | null;
@@ -1470,7 +1476,7 @@ loadRuntimeConfig().then(() => {
   initTheme();
   initMobileNav();
   if (token) {
-    loadChannels().then(() => showSection("main")).catch(() => {
+    loadChannels().then(() => showSection("hub")).catch(() => {
       token = null;
       localStorage.removeItem("token");
       showSection("login");

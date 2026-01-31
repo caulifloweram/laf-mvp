@@ -882,7 +882,11 @@ function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { 
 
 function renderExternalStationsToGrid(container: HTMLElement) {
   container.innerHTML = "";
-  const stations = getExternalStationsFlat();
+  const all = getExternalStationsFlat();
+  const stations = all.filter((s) => {
+    const cached = streamStatusCache[s.streamUrl];
+    return !cached || cached.ok;
+  });
   stations.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
@@ -973,9 +977,9 @@ async function checkExternalStationsStreams() {
           : Promise.resolve()
       )
     );
-    renderExternalStationsToGrid(externalStationsGrid);
-    renderExternalStationsToGrid(externalStationsGridHome);
   }
+  renderExternalStationsToGrid(externalStationsGrid);
+  renderExternalStationsToGrid(externalStationsGridHome);
 }
 
 function selectExternalStation(station: ExternalStation) {

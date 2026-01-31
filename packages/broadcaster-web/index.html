@@ -211,6 +211,13 @@
       button.danger { border-color: var(--border); }
       button.danger:hover { background: var(--card-hover); }
 
+      .hub-btn {
+        width: 100%;
+        padding: 18px 24px;
+        font-size: 16px;
+        text-align: left;
+      }
+
       .channels-list { margin-top: 12px; }
       .channel-item {
         background: var(--surface);
@@ -413,8 +420,21 @@
         </div>
       </div>
 
+      <div id="hub-section" class="section">
+        <h1 class="page-header">Broadcast</h1>
+        <p style="margin-bottom: 24px; color: var(--text-muted);">Choose how you want to get on LAF.</p>
+        <div style="display: flex; flex-direction: column; gap: 16px; max-width: 400px;">
+          <button type="button" id="btn-hub-live-stream" class="hub-btn">
+            Live stream on LAF
+          </button>
+          <button type="button" id="btn-hub-add-radio" class="hub-btn">
+            Add your existing radio to LAF
+          </button>
+        </div>
+      </div>
+
       <div id="main-section" class="section">
-        <h1 class="page-header">Channels</h1>
+        <h1 class="page-header">My Channels</h1>
         <div class="panel">
           <div id="channels-list" class="channels-list"></div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
@@ -427,8 +447,10 @@
             <button type="button" id="btn-close-channel-picker" style="margin-top: 8px; width: auto;">Close</button>
           </div>
         </div>
+      </div>
 
-        <h2 class="section-title">Add your radio to LAF</h2>
+      <div id="add-radio-section" class="section">
+        <h1 class="page-header">Add your existing radio to LAF</h1>
         <p style="margin-bottom: 12px; font-size: 14px; color: var(--text-muted);">
           Already have a radio stream on another website? Submit your stream URL and we'll list it on Live Stations.
         </p>
@@ -457,6 +479,7 @@
           <div id="add-radio-status" class="status info hidden" style="margin-bottom: 12px;"></div>
           <button type="button" id="btn-add-radio">Submit station</button>
         </div>
+        <button type="button" id="btn-add-radio-back" style="margin-top: 16px; width: auto;">Back</button>
       </div>
 
       <div id="create-channel-section" class="section">
