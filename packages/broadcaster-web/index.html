@@ -199,6 +199,29 @@
       }
       .channel-item:hover { background: var(--mac-white); }
 
+      .channel-cover-preview {
+        min-height: 60px;
+        margin-bottom: 8px;
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        overflow: hidden;
+        background: var(--mac-light-gray);
+      }
+      .channel-cover-preview img {
+        display: block;
+        max-width: 100%;
+        max-height: 120px;
+        object-fit: cover;
+      }
+      .channel-item-cover {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+        border: 1px solid var(--mac-black);
+        border-radius: 4px;
+        margin-right: 12px;
+      }
+
       .meter {
         width: 100%;
         height: 14px;
@@ -366,6 +389,37 @@
           </div>
         </div>
 
+        <div id="channel-settings-section" class="card hidden" data-window-id="channel-settings" style="left: 24px; top: 380px;">
+          <div class="mac-window-title">
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
+            Channel Settings
+          </div>
+          <div class="mac-window-body">
+          <div class="form-group">
+            <label>Cover image</label>
+            <div id="channel-cover-preview" class="channel-cover-preview"></div>
+            <input type="text" id="channel-cover-url" placeholder="Image URL (optional)" style="margin-top: 8px;" />
+            <small>Or choose a file:</small>
+            <input type="file" id="channel-cover-file" accept="image/*" style="margin-top: 4px;" />
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="channel-edit-title" placeholder="Channel name" />
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="channel-edit-desc" placeholder="What's this stream about?"></textarea>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btn-save-channel-settings">Save</button>
+            <button id="btn-cancel-channel-settings" style="margin-top: 0;">Cancel</button>
+            <button id="btn-delete-channel" class="danger" style="margin-left: auto;">Delete channel</button>
+          </div>
+          <div id="channel-settings-status" style="margin-top: 8px; font-size: 12px;"></div>
+          </div>
+        </div>
+
         <div id="broadcast-section" class="card hidden" data-window-id="broadcast" style="left: 24px; top: 320px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
@@ -470,6 +524,7 @@
       <button type="button" id="taskbar-my-channels" class="hidden">My Channels</button>
       <button type="button" id="taskbar-channels" class="hidden">Channels</button>
       <button type="button" id="taskbar-create-channel" class="hidden">Create Channel</button>
+      <button type="button" id="taskbar-channel-settings" class="hidden">Channel Settings</button>
       <button type="button" id="taskbar-broadcast" class="hidden">Broadcast</button>
       <button type="button" id="taskbar-settings" class="hidden">Settings</button>
     </div>

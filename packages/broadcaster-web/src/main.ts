@@ -38,6 +38,7 @@ interface Channel {
   id: string;
   title: string;
   description?: string;
+  cover_url?: string | null;
   created_at: string;
 }
 
@@ -66,6 +67,7 @@ const loginSection = document.getElementById("login-section")!;
 const registerSection = document.getElementById("register-section")!;
 const mainSection = document.getElementById("main-section")!;
 const createChannelSection = document.getElementById("create-channel-section")!;
+const channelSettingsSection = document.getElementById("channel-settings-section")!;
 const broadcastSection = document.getElementById("broadcast-section")!;
 const settingsSection = document.getElementById("settings-section")!;
 const channelsList = document.getElementById("channels-list")!;
@@ -87,6 +89,15 @@ const btnRegister = document.getElementById("btn-register")!;
 const btnCreateChannel = document.getElementById("btn-create-channel")!;
 const btnSaveChannel = document.getElementById("btn-save-channel")!;
 const btnCancelCreate = document.getElementById("btn-cancel-create")!;
+const channelEditTitle = document.getElementById("channel-edit-title") as HTMLInputElement;
+const channelEditDesc = document.getElementById("channel-edit-desc") as HTMLTextAreaElement;
+const channelCoverUrl = document.getElementById("channel-cover-url") as HTMLInputElement;
+const channelCoverFile = document.getElementById("channel-cover-file") as HTMLInputElement;
+const channelCoverPreview = document.getElementById("channel-cover-preview")!;
+const btnSaveChannelSettings = document.getElementById("btn-save-channel-settings")!;
+const btnCancelChannelSettings = document.getElementById("btn-cancel-channel-settings")!;
+const btnDeleteChannel = document.getElementById("btn-delete-channel")!;
+const channelSettingsStatus = document.getElementById("channel-settings-status")!;
 const btnGoLive = document.getElementById("btn-go-live")!;
 const btnStopLive = document.getElementById("btn-stop-live")!;
 const btnLogout = document.getElementById("btn-logout")!;
@@ -103,6 +114,7 @@ function showSection(section: string) {
   registerSection.classList.add("hidden");
   mainSection.classList.add("hidden");
   createChannelSection.classList.add("hidden");
+  channelSettingsSection.classList.add("hidden");
   broadcastSection.classList.add("hidden");
   settingsSection.classList.add("hidden");
 
@@ -115,6 +127,9 @@ function showSection(section: string) {
   } else if (section === "create") {
     mainSection.classList.remove("hidden");
     createChannelSection.classList.remove("hidden");
+  } else if (section === "channel-settings") {
+    mainSection.classList.remove("hidden");
+    channelSettingsSection.classList.remove("hidden");
   } else if (section === "broadcast") {
     mainSection.classList.remove("hidden");
     broadcastSection.classList.remove("hidden");
@@ -302,6 +317,8 @@ async function handleDeleteAccount() {
   }
 }
 
+let editingChannel: Channel | null = null;
+
 async function loadChannels() {
   try {
     const channels: Channel[] = await apiCall("/api/me/channels");
@@ -313,18 +330,60 @@ async function loadChannels() {
     channels.forEach((ch) => {
       const item = document.createElement("div");
       item.className = "channel-item";
+      const coverHtml = ch.cover_url
+        ? `<img src="${escapeAttr(ch.cover_url)}" alt="" class="channel-item-cover" />`
+        : "";
       item.innerHTML = `
-        <div>
-          <strong>${escapeHtml(ch.title)}</strong>
-          <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
+        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+          ${coverHtml}
+          <div>
+            <strong>${escapeHtml(ch.title)}</strong>
+            <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
+          </div>
         </div>
-        <button style="width: auto; padding: 0.5rem 1rem;" data-channel-id="${ch.id}">Go Live</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" style="width: auto; padding: 0.5rem 0.75rem;" data-channel-id="${ch.id}" class="btn-channel-settings">Settings</button>
+          <button style="width: auto; padding: 0.5rem 1rem;" data-channel-id="${ch.id}">Go Live</button>
+        </div>
       `;
-      item.querySelector("button")!.onclick = () => selectChannel(ch);
+      item.querySelector("button[data-channel-id]")!.onclick = () => selectChannel(ch);
+      item.querySelector(".btn-channel-settings")!.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openChannelSettings(ch);
+      });
       channelsList.appendChild(item);
     });
   } catch (err) {
     console.error("Failed to load channels:", err);
+  }
+}
+
+function escapeAttr(s: string): string {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML.replace(/"/g, "&quot;");
+}
+
+function openChannelSettings(ch: Channel) {
+  editingChannel = ch;
+  channelCoverDataUrl = null;
+  channelEditTitle.value = ch.title;
+  channelEditDesc.value = ch.description || "";
+  channelCoverUrl.value = ch.cover_url || "";
+  channelCoverFile.value = "";
+  updateCoverPreview(ch.cover_url || null);
+  channelSettingsStatus.textContent = "";
+  showSection("channel-settings");
+}
+
+function updateCoverPreview(url: string | null) {
+  channelCoverPreview.innerHTML = "";
+  if (url) {
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Cover";
+    img.onerror = () => { channelCoverPreview.innerHTML = "<span style='padding:8px;font-size:11px;'>Invalid image</span>"; };
+    channelCoverPreview.appendChild(img);
   }
 }
 
@@ -1086,6 +1145,84 @@ btnSettings.onclick = () => showSection("settings");
 btnCloseSettings.onclick = () => showSection("main");
 btnChangePassword.onclick = handleChangePassword;
 btnDeleteAccount.onclick = handleDeleteAccount;
+
+let channelCoverDataUrl: string | null = null;
+
+channelCoverUrl.addEventListener("input", () => {
+  channelCoverDataUrl = null;
+  channelCoverFile.value = "";
+  updateCoverPreview(channelCoverUrl.value?.trim() || null);
+});
+channelCoverFile.addEventListener("change", () => {
+  const file = channelCoverFile.files?.[0];
+  if (!file || !file.type.startsWith("image/")) {
+    channelCoverDataUrl = null;
+    updateCoverPreview(channelCoverUrl.value?.trim() || null);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    channelCoverDataUrl = reader.result as string;
+    updateCoverPreview(channelCoverDataUrl);
+  };
+  reader.readAsDataURL(file);
+});
+
+btnCancelChannelSettings.onclick = () => {
+  editingChannel = null;
+  channelCoverDataUrl = null;
+  showSection("main");
+};
+
+btnSaveChannelSettings.onclick = async () => {
+  if (!editingChannel) return;
+  const title = channelEditTitle.value?.trim();
+  if (!title) {
+    channelSettingsStatus.textContent = "Title is required.";
+    return;
+  }
+  channelSettingsStatus.textContent = "Saving...";
+  try {
+    const body: { title: string; description?: string | null; cover_url?: string | null } = {
+      title,
+      description: channelEditDesc.value?.trim() || null,
+    };
+    const coverValue = channelCoverDataUrl ?? channelCoverUrl.value?.trim() || null;
+    if (coverValue !== undefined && coverValue !== null) body.cover_url = coverValue;
+    await apiCall(`/api/me/channels/${editingChannel.id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    channelSettingsStatus.textContent = "Saved.";
+    editingChannel = { ...editingChannel, title, description: body.description ?? undefined, cover_url: body.cover_url ?? undefined };
+    if (currentChannel?.id === editingChannel.id) {
+      currentChannel.title = title;
+      currentChannel.description = body.description ?? undefined;
+      currentChannel.cover_url = body.cover_url ?? undefined;
+      broadcastChannelTitle.textContent = title;
+      broadcastChannelDesc.textContent = body.description ?? "";
+    }
+    channelCoverDataUrl = null;
+    await loadChannels();
+  } catch (err: any) {
+    channelSettingsStatus.textContent = err.message || "Failed to save.";
+  }
+};
+
+btnDeleteChannel.onclick = async () => {
+  if (!editingChannel) return;
+  if (!confirm(`Delete channel "${editingChannel.title}"? This cannot be undone.`)) return;
+  try {
+    await apiCall(`/api/me/channels/${editingChannel.id}`, { method: "DELETE" });
+    if (currentChannel?.id === editingChannel.id) currentChannel = null;
+    editingChannel = null;
+    channelCoverDataUrl = null;
+    await loadChannels();
+    showSection("main");
+  } catch (err: any) {
+    channelSettingsStatus.textContent = err.message || "Failed to delete.";
+  }
+};
 
 // Check if already logged in
 if (token) {

@@ -33,8 +33,8 @@ app.options("*", (req, res) => {
   res.sendStatus(204);
 });
 
-// Parse JSON bodies
-app.use(express.json());
+// Parse JSON bodies (higher limit for cover image base64)
+app.use(express.json({ limit: "2mb" }));
 
 // Log all requests for debugging
 app.use((req, res, next) => {
@@ -200,6 +200,7 @@ app.get("/api/channels/live", async (_req, res) => {
         c.id,
         c.title,
         c.description,
+        c.cover_url as "coverUrl",
         s.stream_id as "streamId",
         s.started_at,
         s.ended_at
@@ -271,6 +272,7 @@ app.get("/api/channels/live", async (_req, res) => {
           id: row.id,
           title: row.title,
           description: row.description,
+          coverUrl: row.coverUrl ?? null,
           streamId: row.streamId
         });
       }
@@ -289,7 +291,7 @@ app.get("/api/channels/live", async (_req, res) => {
 app.get("/api/me/channels", authMiddleware, async (req, res) => {
   const user = (req as any).user;
   const result = await pool.query(
-    "SELECT id, title, description, created_at FROM channels WHERE owner_id = $1 ORDER BY created_at DESC",
+    "SELECT id, title, description, cover_url, created_at FROM channels WHERE owner_id = $1 ORDER BY created_at DESC",
     [user.id]
   );
   res.json(result.rows);
@@ -303,10 +305,71 @@ app.post("/api/me/channels", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Title required" });
   }
   const result = await pool.query(
-    "INSERT INTO channels (owner_id, title, description) VALUES ($1, $2, $3) RETURNING id, title, description, created_at",
+    "INSERT INTO channels (owner_id, title, description) VALUES ($1, $2, $3) RETURNING id, title, description, cover_url, created_at",
     [user.id, title, description || null]
   );
   res.json(result.rows[0]);
+});
+
+// Protected: Update channel (title, description, cover)
+app.patch("/api/me/channels/:channelId", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { channelId } = req.params;
+  const { title, description, cover_url, cover_base64 } = req.body;
+
+  const channelResult = await pool.query(
+    "SELECT id FROM channels WHERE id = $1 AND owner_id = $2",
+    [channelId, user.id]
+  );
+  if (channelResult.rows.length === 0) {
+    return res.status(404).json({ error: "Channel not found" });
+  }
+
+  const updates: string[] = [];
+  const values: any[] = [];
+  let idx = 1;
+  if (title !== undefined) {
+    if (typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({ error: "Title cannot be empty" });
+    }
+    updates.push(`title = $${idx++}`);
+    values.push(title.trim());
+  }
+  if (description !== undefined) {
+    updates.push(`description = $${idx++}`);
+    values.push(description === "" || description == null ? null : String(description).trim());
+  }
+  const coverValue = cover_base64 != null ? cover_base64 : cover_url;
+  if (coverValue !== undefined) {
+    updates.push(`cover_url = $${idx++}`);
+    values.push(coverValue === "" ? null : String(coverValue));
+  }
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+  updates.push("updated_at = NOW()");
+  values.push(channelId, user.id);
+
+  const result = await pool.query(
+    `UPDATE channels SET ${updates.join(", ")} WHERE id = $${idx} AND owner_id = $${idx + 1} RETURNING id, title, description, cover_url, created_at`,
+    values
+  );
+  res.json(result.rows[0]);
+});
+
+// Protected: Delete channel
+app.delete("/api/me/channels/:channelId", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { channelId } = req.params;
+
+  const result = await pool.query(
+    "DELETE FROM channels WHERE id = $1 AND owner_id = $2 RETURNING id",
+    [channelId, user.id]
+  );
+  if (result.rowCount === 0) {
+    return res.status(404).json({ error: "Channel not found" });
+  }
+  res.json({ success: true, deleted: channelId });
 });
 
 // Protected: Go live (start streaming)

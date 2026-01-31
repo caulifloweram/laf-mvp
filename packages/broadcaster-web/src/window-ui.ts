@@ -21,6 +21,7 @@ const WINDOW_IDS = [
   "my-channels",
   "channels",
   "create-channel",
+  "channel-settings",
   "broadcast",
   "settings",
 ];

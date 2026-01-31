@@ -32,10 +32,14 @@ export async function initDb() {
       owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       title VARCHAR(255) NOT NULL,
       description TEXT,
+      cover_url TEXT,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    ALTER TABLE channels ADD COLUMN IF NOT EXISTS cover_url TEXT
+  `).catch(() => { /* column may already exist */ });
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS streams (

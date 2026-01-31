@@ -25,6 +25,7 @@ interface LiveChannel {
   id: string;
   title: string;
   description?: string;
+  coverUrl?: string | null;
   streamId: number;
 }
 
@@ -444,9 +445,13 @@ async function loadChannels() {
       }
       const card = document.createElement("div");
       card.className = "channel-card";
+      const coverHtml = c.coverUrl
+        ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />`
+        : "";
       card.innerHTML = `
         <div class="mac-window-title"><span class="close-box"></span>${escapeHtml(c.title || "Untitled")}</div>
         <div class="mac-window-body">
+          ${coverHtml}
           <div class="channel-desc">${escapeHtml(c.description || "")}</div>
           <span class="live-badge">LIVE</span>
         </div>
@@ -486,6 +491,12 @@ function escapeHtml(text: string): string {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function escapeAttr(s: string): string {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML.replace(/"/g, "&quot;");
 }
 
 function selectChannel(channel: LiveChannel) {
