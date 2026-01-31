@@ -254,6 +254,50 @@ initDb()
     // Don't crash - API can still serve some endpoints
   });
 
+// Public: Get all external stations (user-submitted; client merges with built-in list)
+app.get("/api/external-stations", async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl", created_at as "createdAt"
+      FROM external_stations
+      ORDER BY name ASC
+    `);
+    res.json(result.rows);
+  } catch (err: any) {
+    console.error("Error fetching external stations:", err);
+    res.status(500).json({ error: "Failed to fetch external stations", details: err.message });
+  }
+});
+
+// Protected: Submit a radio station URL to be listed (for broadcasters who already have a stream elsewhere)
+app.post("/api/external-stations", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const { name, description, websiteUrl, streamUrl, logoUrl } = req.body;
+  if (!streamUrl || typeof streamUrl !== "string" || !streamUrl.trim()) {
+    return res.status(400).json({ error: "Stream URL is required" });
+  }
+  const url = streamUrl.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return res.status(400).json({ error: "Stream URL must be http or https" });
+  }
+  const website = (websiteUrl && typeof websiteUrl === "string" ? websiteUrl.trim() : url) || url;
+  const stationName = (name && typeof name === "string" ? name.trim() : null) || "User station";
+  const desc = (description && typeof description === "string" ? description.trim() : null) || "";
+  const logo = (logoUrl && typeof logoUrl === "string" ? logoUrl.trim() : null) || null;
+  try {
+    const result = await pool.query(
+      `INSERT INTO external_stations (name, description, website_url, stream_url, logo_url, submitted_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl", created_at as "createdAt"`,
+      [stationName, desc || null, website, url, logo, user.id]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err: any) {
+    console.error("Error creating external station:", err);
+    res.status(500).json({ error: "Failed to add station", details: err.message });
+  }
+});
+
 // Auth endpoints
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;

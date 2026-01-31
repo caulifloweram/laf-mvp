@@ -113,6 +113,57 @@
       }
       .theme-toggle:hover { background: rgba(255,255,255,0.15); }
 
+      /* Hamburger: visible only on mobile */
+      .menu-toggle {
+        display: none;
+        background: transparent;
+        border: 1px solid var(--topbar-text);
+        color: var(--topbar-text);
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 20px;
+        font-family: inherit;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .menu-toggle:hover { background: rgba(255,255,255,0.1); }
+      .menu-toggle:focus { outline: 2px solid var(--topbar-text); outline-offset: 2px; }
+      .nav-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 18;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .nav-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        background: var(--topbar-bg);
+        color: var(--topbar-text);
+        border-left: 2px solid var(--border);
+        z-index: 25;
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+      }
+      .nav-drawer .topbar-nav-item { display: block; padding: 12px 14px; min-height: 44px; box-sizing: border-box; }
+      .nav-drawer .theme-toggle { width: 100%; justify-content: center; min-height: 44px; }
+      body.nav-open .nav-backdrop { display: block; opacity: 1; }
+      body.nav-open .nav-drawer { transform: translateX(0); }
+
       /* Main content: brutalist grid */
       .main {
         max-width: 1200px;
@@ -190,6 +241,18 @@
         margin-top: 6px;
       }
 
+      .stations-search {
+        width: 100%;
+        max-width: 320px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+        border: 2px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 14px;
+        font-family: inherit;
+      }
+      .stations-search::placeholder { color: var(--text-muted); }
       .external-stations-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -407,17 +470,51 @@
 
       .hidden { display: none !important; }
 
+      /* Mobile: adaptable layout + hamburger menu */
       @media (max-width: 768px) {
-        .channels-grid { grid-template-columns: 1fr; }
-        .footer-player { grid-template-columns: 56px 1fr auto; }
+        body.nav-open { overflow: hidden; }
+        .site-topbar {
+          grid-template-columns: 1fr auto auto;
+          padding: 0 12px;
+          gap: 8px;
+        }
+        .menu-toggle { display: flex; }
+        .topbar-nav { display: none !important; }
+        .topbar-left { gap: 0; }
+        .main { padding: 16px 12px; }
+        .page-header { font-size: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 12px; margin: 20px 0 10px; }
+        .channels-grid { grid-template-columns: 1fr; gap: 12px; }
+        .external-stations-grid { grid-template-columns: 1fr; gap: 12px; }
+        .stations-search { max-width: 100%; margin-bottom: 12px; }
+        .footer-player {
+          grid-template-columns: 48px 1fr auto;
+          gap: 10px;
+          padding: 0 12px;
+          height: 64px;
+        }
+        .footer-player .cover-wrap { width: 44px; height: 44px; }
+        .footer-player .info .title { font-size: 13px; }
+        .footer-player .info .desc { font-size: 10px; }
+        .footer-player .controls button { padding: 8px 10px; font-size: 11px; min-width: auto; }
         .footer-player .status-text { display: none; }
+        body { padding-bottom: 64px; }
+        .confirm-dialog { max-width: calc(100vw - 24px); margin: 0 12px; }
+      }
+      @media (max-width: 480px) {
+        .site-topbar { height: 44px; }
+        .topbar-right .topbar-nav-item,
+        .topbar-right button { padding: 8px 10px; font-size: 11px; }
+        .footer-player .controls { gap: 4px; }
       }
     </style>
   </head>
   <body>
+    <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
         <a href="#home" class="topbar-logo" id="nav-logo">LAF</a>
+        <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
           <a href="#home" class="topbar-nav-item" id="nav-home">Home</a>
           <a href="#live" class="topbar-nav-item" id="nav-live">Live Stations</a>
@@ -433,6 +530,16 @@
         <button type="button" id="client-logout-btn" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
       </div>
     </nav>
+    <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
+      <a href="#home" class="topbar-nav-item" data-nav="home">Home</a>
+      <a href="#live" class="topbar-nav-item" data-nav="live">Live Stations</a>
+      <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
+      <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
+      <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
+      <a href="#" id="client-signin-link-drawer" class="topbar-nav-item">Sign in</a>
+      <span id="client-user-email-drawer" class="topbar-nav-item hidden"></span>
+      <button type="button" id="client-logout-btn-drawer" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:10px 14px;width:100%;text-align:left;font-weight:bold;cursor:pointer;">Logout</button>
+    </div>
 
     <main class="main">
       <div id="view-home" class="view" role="main">
@@ -445,6 +552,7 @@
         <h2 class="section-title">Live channels</h2>
         <div id="channels-grid-home" class="channels-grid"></div>
         <h2 class="section-title">Other stations</h2>
+        <input type="text" id="stations-search-home" class="stations-search" placeholder="Search stations..." aria-label="Search stations" />
         <div id="external-stations-grid-home" class="external-stations-grid"></div>
       </div>
 
@@ -453,6 +561,7 @@
         <h2 class="section-title">Live channels</h2>
         <div id="channels-grid" class="channels-grid"></div>
         <h2 class="section-title">Other stations</h2>
+        <input type="text" id="stations-search" class="stations-search" placeholder="Search stations..." aria-label="Search stations" />
         <div id="external-stations-grid" class="external-stations-grid"></div>
       </div>
 
@@ -467,8 +576,6 @@
           <h2>Technology</h2>
           <p>LAF uses low-latency WebSocket streaming for real-time audio delivery.</p>
         </div>
-        <h2 class="section-title">Stations</h2>
-        <div id="external-stations-grid-about" class="external-stations-grid"></div>
       </div>
     </main>
 

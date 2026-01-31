@@ -57,5 +57,21 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_streams_active ON streams(ended_at) WHERE ended_at IS NULL;
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS external_stations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      website_url TEXT NOT NULL,
+      stream_url TEXT NOT NULL,
+      logo_url TEXT,
+      submitted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_external_stations_name ON external_stations(name);
+  `).catch(() => {});
+
   console.log("✅ Database tables initialized");
 }

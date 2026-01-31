@@ -183,58 +183,32 @@ function showConfirm(options: {
 
 const topbarAccount = document.getElementById("topbar-account")!;
 
-function showSection(section: string) {
-  loginSection.classList.add("hidden");
-  registerSection.classList.add("hidden");
-  mainSection.classList.add("hidden");
-  createChannelSection.classList.add("hidden");
-  channelSettingsSection.classList.add("hidden");
-  broadcastSection.classList.add("hidden");
-  settingsSection.classList.add("hidden");
+const SECTION_IDS: Record<string, string> = {
+  login: "login-section",
+  register: "register-section",
+  main: "main-section",
+  create: "create-channel-section",
+  "channel-settings": "channel-settings-section",
+  broadcast: "broadcast-section",
+  settings: "settings-section",
+};
 
+function showSection(section: string) {
+  document.querySelectorAll(".section").forEach((el) => el.classList.remove("active"));
+  const id = SECTION_IDS[section];
+  if (id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("active");
+  }
   const isLoggedInSection = ["main", "create", "channel-settings", "broadcast", "settings"].includes(section);
   if (isLoggedInSection) {
     topbarAccount.classList.remove("hidden");
   } else {
     topbarAccount.classList.add("hidden");
   }
-
-  if (section === "login") {
-    loginSection.classList.remove("hidden", "window-closed");
-  } else if (section === "register") {
-    registerSection.classList.remove("hidden", "window-closed");
-  } else if (section === "main") {
-    mainSection.classList.remove("hidden");
-    document.querySelector('.card[data-window-id="channels"]')?.classList.remove("window-closed");
-    document.querySelectorAll(".card.bring-front").forEach((c) => c.classList.remove("bring-front"));
-    document.querySelector('.card[data-window-id="channels"]')?.classList.add("bring-front");
-  } else if (section === "create") {
-    mainSection.classList.remove("hidden", "window-closed");
-    createChannelSection.classList.remove("hidden", "window-closed");
-  } else if (section === "channel-settings") {
-    mainSection.classList.remove("hidden", "window-closed");
-    channelSettingsSection.classList.remove("hidden", "window-closed");
-  } else if (section === "broadcast") {
-    mainSection.classList.remove("hidden", "window-closed");
-    broadcastSection.classList.remove("hidden", "window-closed");
-  } else if (section === "settings") {
-    mainSection.classList.remove("hidden", "window-closed");
-    settingsSection.classList.remove("hidden", "window-closed");
-    loadUserProfile();
-  }
-  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
-  if (clamp) {
-    document.querySelectorAll(".card:not(.window-closed):not(.hidden)").forEach((el) => clamp(el as HTMLElement));
-  }
+  if (section === "settings") loadUserProfile();
 }
 
-// When user closes a secondary window (red close button), go back to main so they can reopen via UI
-window.addEventListener("window-closed", ((e: CustomEvent<{ windowId: string }>) => {
-  const { windowId } = e.detail;
-  if (["channel-settings", "create-channel", "broadcast", "settings"].includes(windowId)) {
-    showSection("main");
-  }
-}) as EventListener);
 
 async function apiCall(endpoint: string, options: RequestInit = {}) {
   const headers: HeadersInit = {
@@ -1389,7 +1363,112 @@ btnDeleteChannel.onclick = async () => {
   }
 };
 
+function updateThemeButtonText() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "Light" : "Dark";
+  const btn = document.getElementById("theme-toggle");
+  const btnDrawer = document.getElementById("theme-toggle-drawer");
+  if (btn) btn.textContent = next;
+  if (btnDrawer) btnDrawer.textContent = next;
+}
+function initTheme() {
+  const stored = localStorage.getItem("laf_theme") as "light" | "dark" | null;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = stored || (prefersDark ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+  updateThemeButtonText();
+  const toggle = () => {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("laf_theme", next);
+    updateThemeButtonText();
+  };
+  document.getElementById("theme-toggle")?.addEventListener("click", toggle);
+  document.getElementById("theme-toggle-drawer")?.addEventListener("click", toggle);
+}
+function closeMobileNav() {
+  document.body.classList.remove("nav-open");
+  document.getElementById("menu-toggle")?.setAttribute("aria-expanded", "false");
+}
+function initMobileNav() {
+  const menuToggle = document.getElementById("menu-toggle");
+  const backdrop = document.getElementById("nav-backdrop");
+  const drawer = document.getElementById("nav-drawer");
+  menuToggle?.addEventListener("click", () => {
+    const open = document.body.classList.toggle("nav-open");
+    menuToggle.setAttribute("aria-expanded", String(open));
+  });
+  backdrop?.addEventListener("click", closeMobileNav);
+  drawer?.querySelectorAll("a.topbar-nav-item").forEach((a) => {
+    a.addEventListener("click", () => closeMobileNav());
+  });
+  document.getElementById("btn-settings-drawer")?.addEventListener("click", () => {
+    closeMobileNav();
+    showSection("settings");
+  });
+  document.getElementById("btn-logout-drawer")?.addEventListener("click", () => {
+    closeMobileNav();
+    btnLogout.click();
+  });
+}
+
+const addRadioStreamUrl = document.getElementById("add-radio-stream-url") as HTMLInputElement | null;
+const addRadioName = document.getElementById("add-radio-name") as HTMLInputElement | null;
+const addRadioWebsite = document.getElementById("add-radio-website") as HTMLInputElement | null;
+const addRadioDesc = document.getElementById("add-radio-desc") as HTMLTextAreaElement | null;
+const addRadioLogo = document.getElementById("add-radio-logo") as HTMLInputElement | null;
+const addRadioStatus = document.getElementById("add-radio-status");
+const btnAddRadio = document.getElementById("btn-add-radio");
+
+function showAddRadioStatus(message: string, isError: boolean) {
+  if (!addRadioStatus) return;
+  addRadioStatus.textContent = message;
+  addRadioStatus.classList.remove("hidden", "status-success", "status-error", "status-info");
+  addRadioStatus.classList.add("status", isError ? "status-error" : "status-success");
+}
+
+btnAddRadio?.addEventListener("click", async () => {
+  const streamUrl = addRadioStreamUrl?.value?.trim();
+  if (!streamUrl) {
+    showAddRadioStatus("Stream URL is required.", true);
+    return;
+  }
+  if (!streamUrl.startsWith("http://") && !streamUrl.startsWith("https://")) {
+    showAddRadioStatus("Stream URL must be http or https.", true);
+    return;
+  }
+  if (!token) {
+    showAddRadioStatus("Please log in to submit a station.", true);
+    return;
+  }
+  try {
+    if (btnAddRadio) btnAddRadio.disabled = true;
+    showAddRadioStatus("Submitting...", false);
+    await apiCall("/api/external-stations", {
+      method: "POST",
+      body: JSON.stringify({
+        streamUrl,
+        name: addRadioName?.value?.trim() || undefined,
+        websiteUrl: addRadioWebsite?.value?.trim() || undefined,
+        description: addRadioDesc?.value?.trim() || undefined,
+        logoUrl: addRadioLogo?.value?.trim() || undefined,
+      }),
+    });
+    showAddRadioStatus("Station submitted. It will appear on Live Stations shortly.", false);
+    if (addRadioStreamUrl) addRadioStreamUrl.value = "";
+    if (addRadioName) addRadioName.value = "";
+    if (addRadioWebsite) addRadioWebsite.value = "";
+    if (addRadioDesc) addRadioDesc.value = "";
+    if (addRadioLogo) addRadioLogo.value = "";
+  } catch (err: any) {
+    showAddRadioStatus(err.message || "Failed to submit station.", true);
+  } finally {
+    if (btnAddRadio) btnAddRadio.disabled = false;
+  }
+});
+
 loadRuntimeConfig().then(() => {
+  initTheme();
+  initMobileNav();
   if (token) {
     loadChannels().then(() => showSection("main")).catch(() => {
       token = null;

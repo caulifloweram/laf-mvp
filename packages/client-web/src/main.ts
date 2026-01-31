@@ -142,8 +142,8 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   },
 ];
 
-/** Expand configs into a flat list of playable stations (one per channel or one per station). */
-function getExternalStationsFlat(): ExternalStation[] {
+/** Built-in configs flattened to one entry per playable stream. */
+function getBuiltInStationsFlat(): ExternalStation[] {
   const flat: ExternalStation[] = [];
   for (const s of EXTERNAL_STATION_CONFIGS) {
     if (s.channels && s.channels.length > 0) {
@@ -167,6 +167,52 @@ function getExternalStationsFlat(): ExternalStation[] {
     }
   }
   return flat;
+}
+
+/** All stations (built-in + user-submitted from API), sorted A–Z. Filtered by search in render. */
+let allExternalStations: ExternalStation[] = (() => {
+  const b = getBuiltInStationsFlat();
+  b.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return b;
+})();
+let stationsSearchQuery = "";
+
+function getExternalStationsFlat(): ExternalStation[] {
+  const q = stationsSearchQuery.trim().toLowerCase();
+  if (!q) return allExternalStations;
+  return allExternalStations.filter(
+    (s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.description && s.description.toLowerCase().includes(q))
+  );
+}
+
+async function loadExternalStations(): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/api/external-stations`);
+    const rows = (await res.json()) as Array<{
+      name: string;
+      description?: string | null;
+      websiteUrl: string;
+      streamUrl: string;
+      logoUrl?: string | null;
+    }>;
+    const userStations: ExternalStation[] = (rows || []).map((r) => ({
+      name: r.name || "Station",
+      description: r.description || "",
+      websiteUrl: r.websiteUrl || r.streamUrl,
+      streamUrl: r.streamUrl,
+      logoUrl: r.logoUrl || "",
+    }));
+    const builtIn = getBuiltInStationsFlat();
+    const merged = [...builtIn, ...userStations];
+    merged.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    allExternalStations = merged;
+  } catch (e) {
+    console.warn("[external-stations] API failed, using built-in only:", e);
+    allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }
+  renderExternalStations();
 }
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
@@ -506,7 +552,8 @@ const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
 const externalStationsGridHome = document.getElementById("external-stations-grid-home")!;
-const externalStationsGridAbout = document.getElementById("external-stations-grid-about")!;
+const stationsSearchInput = document.getElementById("stations-search") as HTMLInputElement | null;
+const stationsSearchHomeInput = document.getElementById("stations-search-home") as HTMLInputElement | null;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
 const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
 const btnPrevStation = document.getElementById("btn-prev-station")!;
@@ -533,17 +580,26 @@ function updateTopBarAuth() {
   const signinLink = document.getElementById("client-signin-link")!;
   const userEmailEl = document.getElementById("client-user-email")!;
   const logoutBtn = document.getElementById("client-logout-btn")!;
+  const signinLinkDrawer = document.getElementById("client-signin-link-drawer");
+  const userEmailDrawer = document.getElementById("client-user-email-drawer");
+  const logoutBtnDrawer = document.getElementById("client-logout-btn-drawer");
   if (token && userEmail) {
     signinLink.classList.add("hidden");
     userEmailEl.textContent = userEmail;
     userEmailEl.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
+    if (signinLinkDrawer) signinLinkDrawer.classList.add("hidden");
+    if (userEmailDrawer) { userEmailDrawer.textContent = userEmail; userEmailDrawer.classList.remove("hidden"); }
+    if (logoutBtnDrawer) logoutBtnDrawer.classList.remove("hidden");
     chatSigninPrompt.classList.add("hidden");
     chatInputRow.classList.remove("hidden");
   } else {
     signinLink.classList.remove("hidden");
     userEmailEl.classList.add("hidden");
     logoutBtn.classList.add("hidden");
+    if (signinLinkDrawer) signinLinkDrawer.classList.remove("hidden");
+    if (userEmailDrawer) { userEmailDrawer.classList.add("hidden"); }
+    if (logoutBtnDrawer) logoutBtnDrawer.classList.add("hidden");
     chatSigninPrompt.classList.remove("hidden");
     chatInputRow.classList.add("hidden");
   }
@@ -635,6 +691,9 @@ const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
 /** Stations whose logo failed to load; show initial letter from the start on re-render (no blink). */
 const logoLoadFailed = new Set<string>();
 let externalAudio: HTMLAudioElement | null = null;
+/** When we started connecting to the current external stream (for grace period before showing "Stream error"). */
+let externalStreamConnectStartTime = 0;
+const EXTERNAL_STREAM_CONNECT_GRACE_MS = 6000;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
@@ -804,7 +863,6 @@ function renderExternalStations() {
   const needCheck = Object.keys(streamStatusCache).length === 0;
   renderExternalStationsToGrid(externalStationsGrid);
   renderExternalStationsToGrid(externalStationsGridHome);
-  renderExternalStationsToGrid(externalStationsGridAbout);
   if (needCheck) checkExternalStationsStreams();
 }
 
@@ -882,6 +940,7 @@ function selectExternalStation(station: ExternalStation) {
     mediaSource = null;
   }
   externalAudio = new Audio(station.streamUrl);
+  externalStreamConnectStartTime = Date.now();
   btnPrevStation.classList.remove("hidden");
   btnNextStation.classList.remove("hidden");
   nowPlayingProgramWrap.classList.add("hidden");
@@ -899,7 +958,14 @@ function selectExternalStation(station: ExternalStation) {
   }).catch(() => {});
 
   externalAudio.onplaying = () => updatePlayerStatus("playing", "Listening to stream");
-  externalAudio.onerror = () => updatePlayerStatus("stopped", "Stream error");
+  externalAudio.onerror = () => {
+    const elapsed = Date.now() - externalStreamConnectStartTime;
+    if (elapsed < EXTERNAL_STREAM_CONNECT_GRACE_MS) {
+      updatePlayerStatus("playing", "Connecting…");
+    } else {
+      updatePlayerStatus("stopped", "Stream error");
+    }
+  };
   externalAudio.onended = () => {
     if (currentExternalStation?.streamUrl === station.streamUrl) {
       updatePlayerStatus("ready", "Stream ended");
@@ -2000,13 +2066,20 @@ document.getElementById("client-signin-link")!.addEventListener("click", (e) => 
   e.preventDefault();
   authOverlay.classList.add("visible");
 });
-document.getElementById("client-logout-btn")!.onclick = () => {
+function doLogout() {
   token = null;
   userEmail = null;
   localStorage.removeItem("laf_token");
   localStorage.removeItem("laf_user_email");
   updateTopBarAuth();
-};
+}
+document.getElementById("client-logout-btn")!.onclick = doLogout;
+document.getElementById("client-logout-btn-drawer")?.addEventListener("click", doLogout);
+document.getElementById("client-signin-link-drawer")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  closeMobileNav();
+  authOverlay.classList.add("visible");
+});
 
 // Load runtime config (API/relay URLs from /config.json) then start
 function setActiveView(route: RouteId) {
@@ -2019,26 +2092,63 @@ function setActiveView(route: RouteId) {
   });
 }
 
+function updateThemeButtonText() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "Light" : "Dark";
+  const btn = document.getElementById("theme-toggle");
+  const btnDrawer = document.getElementById("theme-toggle-drawer");
+  if (btn) btn.textContent = next;
+  if (btnDrawer) btnDrawer.textContent = next;
+}
 function initTheme() {
   const stored = localStorage.getItem("laf_theme") as "light" | "dark" | null;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const theme = stored || (prefersDark ? "dark" : "light");
   document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
-  const btn = document.getElementById("theme-toggle");
-  if (btn) btn.textContent = theme === "dark" ? "Light" : "Dark";
-  btn?.addEventListener("click", () => {
+  updateThemeButtonText();
+  const toggle = () => {
     const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("laf_theme", next);
-    if (btn) btn.textContent = next === "dark" ? "Light" : "Dark";
+    updateThemeButtonText();
+  };
+  document.getElementById("theme-toggle")?.addEventListener("click", toggle);
+  document.getElementById("theme-toggle-drawer")?.addEventListener("click", toggle);
+}
+function closeMobileNav() {
+  document.body.classList.remove("nav-open");
+  const menuToggle = document.getElementById("menu-toggle");
+  if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+}
+function initMobileNav() {
+  const menuToggle = document.getElementById("menu-toggle");
+  const backdrop = document.getElementById("nav-backdrop");
+  const drawer = document.getElementById("nav-drawer");
+  menuToggle?.addEventListener("click", () => {
+    const open = document.body.classList.toggle("nav-open");
+    menuToggle.setAttribute("aria-expanded", String(open));
+  });
+  backdrop?.addEventListener("click", closeMobileNav);
+  drawer?.querySelectorAll("a.topbar-nav-item").forEach((a) => {
+    a.addEventListener("click", () => { closeMobileNav(); });
   });
 }
 
-loadRuntimeConfig().then(() => {
+function applyStationsSearch() {
+  const v = (stationsSearchInput?.value ?? "").trim() || (stationsSearchHomeInput?.value ?? "").trim();
+  stationsSearchQuery = v;
+  if (stationsSearchInput) stationsSearchInput.value = v;
+  if (stationsSearchHomeInput) stationsSearchHomeInput.value = v;
+  renderExternalStations();
+}
+loadRuntimeConfig().then(async () => {
   updateTopBarAuth();
   initTheme();
+  initMobileNav();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
+  await loadExternalStations();
   loadChannels();
   setInterval(loadChannels, 3000);
+  stationsSearchInput?.addEventListener("input", applyStationsSearch);
+  stationsSearchHomeInput?.addEventListener("input", applyStationsSearch);
 });
