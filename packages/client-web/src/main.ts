@@ -502,6 +502,12 @@ function showConfirm(options: {
 let ws: WebSocket | null = null;
 let audioCtx: AudioContext | null = null;
 let opusDecoder: OpusDecoder | null = null;
+let analyserNode: AnalyserNode | null = null;
+let lafGain: GainNode | null = null;
+let mediaSource: MediaElementAudioSourceNode | null = null;
+let soundwaveRafId: number | null = null;
+const SOUNDWAVE_BARS = 30;
+const FREQ_BIN_COUNT = 256;
 
 const tiers = new Map<number, JitterBuffer>();
 // Create jitter buffers with larger initial delay and buffer for smooth streaming
@@ -533,6 +539,56 @@ let isStopping = false; // Flag to prevent audio scheduling during stop
 let fadeOutStartTime: number | null = null; // When fade out started (for smooth fade)
 let fadeOutDuration = 5000; // 5 seconds fade out
 const LOOKAHEAD_PACKETS = 10; // Schedule 10 packets (200ms) ahead for smooth playback - increased for better stability
+
+function getOrCreateAudioContext(): AudioContext | null {
+  if (audioCtx) {
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+  audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = FREQ_BIN_COUNT * 2;
+  analyserNode.smoothingTimeConstant = 0.6;
+  analyserNode.connect(audioCtx.destination);
+  audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+
+function startSoundwaveAnimation() {
+  if (soundwaveRafId != null) return;
+  const bars = document.querySelectorAll<HTMLElement>("#player-soundwave .sw-bar");
+  if (bars.length !== SOUNDWAVE_BARS || !analyserNode) return;
+  const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+
+  function tick() {
+    soundwaveRafId = requestAnimationFrame(tick);
+    const playing = (ws && ws.readyState === WebSocket.OPEN && loopRunning) ||
+      (currentExternalStation != null && externalAudio != null && !externalAudio.paused);
+    if (!analyserNode || !playing) {
+      bars.forEach((bar) => { bar.style.transform = "scaleY(0.2)"; });
+      return;
+    }
+    analyserNode.getByteFrequencyData(freqData);
+    const step = Math.floor(freqData.length / SOUNDWAVE_BARS);
+    for (let i = 0; i < SOUNDWAVE_BARS; i++) {
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += freqData[i * step + j] ?? 0;
+      const avg = sum / step;
+      const scale = 0.15 + 0.85 * (avg / 255);
+      bars[i].style.transform = `scaleY(${scale})`;
+    }
+  }
+  tick();
+}
+
+function stopSoundwaveAnimation() {
+  if (soundwaveRafId != null) {
+    cancelAnimationFrame(soundwaveRafId);
+    soundwaveRafId = null;
+  }
+  const bars = document.querySelectorAll<HTMLElement>("#player-soundwave .sw-bar");
+  bars.forEach((bar) => { bar.style.transform = "scaleY(0.2)"; });
+}
 
 async function loadChannels() {
   try {
@@ -592,6 +648,8 @@ async function loadChannels() {
       }
       const card = document.createElement("div");
       card.className = "channel-card";
+      if (currentChannel?.id === c.id) card.classList.add("selected");
+      if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
       const coverHtml = c.coverUrl
         ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />`
         : "";
@@ -641,6 +699,7 @@ function renderExternalStations() {
   EXTERNAL_STATIONS.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
+    if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
     const logoHtml = station.logoUrl
       ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
       : "";
@@ -698,6 +757,17 @@ function selectExternalStation(station: ExternalStation) {
     externalAudio.pause();
     externalAudio.src = "";
   }
+  if (mediaSource) {
+    try { mediaSource.disconnect(); } catch (_) {}
+    mediaSource = null;
+  }
+  externalAudio = new Audio(station.streamUrl);
+  getOrCreateAudioContext();
+  if (audioCtx && analyserNode) {
+    mediaSource = audioCtx.createMediaElementSource(externalAudio);
+    mediaSource.connect(analyserNode);
+  }
+  startSoundwaveAnimation();
   fetchStreamMetadata(station.streamUrl).then((program) => {
     if (currentExternalStation?.streamUrl === station.streamUrl && program) {
       nowPlayingProgram.textContent = program.length > 80 ? program.slice(0, 77) + "…" : program;
@@ -705,7 +775,6 @@ function selectExternalStation(station: ExternalStation) {
     }
   }).catch(() => {});
 
-  externalAudio = new Audio(station.streamUrl);
   externalAudio.onplaying = () => updatePlayerStatus("playing", "Listening to stream");
   externalAudio.onerror = () => updatePlayerStatus("stopped", "Stream error");
   externalAudio.onended = () => {
@@ -751,6 +820,11 @@ function stopExternalStream() {
     externalAudio.src = "";
     externalAudio = null;
   }
+  if (mediaSource) {
+    try { mediaSource.disconnect(); } catch (_) {}
+    mediaSource = null;
+  }
+  stopSoundwaveAnimation();
   currentExternalStation = null;
   externalStreamActions.classList.add("hidden");
   playerStatGrid.classList.remove("hidden");
@@ -780,6 +854,7 @@ function escapeAttr(s: string): string {
 }
 
 function selectChannel(channel: LiveChannel) {
+  const wasPlayingLaf = ws != null && ws.readyState === WebSocket.OPEN;
   if (currentExternalStation) stopExternalStream();
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
@@ -803,9 +878,20 @@ function selectChannel(channel: LiveChannel) {
     else if (clamp) clamp(playerSection);
   });
   if (ws) {
-    loopRunning = false; // Stop loop
+    loopRunning = false;
     ws.close();
     ws = null;
+  }
+  if (wasPlayingLaf) {
+    btnStart.classList.add("hidden");
+    btnStop.classList.remove("hidden");
+    playerLiveBadge.classList.remove("hidden");
+    startListening().catch((e) => {
+      console.error("Failed to switch channel:", e);
+      btnStart.classList.remove("hidden");
+      btnStop.classList.add("hidden");
+      playerLiveBadge.classList.add("hidden");
+    });
   }
 }
 
@@ -820,24 +906,19 @@ async function startListening() {
   fadeOutStartTime = null;
   (window as any).lastShownCountdown = null; // Reset countdown tracker
   
-  // CRITICAL: Ensure all state is reset before starting
-  // Reset playheadTime to current time (fresh start)
-  if (!audioCtx) {
-    audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
-    // Resume audio context if suspended (browser autoplay policy)
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-      console.log("Audio context resumed");
-    }
-    playheadTime = audioCtx.currentTime;
-  } else {
-    // Reset playheadTime to current time for fresh start
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-      console.log("Audio context resumed");
-    }
-    playheadTime = audioCtx.currentTime;
+  getOrCreateAudioContext();
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume();
+    console.log("Audio context resumed");
   }
+  playheadTime = audioCtx.currentTime;
+
+  if (lafGain) lafGain.disconnect();
+  lafGain = audioCtx.createGain();
+  lafGain.gain.value = 1;
+  lafGain.connect(analyserNode!);
+  startSoundwaveAnimation();
   
   // Ensure ABR state is reset
   abrState = {
@@ -1150,7 +1231,8 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
     
     // Schedule at playheadTime to maintain continuity
     const targetTime = playheadTime;
-    src.connect(ctx.destination);
+    const dest = lafGain ?? ctx.destination;
+    src.connect(dest);
     
     src.start(targetTime);
     // Update playheadTime for next packet (continuous scheduling)
@@ -1176,7 +1258,8 @@ function scheduleSilence(ctx: AudioContext) {
   const now = ctx.currentTime;
   // Use same timing logic as schedulePcm to maintain continuity
   const startTime = Math.max(playheadTime, now + 0.02);
-  src.connect(ctx.destination);
+  const dest = lafGain ?? ctx.destination;
+  src.connect(dest);
   
   try {
     src.start(startTime);
@@ -1592,6 +1675,12 @@ function stopListening() {
   lastStatsTime = performance.now();
   lastLoopTime = performance.now();
   
+  if (lafGain) {
+    try { lafGain.disconnect(); } catch (_) {}
+    lafGain = null;
+  }
+  stopSoundwaveAnimation();
+
   // Reset stopping flag after a brief delay to ensure all audio has stopped
   setTimeout(() => {
     isStopping = false;
@@ -1623,14 +1712,12 @@ btnStart.onclick = () => {
   });
 };
 
-btnStop.onclick = async () => {
+btnStop.onclick = () => {
   if (currentExternalStation) {
     stopExternalStream();
     return;
   }
-  if (await showConfirm({ message: "Stop listening to this stream?" })) {
-    stopListening();
-  }
+  stopListening();
 };
 
 function sendChatMessage() {
