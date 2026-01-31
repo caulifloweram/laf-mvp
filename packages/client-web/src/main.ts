@@ -54,7 +54,7 @@ interface LiveChannel {
   streamId: number;
 }
 
-/** External online radio stations. Stream URLs from Radio Browser API or official sites. Add more from Are.na channels the same way. */
+/** One playable external stream (single channel). */
 interface ExternalStation {
   name: string;
   description: string;
@@ -63,7 +63,18 @@ interface ExternalStation {
   logoUrl: string;
 }
 
-const EXTERNAL_STATIONS: ExternalStation[] = [
+/** Station config: single stream or multiple channels (e.g. SomaFM). */
+interface ExternalStationConfig {
+  name: string;
+  description: string;
+  websiteUrl: string;
+  streamUrl: string;
+  logoUrl: string;
+  /** If set, one card per channel; otherwise one card using streamUrl. */
+  channels?: Array<{ name: string; streamUrl: string }>;
+}
+
+const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   {
     name: "Refuge Worldwide",
     description: "Community radio from Berlin. Music and issues we care about.",
@@ -95,10 +106,20 @@ const EXTERNAL_STATIONS: ExternalStation[] = [
   },
   {
     name: "SomaFM",
-    description: "Listener-supported, commercial-free internet radio.",
+    description: "Listener-supported, commercial-free internet radio. Multiple channels.",
     websiteUrl: "http://soma.fm/",
     streamUrl: "https://ice5.somafm.com/live-128-mp3",
     logoUrl: "https://somafm.com/img/somafm-logo-square.png",
+    channels: [
+      { name: "Groove Salad", streamUrl: "https://ice5.somafm.com/groovesalad-128-mp3" },
+      { name: "Drone Zone", streamUrl: "https://ice5.somafm.com/dronezone-128-mp3" },
+      { name: "Space Station Soma", streamUrl: "https://ice5.somafm.com/spacestation-128-mp3" },
+      { name: "Lush", streamUrl: "https://ice5.somafm.com/lush-128-mp3" },
+      { name: "Def Con", streamUrl: "https://ice5.somafm.com/defcon-128-mp3" },
+      { name: "Covers", streamUrl: "https://ice5.somafm.com/covers-128-mp3" },
+      { name: "Indie Pop Rocks", streamUrl: "https://ice5.somafm.com/indiepop-128-mp3" },
+      { name: "Live", streamUrl: "https://ice5.somafm.com/live-128-mp3" },
+    ],
   },
   {
     name: "WFMU",
@@ -136,6 +157,33 @@ const EXTERNAL_STATIONS: ExternalStation[] = [
     logoUrl: "https://rinse.fm/favicon.ico",
   },
 ];
+
+/** Expand configs into a flat list of playable stations (one per channel or one per station). */
+function getExternalStationsFlat(): ExternalStation[] {
+  const flat: ExternalStation[] = [];
+  for (const s of EXTERNAL_STATION_CONFIGS) {
+    if (s.channels && s.channels.length > 0) {
+      for (const ch of s.channels) {
+        flat.push({
+          name: `${s.name}: ${ch.name}`,
+          description: s.description,
+          websiteUrl: s.websiteUrl,
+          streamUrl: ch.streamUrl,
+          logoUrl: s.logoUrl,
+        });
+      }
+    } else {
+      flat.push({
+        name: s.name,
+        description: s.description,
+        websiteUrl: s.websiteUrl,
+        streamUrl: s.streamUrl,
+        logoUrl: s.logoUrl,
+      });
+    }
+  }
+  return flat;
+}
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
   const view = new DataView(buf);
@@ -718,7 +766,8 @@ async function loadChannels() {
 
 function renderExternalStations() {
   externalStationsGrid.innerHTML = "";
-  EXTERNAL_STATIONS.forEach((station) => {
+  const stations = getExternalStationsFlat();
+  stations.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
     card.dataset.streamUrl = station.streamUrl;
@@ -744,8 +793,9 @@ function renderExternalStations() {
 
 async function checkExternalStationsStreams() {
   const cards = externalStationsGrid.querySelectorAll<HTMLElement>(".external-station-card");
+  const stations = getExternalStationsFlat();
   const results = await Promise.allSettled(
-    EXTERNAL_STATIONS.map(async (station) => {
+    stations.map(async (station) => {
       try {
         const res = await fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`);
         const data = (await res.json()) as { ok?: boolean; status?: string };
@@ -1798,17 +1848,19 @@ btnPlayPause.onclick = () => {
 };
 
 btnPrevStation.onclick = () => {
-  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
-  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const prevIdx = (idx - 1 + EXTERNAL_STATIONS.length) % EXTERNAL_STATIONS.length;
-  selectExternalStation(EXTERNAL_STATIONS[prevIdx]);
+  const stations = getExternalStationsFlat();
+  if (!currentExternalStation || stations.length === 0) return;
+  const idx = stations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  const prevIdx = (idx - 1 + stations.length) % stations.length;
+  selectExternalStation(stations[prevIdx]);
 };
 
 btnNextStation.onclick = () => {
-  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
-  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
-  const nextIdx = (idx + 1) % EXTERNAL_STATIONS.length;
-  selectExternalStation(EXTERNAL_STATIONS[nextIdx]);
+  const stations = getExternalStationsFlat();
+  if (!currentExternalStation || stations.length === 0) return;
+  const idx = stations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
+  const nextIdx = (idx + 1) % stations.length;
+  selectExternalStation(stations[nextIdx]);
 };
 
 function sendChatMessage() {
