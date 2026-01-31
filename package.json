@@ -8,6 +8,7 @@
     "dev:api": "pnpm --filter @laf/api run dev",
     "dev:client-web": "pnpm --filter @laf/client-web run dev",
     "dev:broadcaster-web": "pnpm --filter @laf/broadcaster-web run dev",
+    "dev:web": "pnpm --filter @laf/web run dev",
     "dev:broadcaster": "pnpm --filter @laf/broadcaster run dev",
     "test": "pnpm -r test"
   },
