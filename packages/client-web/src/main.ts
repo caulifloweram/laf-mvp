@@ -1201,26 +1201,15 @@ function renderExternalStations() {
   if (needCheck) checkExternalStationsStreams();
 }
 
+const STREAM_CHECK_TIMEOUT_MS = 8000;
+const STREAM_CHECK_BATCH_SIZE = 8;
+
 async function checkExternalStationsStreams() {
   const stations = getExternalStationsFlat();
-  const results = await Promise.allSettled(
-    stations.map(async (station) => {
-      try {
-        const res = await fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`);
-        const data = (await res.json()) as { ok?: boolean; status?: string };
-        return { station, ok: !!data.ok, status: data.status || "error" };
-      } catch {
-        return { station, ok: false, status: "error" };
-      }
-    })
-  );
   const toRemove: ExternalStation[] = [];
-  results.forEach((outcome) => {
-    if (outcome.status !== "fulfilled") return;
-    const { station, ok, status } = outcome.value;
-    const { streamUrl } = station;
+
+  function updateCard(streamUrl: string, ok: boolean, status: string) {
     streamStatusCache[streamUrl] = { ok, status };
-    if (!ok && station.id) toRemove.push(station);
     document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
       const el = card.querySelector(".ext-stream-status");
       if (!el) return;
@@ -1231,7 +1220,37 @@ async function checkExternalStationsStreams() {
       if (ok) card.classList.remove("stream-offline");
       else card.classList.add("stream-offline");
     });
-  });
+  }
+
+  for (let i = 0; i < stations.length; i += STREAM_CHECK_BATCH_SIZE) {
+    const batch = stations.slice(i, i + STREAM_CHECK_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (station) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
+        try {
+          const res = await fetch(
+            `${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`,
+            { signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          const data = (await res.json()) as { ok?: boolean; status?: string };
+          return { station, ok: !!data.ok, status: data.status || "error" };
+        } catch (e) {
+          clearTimeout(timeoutId);
+          const status = e instanceof Error && e.name === "AbortError" ? "timeout" : "error";
+          return { station, ok: false, status };
+        }
+      })
+    );
+    results.forEach((outcome) => {
+      if (outcome.status !== "fulfilled") return;
+      const { station, ok, status } = outcome.value;
+      updateCard(station.streamUrl, ok, status);
+      if (!ok && station.id) toRemove.push(station);
+    });
+  }
+
   if (toRemove.length > 0) {
     const urlsToRemove = new Set(toRemove.map((s) => s.streamUrl));
     allExternalStations = allExternalStations.filter((s) => !(s.id && urlsToRemove.has(s.streamUrl)));
