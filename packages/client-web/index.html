@@ -457,6 +457,36 @@
       }
       .confirm-dialog .confirm-buttons button { width: auto; }
 
+      .chat-panel {
+        margin-top: 16px;
+        border-top: 2px solid var(--mac-black);
+        padding-top: 12px;
+      }
+      .chat-title { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+      .chat-messages {
+        height: 120px;
+        overflow-y: auto;
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .chat-message { margin-bottom: 6px; word-break: break-word; }
+      .chat-message .chat-author { font-weight: bold; color: var(--mac-gray); margin-right: 6px; }
+      .chat-signin-prompt { font-size: 11px; color: var(--mac-gray); margin-bottom: 8px; }
+      .chat-input-row { display: flex; gap: 8px; }
+      .chat-input { flex: 1; padding: 6px 10px; border: 2px solid var(--mac-black); border-radius: 4px; font-size: 12px; }
+      .chat-send { padding: 6px 12px; font-size: 12px; cursor: pointer; background: var(--mac-white); border: 2px solid var(--mac-black); border-radius: 4px; font-weight: bold; }
+      .chat-send:hover { background: var(--mac-light-gray); }
+      .auth-dialog { min-width: 320px; }
+      .auth-tab { padding: 6px 12px; border: 2px solid var(--mac-black); background: var(--mac-light-gray); cursor: pointer; font-weight: bold; }
+      .auth-tab.active { background: var(--mac-white); }
+      .auth-error { color: #c00; font-size: 12px; margin-top: 8px; }
+      .form-group { margin-bottom: 10px; }
+      .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
+
       .hidden { display: none; }
       .mac-window.window-closed,
       .player-section.window-closed { display: none !important; }
@@ -478,7 +508,11 @@
           <a href="/broadcaster/" class="topbar-nav-item">Broadcaster</a>
         </div>
       </div>
-      <div class="topbar-right"></div>
+      <div class="topbar-right" id="client-topbar-right">
+        <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
+        <span id="client-user-email" class="topbar-nav-item hidden"></span>
+        <button type="button" id="client-logout-btn" class="hidden" style="background: transparent; color: var(--mac-white); border: 1px solid var(--mac-white); padding: 6px 12px; font-size: 12px; cursor: pointer; border-radius: 4px;">Logout</button>
+      </div>
     </nav>
     <div class="desktop" id="desktop">
       <div class="mac-window" id="window-channels" data-window-id="channels" style="left: 24px; top: 24px;">
@@ -554,7 +588,51 @@
             <div id="stat-kbps" class="stat-value">-</div>
           </div>
         </div>
+
+        <div class="chat-panel">
+          <div class="chat-title">Live chat</div>
+          <div id="chat-messages" class="chat-messages"></div>
+          <div id="chat-signin-prompt" class="chat-signin-prompt">Sign in to participate in chat</div>
+          <div id="chat-input-row" class="chat-input-row hidden">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="2000" />
+            <button type="button" id="chat-send" class="chat-send">Send</button>
+          </div>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-overlay" class="confirm-overlay" aria-hidden="true">
+      <div class="confirm-dialog auth-dialog">
+        <div class="confirm-title">Sign in to chat</div>
+        <div id="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" id="auth-tab-login" class="auth-tab active">Login</button>
+          <button type="button" id="auth-tab-register" class="auth-tab">Register</button>
+        </div>
+        <div id="auth-login-form">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="auth-login-email" placeholder="your@email.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="auth-login-password" placeholder="password" />
+          </div>
+          <button type="button" id="auth-login-btn">Login</button>
+        </div>
+        <div id="auth-register-form" class="hidden">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="auth-register-email" placeholder="your@email.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="auth-register-password" placeholder="8+ chars, upper, lower, number, special" />
+          </div>
+          <button type="button" id="auth-register-btn">Register</button>
+        </div>
+        <div id="auth-error" class="auth-error hidden"></div>
+        <button type="button" id="auth-close" style="margin-top: 12px;">Close</button>
       </div>
     </div>
     <div id="confirm-overlay" class="confirm-overlay" aria-hidden="true">

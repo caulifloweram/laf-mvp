@@ -118,6 +118,9 @@ const btnDeleteChannel = document.getElementById("btn-delete-channel")!;
 const channelSettingsStatus = document.getElementById("channel-settings-status")!;
 const btnGoLive = document.getElementById("btn-go-live")!;
 const btnStopLive = document.getElementById("btn-stop-live")!;
+const broadcastChatMessages = document.getElementById("broadcast-chat-messages")!;
+const broadcastChatInput = document.getElementById("broadcast-chat-input")! as HTMLInputElement;
+const broadcastChatSend = document.getElementById("broadcast-chat-send")!;
 const btnLogout = document.getElementById("btn-logout")!;
 const btnSettings = document.getElementById("btn-settings")!;
 const btnCloseSettings = document.getElementById("btn-close-settings")!;
@@ -653,7 +656,8 @@ async function startBroadcast() {
     }
     
     streamId = result.streamId;
-    const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}`;
+    broadcastChatMessages.innerHTML = "";
+    const wsUrl = `${RELAY_BASE}/?role=broadcaster&streamId=${streamId}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
     console.log("Connecting to relay:", wsUrl);
 
     // CRITICAL: Reuse existing mediaStream and AudioContext if available (for restart)
@@ -749,6 +753,24 @@ async function startBroadcast() {
       };
     });
     
+    // Incoming chat messages (from listeners or self)
+    ws.onmessage = (ev) => {
+      if (typeof ev.data !== "string") return;
+      try {
+        const message = JSON.parse(ev.data);
+        if (message.type === "chat" && message.email != null && message.text != null) {
+          const div = document.createElement("div");
+          div.className = "chat-message";
+          const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+          div.innerHTML = `<span class="chat-author">${escapeHtml(message.email)}${time ? ` <small>${time}</small>` : ""}</span> ${escapeHtml(message.text)}`;
+          broadcastChatMessages.appendChild(div);
+          broadcastChatMessages.scrollTop = broadcastChatMessages.scrollHeight;
+        }
+      } catch {
+        // ignore non-JSON
+      }
+    };
+
     // Add WebSocket event handlers for debugging (after connection is established)
     ws.onerror = (error) => {
       console.error("[WS] Error:", error);
@@ -1236,6 +1258,26 @@ btnSaveChannel.onclick = createChannel;
 btnCancelCreate.onclick = () => showSection("main");
 btnGoLive.onclick = startBroadcast;
 btnStopLive.onclick = stopBroadcast;
+
+function sendBroadcastChat() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const text = (broadcastChatInput.value || "").trim();
+  if (!text) return;
+  try {
+    ws.send(JSON.stringify({ type: "chat", text }));
+    broadcastChatInput.value = "";
+  } catch (err) {
+    console.error("Failed to send chat:", err);
+  }
+}
+broadcastChatSend.onclick = sendBroadcastChat;
+broadcastChatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendBroadcastChat();
+  }
+});
+
 btnLogout.onclick = logout;
 btnSettings.onclick = () => showSection("settings");
 btnCloseSettings.onclick = () => showSection("main");

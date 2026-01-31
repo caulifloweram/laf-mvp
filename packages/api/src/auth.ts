@@ -17,8 +17,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
   const token = authHeader.slice("Bearer ".length);
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    (req as any).user = { id: decoded.userId };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email?: string };
+    (req as any).user = { id: decoded.userId, email: decoded.email };
     next();
   } catch {
     return res.status(401).json({ error: "Invalid token" });
@@ -34,7 +34,7 @@ export async function login(email: string, password: string): Promise<{ token: s
   const user = result.rows[0];
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return null;
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
   return { token, user: { id: user.id, email: user.email } };
 }
 
@@ -85,7 +85,7 @@ export async function register(email: string, password: string): Promise<{ token
     [email.toLowerCase().trim(), hash]
   );
   const user = result.rows[0];
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
   return { token, user: { id: user.id, email: user.email } };
 }
 

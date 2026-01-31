@@ -1,7 +1,10 @@
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
+import jwt from "jsonwebtoken";
 
 type Role = "broadcaster" | "listener";
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 
 interface ClientInfo {
   ws: WebSocket;
@@ -11,6 +14,8 @@ interface ClientInfo {
   maxKbps: number | null;
   sentBytesWindow: number;
   windowStartMs: number;
+  userId?: string;
+  email?: string;
 }
 
 interface StreamRoom {
@@ -106,6 +111,8 @@ function parseUrl(url?: string): {
   streamId: number;
   dropRate: number;
   maxKbps: number | null;
+  userId?: string;
+  email?: string;
 } {
   const u = new URL(url ?? "/", "ws://dummy");
   const role = (u.searchParams.get("role") as Role) || "listener";
@@ -113,16 +120,42 @@ function parseUrl(url?: string): {
   const dropRate = Number(u.searchParams.get("dropRate") ?? "0");
   const maxKbpsParam = u.searchParams.get("maxKbps");
   const maxKbps = maxKbpsParam ? Number(maxKbpsParam) : null;
+  const token = u.searchParams.get("token");
+  let userId: string | undefined;
+  let email: string | undefined;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email?: string };
+      userId = decoded.userId;
+      email = decoded.email ?? undefined;
+    } catch {
+      // Invalid token - chat will be disabled for this connection
+    }
+  }
   return {
     role,
     streamId,
     dropRate: Math.min(Math.max(dropRate, 0), 0.5),
-    maxKbps
+    maxKbps,
+    userId,
+    email
   };
 }
 
+function broadcastChatToRoom(room: StreamRoom, streamId: number, payload: { type: "chat"; userId: string; email: string; text: string; timestamp: number }) {
+  const msg = JSON.stringify(payload);
+  if (room.broadcaster && room.broadcaster.ws.readyState === WebSocket.OPEN) {
+    room.broadcaster.ws.send(msg);
+  }
+  for (const listener of room.listeners) {
+    if (listener.ws.readyState === WebSocket.OPEN) {
+      listener.ws.send(msg);
+    }
+  }
+}
+
 wss.on("connection", (ws, req) => {
-  const { role, streamId, dropRate, maxKbps } = parseUrl(req.url);
+  const { role, streamId, dropRate, maxKbps, userId, email } = parseUrl(req.url);
   let room = rooms.get(streamId);
   if (!room) {
     room = { broadcaster: null, listeners: new Set() };
@@ -136,7 +169,9 @@ wss.on("connection", (ws, req) => {
     dropRate,
     maxKbps,
     sentBytesWindow: 0,
-    windowStartMs: Date.now()
+    windowStartMs: Date.now(),
+    userId,
+    email
   };
 
   if (role === "broadcaster") {
@@ -152,20 +187,45 @@ wss.on("connection", (ws, req) => {
   }
 
   ws.on("message", (data, isBinary) => {
-    if (client.role !== "broadcaster") return;
     const r = rooms.get(streamId);
     if (!r) return;
 
-    // Forward text messages (control messages like "stream ending") to all listeners
+    // Text messages: chat (any role) or control (broadcaster only)
     if (!isBinary) {
       const text = data.toString();
-      for (const listener of r.listeners) {
-        if (listener.ws.readyState === WebSocket.OPEN) {
-          listener.ws.send(text);
+      try {
+        const parsed = JSON.parse(text) as { type?: string; text?: string };
+        if (parsed.type === "chat" && typeof parsed.text === "string") {
+          if (!client.userId || !client.email) {
+            return; // Must be logged in to send chat
+          }
+          const trimmed = String(parsed.text).trim().slice(0, 2000);
+          if (!trimmed) return;
+          broadcastChatToRoom(r, streamId, {
+            type: "chat",
+            userId: client.userId,
+            email: client.email,
+            text: trimmed,
+            timestamp: Date.now()
+          });
+          return;
+        }
+      } catch {
+        // Not JSON or not chat - fall through
+      }
+      // Control messages (e.g. stream_ending): only broadcaster, forward to listeners
+      if (client.role === "broadcaster") {
+        for (const listener of r.listeners) {
+          if (listener.ws.readyState === WebSocket.OPEN) {
+            listener.ws.send(text);
+          }
         }
       }
       return;
     }
+
+    // Binary messages (audio): only broadcaster forwards to listeners
+    if (client.role !== "broadcaster") return;
 
     // Forward binary messages (audio packets) to all listeners
     const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as any);

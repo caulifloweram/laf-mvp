@@ -370,6 +370,43 @@ const statBuffer = document.getElementById("stat-buffer")!;
 const statLate = document.getElementById("stat-late")!;
 const statLatency = document.getElementById("stat-latency")!;
 const statKbps = document.getElementById("stat-kbps")!;
+const chatMessages = document.getElementById("chat-messages")!;
+const chatSigninPrompt = document.getElementById("chat-signin-prompt")!;
+const chatInputRow = document.getElementById("chat-input-row")!;
+const chatInput = document.getElementById("chat-input")! as HTMLInputElement;
+const chatSendBtn = document.getElementById("chat-send")!;
+
+let token: string | null = localStorage.getItem("laf_token");
+let userEmail: string | null = localStorage.getItem("laf_user_email");
+
+function updateTopBarAuth() {
+  const signinLink = document.getElementById("client-signin-link")!;
+  const userEmailEl = document.getElementById("client-user-email")!;
+  const logoutBtn = document.getElementById("client-logout-btn")!;
+  if (token && userEmail) {
+    signinLink.classList.add("hidden");
+    userEmailEl.textContent = userEmail;
+    userEmailEl.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+    chatSigninPrompt.classList.add("hidden");
+    chatInputRow.classList.remove("hidden");
+  } else {
+    signinLink.classList.remove("hidden");
+    userEmailEl.classList.add("hidden");
+    logoutBtn.classList.add("hidden");
+    chatSigninPrompt.classList.remove("hidden");
+    chatInputRow.classList.add("hidden");
+  }
+}
+
+function appendChatMessage(email: string, text: string, ts?: number) {
+  const div = document.createElement("div");
+  div.className = "chat-message";
+  const time = ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+  div.innerHTML = `<span class="chat-author">${escapeHtml(email)}${time ? ` <small>${time}</small>` : ""}</span> ${escapeHtml(text)}`;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
 function showConfirm(options: {
   message: string;
@@ -628,7 +665,9 @@ async function startListening() {
     await opusDecoder.ready;
   }
 
-  const wsUrl = `${RELAY_BASE}/?role=listener&streamId=${currentChannel.streamId}`;
+  chatMessages.innerHTML = "";
+
+  const wsUrl = `${RELAY_BASE}/?role=listener&streamId=${currentChannel.streamId}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
   console.log("Connecting to relay:", wsUrl);
   console.log("Current ABR tier:", abrState.currentTier);
   console.log("Available tiers:", Array.from(tiers.keys()));
@@ -714,10 +753,14 @@ async function startListening() {
     lastMessageTime = performance.now();
     messageCount++;
     
-    // Handle text messages (control messages like "stream ending")
+    // Handle text messages (chat and control like "stream ending")
     if (typeof ev.data === "string") {
       try {
         const message = JSON.parse(ev.data);
+        if (message.type === "chat" && message.email != null && message.text != null) {
+          appendChatMessage(message.email, message.text, message.timestamp);
+          return;
+        }
         if (message.type === "stream_ending") {
           const countdown = message.countdown || 5;
           console.log(`[Stream] Ending notification - ${countdown} seconds until end`);
@@ -1381,8 +1424,155 @@ btnStop.onclick = async () => {
   }
 };
 
+function sendChatMessage() {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !token) return;
+  const text = (chatInput.value || "").trim();
+  if (!text) return;
+  try {
+    ws.send(JSON.stringify({ type: "chat", text }));
+    chatInput.value = "";
+  } catch (err) {
+    console.error("Failed to send chat:", err);
+  }
+}
+
+chatSendBtn.onclick = sendChatMessage;
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
+  const url = `${API_URL}${endpoint}`;
+  const headers: HeadersInit = { "Content-Type": "application/json", ...options.headers };
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+}
+
+const authOverlay = document.getElementById("auth-overlay")!;
+const authTabLogin = document.getElementById("auth-tab-login")!;
+const authTabRegister = document.getElementById("auth-tab-register")!;
+const authLoginForm = document.getElementById("auth-login-form")!;
+const authRegisterForm = document.getElementById("auth-register-form")!;
+const authLoginEmail = document.getElementById("auth-login-email")! as HTMLInputElement;
+const authLoginPassword = document.getElementById("auth-login-password")! as HTMLInputElement;
+const authRegisterEmail = document.getElementById("auth-register-email")! as HTMLInputElement;
+const authRegisterPassword = document.getElementById("auth-register-password")! as HTMLInputElement;
+const authError = document.getElementById("auth-error")!;
+const authLoginBtn = document.getElementById("auth-login-btn")!;
+const authRegisterBtn = document.getElementById("auth-register-btn")!;
+const authClose = document.getElementById("auth-close")!;
+
+function showAuthError(msg: string) {
+  authError.textContent = msg;
+  authError.classList.remove("hidden");
+}
+function hideAuthError() {
+  authError.classList.add("hidden");
+}
+
+authTabLogin.onclick = () => {
+  authTabLogin.classList.add("active");
+  authTabRegister.classList.remove("active");
+  authLoginForm.classList.remove("hidden");
+  authRegisterForm.classList.add("hidden");
+  hideAuthError();
+};
+authTabRegister.onclick = () => {
+  authTabRegister.classList.add("active");
+  authTabLogin.classList.remove("active");
+  authRegisterForm.classList.remove("hidden");
+  authLoginForm.classList.add("hidden");
+  hideAuthError();
+};
+
+authLoginBtn.onclick = async () => {
+  hideAuthError();
+  const email = authLoginEmail.value.trim();
+  const password = authLoginPassword.value;
+  if (!email || !password) {
+    showAuthError("Email and password required");
+    return;
+  }
+  try {
+    const result = await fetch(`${API_URL}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!result.ok) {
+      const err = await result.json().catch(() => ({}));
+      showAuthError(err.error || "Login failed");
+      return;
+    }
+    const data = await result.json();
+    token = data.token;
+    userEmail = data.user?.email ?? null;
+    if (token) localStorage.setItem("laf_token", token);
+    if (userEmail) localStorage.setItem("laf_user_email", userEmail);
+    updateTopBarAuth();
+    authOverlay.classList.remove("visible");
+  } catch (err: any) {
+    showAuthError(err.message || "Network error");
+  }
+};
+
+authRegisterBtn.onclick = async () => {
+  hideAuthError();
+  const email = authRegisterEmail.value.trim();
+  const password = authRegisterPassword.value;
+  if (!email || !password) {
+    showAuthError("Email and password required");
+    return;
+  }
+  try {
+    const result = await fetch(`${API_URL}/api/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!result.ok) {
+      const err = await result.json().catch(() => ({}));
+      showAuthError(err.error || "Registration failed");
+      return;
+    }
+    const data = await result.json();
+    token = data.token;
+    userEmail = data.user?.email ?? null;
+    if (token) localStorage.setItem("laf_token", token);
+    if (userEmail) localStorage.setItem("laf_user_email", userEmail);
+    updateTopBarAuth();
+    authOverlay.classList.remove("visible");
+  } catch (err: any) {
+    showAuthError(err.message || "Network error");
+  }
+};
+
+authClose.onclick = () => authOverlay.classList.remove("visible");
+document.getElementById("client-signin-link")!.addEventListener("click", (e) => {
+  e.preventDefault();
+  authOverlay.classList.add("visible");
+});
+document.getElementById("client-logout-btn")!.onclick = () => {
+  token = null;
+  userEmail = null;
+  localStorage.removeItem("laf_token");
+  localStorage.removeItem("laf_user_email");
+  updateTopBarAuth();
+};
+
 // Load runtime config (API/relay URLs from /config.json) then start
 loadRuntimeConfig().then(() => {
+  updateTopBarAuth();
   loadChannels();
   setInterval(loadChannels, 3000);
 });

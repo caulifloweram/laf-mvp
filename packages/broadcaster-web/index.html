@@ -412,6 +412,9 @@
       }
       #user-info p { margin-bottom: 6px; font-size: 12px; }
 
+      .chat-message { margin-bottom: 6px; word-break: break-word; font-size: 12px; }
+      .chat-author { font-weight: bold; color: var(--mac-gray); margin-right: 6px; }
+
       @media (max-width: 768px) {
         .container { padding: 12px; }
         #broadcast-stats > div { grid-template-columns: 1fr; }
@@ -595,6 +598,15 @@
                 <div style="font-size: 10px; color: #808080; margin-bottom: 4px;">Audio Level</div>
                 <div id="broadcast-level" style="font-size: 14px; font-weight: bold;">-</div>
               </div>
+            </div>
+          </div>
+
+          <div class="chat-panel" style="margin-top: 16px; border-top: 2px solid #000; padding-top: 12px;">
+            <div class="chat-title" style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">Live chat</div>
+            <div id="broadcast-chat-messages" class="chat-messages" style="height: 100px; overflow-y: auto; background: var(--mac-white); border: 2px solid var(--mac-black); border-radius: 4px; padding: 8px; font-size: 12px; margin-bottom: 8px;"></div>
+            <div class="chat-input-row" style="display: flex; gap: 8px;">
+              <input type="text" id="broadcast-chat-input" class="chat-input" placeholder="Type a message..." maxlength="2000" style="flex: 1; padding: 6px 10px; border: 2px solid var(--mac-black); border-radius: 4px; font-size: 12px;" />
+              <button type="button" id="broadcast-chat-send" style="padding: 6px 12px; font-size: 12px; cursor: pointer; background: var(--mac-white); border: 2px solid var(--mac-black); border-radius: 4px; font-weight: bold;">Send</button>
             </div>
           </div>
           </div>
