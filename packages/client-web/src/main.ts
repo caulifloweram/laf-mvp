@@ -87,8 +87,14 @@ const EXTERNAL_STATIONS: ExternalStation[] = [
   },
 ];
 
-/** Are.na channel slug for "Online Radios" (https://www.are.na/chia/online-radios-zlvblzsstly) */
-const ARE_NA_CHANNEL_SLUG = "online-radios-zlvblzsstly";
+/**
+ * Are.na channel slugs to load radios from. Each slug is the channel id from the URL
+ * (e.g. https://www.are.na/user/online-radios-zlvblzsstly → "online-radios-zlvblzsstly").
+ * Send more channel URLs or slugs to add them here.
+ */
+const ARE_NA_CHANNEL_SLUGS: string[] = [
+  "online-radios-zlvblzsstly", // https://www.are.na/chia/online-radios-zlvblzsstly
+];
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
   const view = new DataView(buf);
@@ -426,7 +432,6 @@ const externalVisitWebsite = document.getElementById("external-visit-website")! 
 const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
-const areNaStationsGrid = document.getElementById("are-na-stations-grid")!;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
 const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
 const btnPrevStation = document.getElementById("btn-prev-station")!;
@@ -677,32 +682,14 @@ async function loadChannels() {
   }
 }
 
-function renderExternalStations() {
-  externalStationsGrid.innerHTML = "";
-  EXTERNAL_STATIONS.forEach((station) => {
-    const card = document.createElement("div");
-    card.className = "external-station-card";
-    if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
-    const logoHtml = station.logoUrl
-      ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
-      : "";
-    card.innerHTML = `
-      ${logoHtml}
-      <div class="ext-name">${escapeHtml(station.name)}</div>
-      <div class="ext-desc">${escapeHtml(station.description)}</div>
-      <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
-    `;
-    card.onclick = (e) => {
-      e.preventDefault();
-      selectExternalStation(station);
-    };
-    externalStationsGrid.appendChild(card);
-  });
+function getAllExternalStations(): ExternalStation[] {
+  return [...EXTERNAL_STATIONS, ...areNaStations];
 }
 
-function renderAreNaStations() {
-  areNaStationsGrid.innerHTML = "";
-  areNaStations.forEach((station) => {
+function renderExternalStations() {
+  externalStationsGrid.innerHTML = "";
+  const all = getAllExternalStations();
+  all.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
     if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
@@ -727,26 +714,61 @@ function renderAreNaStations() {
         window.open(station.websiteUrl, "_blank", "noopener");
       };
     }
-    areNaStationsGrid.appendChild(card);
+    externalStationsGrid.appendChild(card);
   });
 }
 
-async function loadAreNaStations() {
+/** Parse Are.na channel slug from URL or return as-is if already a slug. */
+function parseAreNaSlug(urlOrSlug: string): string {
+  const s = urlOrSlug.trim();
   try {
-    const res = await fetch(`${API_URL}/api/are-na-channel?slug=${encodeURIComponent(ARE_NA_CHANNEL_SLUG)}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as { stations?: Array<{ name: string; description: string; websiteUrl: string; streamUrl: string | null; logoUrl: string }> };
-    const list = data.stations || [];
-    areNaStations = list.map((s) => ({
-      name: s.name,
-      description: s.description,
-      websiteUrl: s.websiteUrl,
-      streamUrl: s.streamUrl && s.streamUrl.trim() ? s.streamUrl : "",
-      logoUrl: s.logoUrl || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.websiteUrl).hostname)}&sz=128`,
-    }));
-    renderAreNaStations();
+    if (/^https?:\/\//i.test(s)) {
+      const path = new URL(s).pathname.replace(/^\/+|\/+$/, "");
+      const parts = path.split("/");
+      return parts[parts.length - 1] || s;
+    }
+  } catch {
+    // not a URL
+  }
+  return s.replace(/^\/+|\/+$/, "");
+}
+
+async function loadAreNaStations() {
+  const slugs = ARE_NA_CHANNEL_SLUGS.map(parseAreNaSlug).filter(Boolean);
+  if (slugs.length === 0) return;
+  const seen = new Set<string>();
+  const merged: ExternalStation[] = [];
+  try {
+    const results = await Promise.all(
+      slugs.map(async (slug) => {
+        try {
+          const res = await fetch(`${API_URL}/api/are-na-channel?slug=${encodeURIComponent(slug)}`);
+          if (!res.ok) return [];
+          const data = (await res.json()) as { stations?: Array<{ name: string; description: string; websiteUrl: string; streamUrl: string | null; logoUrl: string }> };
+          return data.stations || [];
+        } catch {
+          return [];
+        }
+      })
+    );
+    for (const list of results) {
+      for (const s of list) {
+        const key = (s.websiteUrl || "").toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.push({
+          name: s.name,
+          description: s.description,
+          websiteUrl: s.websiteUrl,
+          streamUrl: s.streamUrl && s.streamUrl.trim() ? s.streamUrl : "",
+          logoUrl: s.logoUrl || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.websiteUrl).hostname)}&sz=128`,
+        });
+      }
+    }
+    areNaStations = merged;
+    renderExternalStations();
   } catch (e) {
-    console.warn("[Are.na] Failed to load channel:", e);
+    console.warn("[Are.na] Failed to load channels:", e);
   }
 }
 
