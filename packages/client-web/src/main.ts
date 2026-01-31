@@ -861,31 +861,17 @@ async function getOrCreateAudioContext(): Promise<AudioContext | null> {
 async function loadChannels() {
   try {
     const url = `${API_URL}/api/channels/live`;
-    console.log(`[loadChannels] Fetching live channels from ${url}`);
-    console.log(`[loadChannels] API_URL is: ${API_URL}`);
-    
-    // Add timestamp to URL to prevent caching
-    const cacheBuster = `?t=${Date.now()}`;
-    const res = await fetch(url + cacheBuster, {
+    const res = await fetch(url + `?t=${Date.now()}`, {
       cache: "no-store",
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Accept": "application/json"
-      }
+      headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Accept": "application/json" },
     });
-    
-    console.log(`[loadChannels] Response status: ${res.status} ${res.statusText}`);
-    console.log(`[loadChannels] Response headers:`, Object.fromEntries(res.headers.entries()));
-    
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`[loadChannels] Failed to fetch live channels: HTTP ${res.status}`, errorText);
+      console.error("[loadChannels] HTTP", res.status, errorText);
       stationsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error loading channels: HTTP ${res.status}</p>`;
       return;
     }
-    
     const channels: LiveChannel[] = await res.json();
-    console.log(`[loadChannels] Loaded ${channels.length} live channels:`, channels);
     liveChannelsList = channels;
     renderUnifiedStations();
   if (channels.length === 0) {
@@ -900,7 +886,6 @@ async function loadChannels() {
   }
   renderExternalStations();
   if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
-      console.log("Current channel is no longer live, stopping...");
       if (ws) {
         loopRunning = false;
         ws.close();
@@ -1075,7 +1060,7 @@ function renderUnifiedStations(): void {
       card.style.position = "relative";
       if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
       const cached = streamStatusCache[station.streamUrl];
-      const { text: statusText, statusClass } = getStatusLabel(cached);
+      const { text: statusText, statusClass } = getStatusLabel(cached, station.streamUrl);
       const hasLogo = !!station.logoUrl;
       const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
       const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
@@ -1131,7 +1116,7 @@ function renderUnifiedStations(): void {
       const channelRows = (config.channels || [])
         .map((ch) => {
           const cached = streamStatusCache[ch.streamUrl];
-          const { text: statusText, statusClass } = getStatusLabel(cached);
+          const { text: statusText, statusClass } = getStatusLabel(cached, ch.streamUrl);
           const isPlaying = currentExternalStation?.streamUrl === ch.streamUrl;
           return `<button type="button" class="ext-channel-row ${isPlaying ? "now-playing" : ""}" data-stream-url="${escapeAttr(ch.streamUrl)}">
             <span class="ext-channel-name">${escapeHtml(ch.name)}</span>
@@ -1187,90 +1172,61 @@ function renderUnifiedStations(): void {
   }
 }
 
-function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { text: string; statusClass: string } {
-  // When uncached, show LIVE optimistically so we never stick on "Checking…"; background check will update to Offline/Error if needed
-  if (!cached) return { text: "LIVE", statusClass: "status-live" };
+function getStatusLabel(
+  cached: { ok: boolean; status: string } | undefined,
+  streamUrl?: string
+): { text: string; statusClass: string } {
+  // Currently playing this stream → show LIVE
+  if (streamUrl && currentExternalStation?.streamUrl === streamUrl) {
+    return { text: "LIVE", statusClass: "status-live" };
+  }
+  if (!cached) return { text: "—", statusClass: "status-unknown" };
   if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
   const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
   const statusClass = cached.status === "timeout" ? "status-timeout" : cached.status === "unavailable" ? "status-offline" : "status-error";
   return { text: label, statusClass };
 }
 
-let streamCheckInProgress = false;
-
 function renderExternalStations() {
-  const needCheck = Object.keys(streamStatusCache).length === 0 && !streamCheckInProgress;
   renderUnifiedStations();
-  if (needCheck) {
-    streamCheckInProgress = true;
-    checkExternalStationsStreams().finally(() => {
-      streamCheckInProgress = false;
-    });
-  }
 }
 
-const STREAM_CHECK_TIMEOUT_MS = 8000;
-const STREAM_CHECK_BATCH_SIZE = 8;
+const STREAM_CHECK_TIMEOUT_MS = 4000;
 
-async function checkExternalStationsStreams() {
-  const stations = getExternalStationsFlat();
-  const toRemove: ExternalStation[] = [];
-
-  function updateCard(streamUrl: string, ok: boolean, status: string) {
-    streamStatusCache[streamUrl] = { ok, status };
-    document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
-      const el = card.querySelector(".ext-stream-status");
-      if (!el) return;
-      const { text, statusClass } = getStatusLabel({ ok, status });
-      el.classList.remove("status-checking", "status-live", "status-offline", "status-error", "status-timeout");
-      el.textContent = text;
-      el.classList.add(statusClass);
-      if (ok) card.classList.remove("stream-offline");
-      else card.classList.add("stream-offline");
+/** Check a single stream on demand (e.g. when user selects it). Updates cache and card. */
+function checkOneStream(streamUrl: string) {
+  if (streamStatusCache[streamUrl] !== undefined) return;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
+  fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(streamUrl)}`, { signal: controller.signal })
+    .then((res) => res.json() as Promise<{ ok?: boolean; status?: string }>)
+    .then((data) => {
+      clearTimeout(timeoutId);
+      const ok = !!data.ok;
+      const status = data.status || "error";
+      streamStatusCache[streamUrl] = { ok, status };
+      document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
+        const el = card.querySelector(".ext-stream-status");
+        if (!el) return;
+        const { text, statusClass } = getStatusLabel({ ok, status }, streamUrl);
+        el.classList.remove("status-unknown", "status-live", "status-offline", "status-error", "status-timeout");
+        el.textContent = text;
+        el.classList.add(statusClass);
+        if (ok) card.classList.remove("stream-offline");
+        else card.classList.add("stream-offline");
+      });
+    })
+    .catch(() => {
+      clearTimeout(timeoutId);
+      streamStatusCache[streamUrl] = { ok: false, status: "error" };
+      document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
+        const el = card.querySelector(".ext-stream-status");
+        if (!el) return;
+        el.textContent = "Error";
+        el.className = "ext-stream-status status-error";
+        card.classList.add("stream-offline");
+      });
     });
-  }
-
-  for (let i = 0; i < stations.length; i += STREAM_CHECK_BATCH_SIZE) {
-    const batch = stations.slice(i, i + STREAM_CHECK_BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map(async (station) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
-        try {
-          const res = await fetch(
-            `${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`,
-            { signal: controller.signal }
-          );
-          clearTimeout(timeoutId);
-          const data = (await res.json()) as { ok?: boolean; status?: string };
-          return { station, ok: !!data.ok, status: data.status || "error" };
-        } catch (e) {
-          clearTimeout(timeoutId);
-          const status = e instanceof Error && e.name === "AbortError" ? "timeout" : "error";
-          return { station, ok: false, status };
-        }
-      })
-    );
-    results.forEach((outcome) => {
-      if (outcome.status !== "fulfilled") return;
-      const { station, ok, status } = outcome.value;
-      updateCard(station.streamUrl, ok, status);
-      if (!ok && station.id) toRemove.push(station);
-    });
-  }
-
-  if (toRemove.length > 0) {
-    const urlsToRemove = new Set(toRemove.map((s) => s.streamUrl));
-    allExternalStations = allExternalStations.filter((s) => !(s.id && urlsToRemove.has(s.streamUrl)));
-    await Promise.all(
-      toRemove.map((s) =>
-        s.id && token
-          ? fetch(`${API_URL}/api/external-stations/${s.id}`, { method: "DELETE", credentials: "include", headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
-          : Promise.resolve()
-      )
-    );
-  }
-  renderUnifiedStations();
 }
 
 function selectExternalStation(station: ExternalStation) {
@@ -1281,6 +1237,7 @@ function selectExternalStation(station: ExternalStation) {
   }
   stopExternalStream();
   currentExternalStation = station;
+  checkOneStream(station.streamUrl);
   nowPlayingTitle.textContent = station.name;
   nowPlayingDesc.textContent = station.description;
   externalVisitWebsite.href = station.websiteUrl;
@@ -2532,7 +2489,7 @@ loadRuntimeConfig().then(async () => {
   await loadExternalStations();
   if (token) await loadFavorites();
   loadChannels();
-  setInterval(loadChannels, 3000);
+  setInterval(loadChannels, 15000);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");

@@ -106,7 +106,7 @@ async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: strin
   }
   try {
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 5000);
+    const t = setTimeout(() => controller.abort(), 3000);
     const response = await fetch(url, {
       method: "GET",
       signal: controller.signal,
