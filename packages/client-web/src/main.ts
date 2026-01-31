@@ -1,4 +1,5 @@
 import { OpusDecoder } from "opus-decoder";
+import { initRouter, getRoute, type RouteId } from "./router";
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
@@ -476,7 +477,8 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 
 // DOM refs
 const channelsGrid = document.getElementById("channels-grid")!;
-const playerSection = document.getElementById("player-section")!;
+const channelsGridHome = document.getElementById("channels-grid-home")!;
+const footerPlayer = document.getElementById("footer-player")!;
 const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
 const playerCoverWrap = document.getElementById("player-cover-wrap")!;
@@ -486,8 +488,6 @@ const btnPlayPause = document.getElementById("btn-play-pause") as HTMLButtonElem
 const playPauseIcon = document.getElementById("play-pause-icon")!;
 const playPauseText = document.getElementById("play-pause-text")!;
 const playerLiveBadge = document.getElementById("player-live-badge")!;
-const playerStatus = document.getElementById("player-status")!;
-const playerStatusIcon = document.getElementById("player-status-icon")!;
 const playerStatusText = document.getElementById("player-status-text")!;
 const statTier = document.getElementById("stat-tier")!;
 const statLoss = document.getElementById("stat-loss")!;
@@ -505,6 +505,8 @@ const externalVisitWebsite = document.getElementById("external-visit-website")! 
 const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
+const externalStationsGridHome = document.getElementById("external-stations-grid-home")!;
+const externalStationsGridAbout = document.getElementById("external-stations-grid-about")!;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
 const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
 const btnPrevStation = document.getElementById("btn-prev-station")!;
@@ -682,56 +684,21 @@ async function loadChannels() {
     
     const channels: LiveChannel[] = await res.json();
     console.log(`[loadChannels] Loaded ${channels.length} live channels:`, channels);
-    
-    channelsGrid.innerHTML = "";
-    if (channels.length === 0) {
-      channelsGrid.innerHTML = "<p style='opacity: 0.7;'>No live channels at the moment.</p>";
-      renderExternalStations();
-      // If we were listening to a channel that's no longer live, stop listening
-      if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
-        console.log("Current channel is no longer live, stopping...");
-        if (ws) {
-          loopRunning = false;
-          ws.close();
-          ws = null;
-        }
-        updatePlayerStatus("stopped", "Stream ended");
-        showPlayButton("Start");
-        playerLiveBadge.classList.add("hidden");
-      }
-      return;
+
+    renderChannelsToGrid(channelsGrid, channels);
+  renderChannelsToGrid(channelsGridHome, channels);
+  if (channels.length === 0) {
+    renderExternalStations();
+    if (currentChannel) {
+      if (ws) { loopRunning = false; ws.close(); ws = null; }
+      updatePlayerStatus("stopped", "Stream ended");
+      showPlayButton("Start");
+      playerLiveBadge.classList.add("hidden");
     }
-    channels.forEach((c) => {
-      console.log(`[loadChannels] Creating card for channel:`, c);
-      if (!c.id || !c.streamId) {
-        console.warn(`[loadChannels] Invalid channel data:`, c);
-        return;
-      }
-      const card = document.createElement("div");
-      card.className = "channel-card";
-      if (currentChannel?.id === c.id) card.classList.add("selected");
-      if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
-      const coverHtml = c.coverUrl
-        ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />`
-        : "";
-      card.innerHTML = `
-        <div class="mac-window-title"><span class="close-box"></span>${escapeHtml(c.title || "Untitled")}</div>
-        <div class="mac-window-body">
-          ${coverHtml}
-          <div class="channel-desc">${escapeHtml(c.description || "")}</div>
-          <span class="live-badge">LIVE</span>
-        </div>
-      `;
-      card.onclick = () => {
-        console.log(`[loadChannels] Channel clicked:`, c);
-        selectChannel(c);
-      };
-      channelsGrid.appendChild(card);
-    });
-    console.log(`[loadChannels] Added ${channels.length} channel cards to grid`);
-    
-    // If current channel is no longer in the list, stop listening
-    if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
+    return;
+  }
+  renderExternalStations();
+  if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
       console.log("Current channel is no longer live, stopping...");
       if (ws) {
         loopRunning = false;
@@ -743,13 +710,41 @@ async function loadChannels() {
       playerLiveBadge.classList.add("hidden");
       currentChannel = null;
     }
-    renderExternalStations();
   } catch (err: any) {
     console.error("[loadChannels] Exception caught:", err);
     console.error("[loadChannels] Error details:", err.message, err.stack);
-    channelsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error: ${err.message || "Failed to load channels"}</p>`;
+    const errMsg = err.message || "Failed to load channels";
+    channelsGrid.innerHTML = `<p style='opacity: 0.7; color: var(--status-offline, #c00);'>Error: ${escapeHtml(errMsg)}</p>`;
+    channelsGridHome.innerHTML = channelsGrid.innerHTML;
     renderExternalStations();
   }
+}
+
+function renderChannelsToGrid(container: HTMLElement, channels: LiveChannel[]) {
+  container.innerHTML = "";
+  if (channels.length === 0) {
+    container.innerHTML = "<p style='opacity: 0.7;'>No live channels at the moment.</p>";
+    return;
+  }
+  channels.forEach((c) => {
+    if (!c.id || !c.streamId) return;
+    const card = document.createElement("div");
+    card.className = "channel-card";
+    if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
+    const coverHtml = c.coverUrl
+      ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />`
+      : "";
+    card.innerHTML = `
+      <div class="card-title">${escapeHtml(c.title || "Untitled")}</div>
+      <div class="card-body">
+        ${coverHtml}
+        <div class="channel-desc">${escapeHtml(c.description || "")}</div>
+        <span class="live-badge">LIVE</span>
+      </div>
+    `;
+    card.onclick = () => selectChannel(c);
+    container.appendChild(card);
+  });
 }
 
 function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { text: string; statusClass: string } {
@@ -760,10 +755,9 @@ function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { 
   return { text: label, statusClass };
 }
 
-function renderExternalStations() {
-  externalStationsGrid.innerHTML = "";
+function renderExternalStationsToGrid(container: HTMLElement) {
+  container.innerHTML = "";
   const stations = getExternalStationsFlat();
-  const needCheck = Object.keys(streamStatusCache).length === 0;
   stations.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
@@ -802,8 +796,15 @@ function renderExternalStations() {
       e.preventDefault();
       selectExternalStation(station);
     };
-    externalStationsGrid.appendChild(card);
+    container.appendChild(card);
   });
+}
+
+function renderExternalStations() {
+  const needCheck = Object.keys(streamStatusCache).length === 0;
+  renderExternalStationsToGrid(externalStationsGrid);
+  renderExternalStationsToGrid(externalStationsGridHome);
+  renderExternalStationsToGrid(externalStationsGridAbout);
   if (needCheck) checkExternalStationsStreams();
 }
 
@@ -824,16 +825,16 @@ async function checkExternalStationsStreams() {
     if (outcome.status !== "fulfilled") return;
     const { streamUrl, ok, status } = outcome.value;
     streamStatusCache[streamUrl] = { ok, status };
-    const card = externalStationsGrid.querySelector<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`);
-    if (!card) return;
-    const el = card.querySelector(".ext-stream-status");
-    if (!el) return;
-    const { text, statusClass } = getStatusLabel({ ok, status });
-    el.classList.remove("status-checking", "status-live", "status-offline", "status-error", "status-timeout");
-    el.textContent = text;
-    el.classList.add(statusClass);
-    if (ok) card.classList.remove("stream-offline");
-    else card.classList.add("stream-offline");
+    document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
+      const el = card.querySelector(".ext-stream-status");
+      if (!el) return;
+      const { text, statusClass } = getStatusLabel({ ok, status });
+      el.classList.remove("status-checking", "status-live", "status-offline", "status-error", "status-timeout");
+      el.textContent = text;
+      el.classList.add(statusClass);
+      if (ok) card.classList.remove("stream-offline");
+      else card.classList.add("stream-offline");
+    });
   });
 }
 
@@ -872,13 +873,6 @@ function selectExternalStation(station: ExternalStation) {
     playerCover.removeAttribute("src");
     playerCoverInitial.classList.add("hidden");
   }
-  playerSection.classList.remove("hidden", "window-closed");
-  const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
-  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
-  requestAnimationFrame(() => {
-    if (center) center(playerSection);
-    else if (clamp) clamp(playerSection);
-  });
   if (externalAudio) {
     externalAudio.pause();
     externalAudio.src = "";
@@ -993,7 +987,6 @@ function stopExternalStream() {
   updatePlayerStatus("ready", "Ready to listen");
   showPlayButton("Start");
   playerLiveBadge.classList.add("hidden");
-  playerSection.classList.add("hidden");
 }
 
 function escapeHtml(text: string): string {
@@ -1029,13 +1022,6 @@ function selectChannel(channel: LiveChannel) {
     playerCover.removeAttribute("src");
     playerCoverWrap.classList.add("placeholder");
   }
-  playerSection.classList.remove("hidden", "window-closed");
-  const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
-  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
-  requestAnimationFrame(() => {
-    if (center) center(playerSection);
-    else if (clamp) clamp(playerSection);
-  });
   if (ws) {
     loopRunning = false;
     ws.close();
@@ -1744,18 +1730,8 @@ async function loop() {
 }
 
 function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: string) {
-  playerStatus.className = `status ${status}`;
-  playerSection.classList.toggle("is-playing", status === "playing");
-  if (status === "playing") {
-    playerStatusIcon.textContent = "";
-    playerStatusText.textContent = message;
-  } else if (status === "stopped") {
-    playerStatusIcon.textContent = "";
-    playerStatusText.textContent = message;
-  } else {
-    playerStatusIcon.textContent = "";
-    playerStatusText.textContent = message;
-  }
+  footerPlayer.classList.toggle("is-playing", status === "playing");
+  playerStatusText.textContent = message;
 }
 
 function stopListening() {
@@ -2033,14 +2009,36 @@ document.getElementById("client-logout-btn")!.onclick = () => {
 };
 
 // Load runtime config (API/relay URLs from /config.json) then start
-window.addEventListener("window-closed", ((e: CustomEvent<{ windowId: string }>) => {
-  if (e.detail?.windowId !== "player") return;
-  stopExternalStream();
-  stopListening();
-}) as EventListener);
+function setActiveView(route: RouteId) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  const view = document.getElementById(`view-${route}`);
+  if (view) view.classList.add("active");
+  ["home", "live", "about"].forEach((r) => {
+    const el = document.getElementById(`nav-${r}`);
+    if (el) el.classList.toggle("active", r === route);
+  });
+}
+
+function initTheme() {
+  const stored = localStorage.getItem("laf_theme") as "light" | "dark" | null;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = stored || (prefersDark ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.textContent = theme === "dark" ? "Light" : "Dark";
+  btn?.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("laf_theme", next);
+    if (btn) btn.textContent = next === "dark" ? "Light" : "Dark";
+  });
+}
 
 loadRuntimeConfig().then(() => {
   updateTopBarAuth();
+  initTheme();
+  initRouter((route) => setActiveView(route));
+  setActiveView(getRoute());
   loadChannels();
   setInterval(loadChannels, 3000);
 });

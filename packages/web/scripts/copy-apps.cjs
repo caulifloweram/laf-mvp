@@ -22,6 +22,6 @@ function copyDir(src, dest) {
   }
 }
 
-copyDir(clientWebDist, path.join(webDist, "client"));
+copyDir(clientWebDist, webDist);
 copyDir(broadcasterWebDist, path.join(webDist, "broadcaster"));
-console.log("copy-apps: copied client and broadcaster into dist/");
+console.log("copy-apps: client at root, broadcaster at dist/broadcaster/");

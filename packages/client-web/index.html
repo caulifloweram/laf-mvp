@@ -5,274 +5,205 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LAF - Live Stations</title>
     <style>
-      /* Macintosh 1984–inspired UI: black & white, striped title bars, Chicago-style */
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
+      /* Light (default) and dark theme */
       :root {
-        --mac-white: #fff;
-        --mac-black: #000;
-        --mac-gray: #808080;
-        --mac-light-gray: #c0c0c0;
-        --mac-bg: #a0a0a0;
-        --mac-title-stripe: #e0e0e0;
+        --bg: #f5f5f5;
+        --surface: #fff;
+        --border: #111;
+        --text: #111;
+        --text-muted: #444;
+        --accent: #111;
+        --accent-text: #fff;
+        --grid-gap: 1rem;
+        --topbar-bg: #111;
+        --topbar-text: #fff;
+        --footer-bg: #111;
+        --footer-text: #fff;
+        --card-hover: #eee;
+        --status-live: #0a7c0a;
+        --status-offline: #c00;
+      }
+      [data-theme="dark"] {
+        --bg: #111;
+        --surface: #1a1a1a;
+        --border: #eee;
+        --text: #eee;
+        --text-muted: #aaa;
+        --accent: #eee;
+        --accent-text: #111;
+        --topbar-bg: #000;
+        --topbar-text: #eee;
+        --footer-bg: #000;
+        --footer-text: #eee;
+        --card-hover: #252525;
+        --status-live: #2ecc2e;
+        --status-offline: #e74c3c;
       }
 
       body {
         font-family: Chicago, "Charcoal", "Lucida Grande", system-ui, -apple-system, sans-serif;
-        background: var(--mac-bg);
-        color: var(--mac-black);
+        background: var(--bg);
+        color: var(--text);
         min-height: 100vh;
-        padding: 0;
+        padding-bottom: 80px; /* space for fixed footer */
         -webkit-font-smoothing: none;
         font-smoothing: none;
       }
 
-      /* Site-wide top bar (macOS-style) */
+      /* Top bar */
       .site-topbar {
         position: sticky;
         top: 0;
         left: 0;
         right: 0;
-        height: 44px;
-        background: var(--mac-black);
-        color: var(--mac-white);
-        border-bottom: 2px solid var(--mac-black);
-        display: flex;
+        height: 48px;
+        background: var(--topbar-bg);
+        color: var(--topbar-text);
+        border-bottom: 2px solid var(--border);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        justify-content: space-between;
         padding: 0 16px;
-        z-index: 10;
+        z-index: 20;
         font-size: 13px;
         font-weight: bold;
-        flex-shrink: 0;
       }
-      .site-topbar .topbar-left {
+      .topbar-left {
         display: flex;
         align-items: center;
         gap: 24px;
       }
-      .site-topbar .topbar-logo {
-        color: var(--mac-white);
+      .topbar-logo {
+        color: var(--topbar-text);
         text-decoration: none;
         font-weight: bold;
       }
-      .site-topbar .topbar-logo:hover { opacity: 0.9; }
-      .site-topbar .topbar-nav {
+      .topbar-logo:hover { opacity: 0.9; }
+      .topbar-nav {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
       }
-      .site-topbar .topbar-nav-item {
-        color: var(--mac-white);
+      .topbar-nav-item {
+        color: var(--topbar-text);
         text-decoration: none;
-        padding: 6px 12px;
+        padding: 8px 12px;
         border: 1px solid transparent;
-        border-radius: 4px;
       }
-      .site-topbar .topbar-nav-item:hover {
-        background: var(--mac-gray);
-      }
-      .site-topbar .topbar-nav-item.active {
-        background: var(--mac-gray);
-      }
-      .site-topbar .topbar-right {
+      .topbar-nav-item:hover { background: rgba(255,255,255,0.1); }
+      .topbar-nav-item.active { background: rgba(255,255,255,0.2); }
+      .topbar-center { justify-self: center; }
+      .topbar-right {
         display: flex;
         align-items: center;
         gap: 8px;
+        justify-self: end;
       }
-      .site-topbar .topbar-right button {
-        padding: 6px 12px;
-        font-size: 12px;
+      .theme-toggle {
         background: transparent;
-        color: var(--mac-white);
-        border: 1px solid var(--mac-white);
-        border-radius: 4px;
+        border: 1px solid var(--topbar-text);
+        color: var(--topbar-text);
+        padding: 6px 10px;
+        font-size: 12px;
         cursor: pointer;
         font-weight: bold;
         font-family: inherit;
       }
-      .site-topbar .topbar-right button:hover { background: var(--mac-gray); }
+      .theme-toggle:hover { background: rgba(255,255,255,0.15); }
 
-      /* Menu bar (classic Mac top strip) */
-      .desktop-taskbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--mac-black);
-        color: var(--mac-white);
-        padding: 6px 12px;
-        font-size: 12px;
-        display: flex;
-        gap: 12px;
-        z-index: 10;
+      /* Main content: brutalist grid */
+      .main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 16px;
       }
-      .desktop-taskbar button {
-        background: transparent;
-        border: 1px solid var(--mac-white);
-        color: var(--mac-white);
-        padding: 4px 10px;
-        font-size: 11px;
-        cursor: pointer;
-        box-shadow: none;
-      }
-      .desktop-taskbar button:hover { background: var(--mac-gray); }
+      .view { display: none; }
+      .view.active { display: block; }
 
-      /* Desktop: windows are positioned absolutely */
-      .desktop {
-        position: relative;
-        min-height: calc(100vh - 44px);
-        padding: 24px;
-      }
-
-      /* Window: white content, black border, solid title bar */
-      .mac-window,
-      .player-section {
-        position: absolute;
-        min-width: 320px;
-        max-width: 560px;
-        z-index: 1;
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
-        overflow: hidden;
-        box-shadow: 2px 2px 0 var(--mac-gray);
-      }
-      .mac-window.bring-front,
-      .player-section.bring-front { z-index: 2; }
-
-      .mac-window-title {
-        background: var(--mac-light-gray);
-        border-bottom: 1px solid var(--mac-black);
-        padding: 6px 10px 6px 52px;
-        font-size: 13px;
+      .page-header {
+        font-size: 24px;
         font-weight: bold;
-        position: relative;
-        cursor: move;
-        user-select: none;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border);
       }
-      .mac-window-title .live-badge { margin-left: 8px; }
-      .mac-window-title .close-box,
-      .mac-window-title .minimize-box {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        border: 1px solid var(--mac-black);
-        border-radius: 1px;
-        background: var(--mac-white);
-        cursor: pointer;
+      .page-content {
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 24px;
       }
-      .mac-window-title .close-box { left: 6px; }
-      .mac-window-title .minimize-box {
-        left: 24px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .mac-window-title .minimize-box::after {
-        content: "";
-        width: 8px;
-        height: 2px;
-        background: var(--mac-black);
-      }
+      .page-content p { margin-bottom: 12px; }
+      .page-content a { color: var(--text); text-decoration: underline; }
+      .page-content a:hover { opacity: 0.8; }
+      .page-content h2 { font-size: 16px; margin: 24px 0 12px; }
 
-      .mac-window-body { padding: 16px 20px 20px; }
-
-      h1 {
-        font-size: 18px;
+      /* Grid sections */
+      .section-title {
+        font-size: 14px;
         font-weight: bold;
-        margin-bottom: 16px;
-        color: var(--mac-black);
+        margin: 32px 0 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
+      .section-title:first-of-type { margin-top: 0; }
 
       .channels-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 16px;
+        gap: var(--grid-gap);
         margin-bottom: 24px;
       }
-
       .channel-card {
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
+        background: var(--surface);
+        border: 2px solid var(--border);
         padding: 0;
         cursor: pointer;
-        overflow: hidden;
-        box-shadow: 2px 2px 0 var(--mac-gray);
+        transition: background 0.15s;
       }
-      .channel-card:hover { background: var(--mac-light-gray); }
-      .channel-card.now-playing { border-color: var(--mac-black); box-shadow: 3px 3px 0 var(--mac-black); background: var(--mac-light-gray); }
-      .channel-card.selected { border-width: 2px; border-color: var(--mac-gray); }
-      .channel-card .mac-window-title { padding: 6px 10px 6px 28px; cursor: default; }
-      .channel-card .mac-window-body { padding: 12px 14px; }
+      .channel-card:hover { background: var(--card-hover); }
+      .channel-card.now-playing { border-width: 3px; }
+      .channel-card .card-title {
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: bold;
+        border-bottom: 1px solid var(--border);
+      }
+      .channel-card .card-body { padding: 12px 14px; }
       .channel-card-cover {
         display: block;
         width: 100%;
         max-height: 100px;
         object-fit: cover;
         margin-bottom: 8px;
-        border: 1px solid var(--mac-gray);
+        border: 1px solid var(--border);
       }
-
-      .channel-title {
-        font-size: 13px;
-        font-weight: bold;
-        margin-bottom: 6px;
-        color: var(--mac-black);
-      }
-
-      .channel-desc {
-        font-size: 12px;
-        color: var(--mac-gray);
-        line-height: 1.4;
-      }
-
+      .channel-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
       .live-badge {
         display: inline-block;
-        background: var(--mac-black);
-        color: var(--mac-white);
+        background: var(--accent);
+        color: var(--accent-text);
         padding: 2px 8px;
-        border-radius: 4px;
         font-size: 11px;
         font-weight: bold;
         margin-top: 6px;
       }
 
-      .channels-window-wrap {
-        min-height: 280px;
-      }
-      .external-stations-section {
-        width: calc(100% + 48px);
-        margin: 20px -24px 0;
-        box-sizing: border-box;
-        padding: 20px 24px 24px;
-      }
-      .external-stations-heading {
-        font-size: 14px;
-        font-weight: bold;
-        margin: 0 0 16px;
-        color: var(--mac-black);
-      }
       .external-stations-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 16px;
-        max-width: 100%;
+        gap: var(--grid-gap);
       }
       .external-station-card {
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
+        background: var(--surface);
+        border: 2px solid var(--border);
         padding: 12px 14px;
         cursor: pointer;
-        box-shadow: 2px 2px 0 var(--mac-gray);
+        transition: background 0.15s;
       }
-      .external-station-card:hover { background: var(--mac-light-gray); }
-      .external-station-card.now-playing { border-color: var(--mac-black); box-shadow: 3px 3px 0 var(--mac-black); background: var(--mac-light-gray); }
+      .external-station-card:hover { background: var(--card-hover); }
+      .external-station-card.now-playing { border-width: 3px; }
       .external-station-card .ext-station-logo-wrap {
         position: relative;
         width: 48px;
@@ -284,8 +215,7 @@
         width: 48px;
         height: 48px;
         object-fit: contain;
-        border: 1px solid var(--mac-gray);
-        border-radius: 4px;
+        border: 1px solid var(--border);
       }
       .external-station-card .ext-station-initial {
         position: absolute;
@@ -295,400 +225,312 @@
         justify-content: center;
         font-size: 22px;
         font-weight: bold;
-        color: var(--mac-black);
-        background: var(--mac-light-gray);
-        border: 1px solid var(--mac-gray);
-        border-radius: 4px;
+        color: var(--text);
+        background: var(--card-hover);
+        border: 1px solid var(--border);
       }
       .external-station-card .ext-station-initial.hidden { display: none; }
       .external-station-card .ext-station-name-only {
         font-size: 16px;
         font-weight: bold;
-        color: var(--mac-black);
         margin-bottom: 8px;
         line-height: 1.3;
       }
-      .external-station-card .ext-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--mac-black); }
-      .external-station-card .ext-desc { font-size: 12px; color: var(--mac-gray); line-height: 1.4; }
-      .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--mac-gray); }
-      .external-station-card .ext-stream-status {
-        font-size: 11px; margin-top: 6px; font-weight: bold;
-      }
-      .external-station-card .ext-stream-status.status-checking { color: var(--mac-gray); }
-      .external-station-card .ext-stream-status.status-live { color: #0a7c0a; }
+      .external-station-card .ext-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; }
+      .external-station-card .ext-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+      .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--text-muted); }
+      .external-station-card .ext-stream-status { font-size: 11px; margin-top: 6px; font-weight: bold; }
+      .external-station-card .ext-stream-status.status-checking { color: var(--text-muted); }
+      .external-station-card .ext-stream-status.status-live { color: var(--status-live); }
       .external-station-card .ext-stream-status.status-offline,
       .external-station-card .ext-stream-status.status-error,
-      .external-station-card .ext-stream-status.status-timeout { color: #c00; }
+      .external-station-card .ext-stream-status.status-timeout { color: var(--status-offline); }
       .external-station-card.stream-offline { opacity: 0.85; }
 
-      .player-section {
-        min-width: 380px;
-        max-width: 520px;
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
-        background: var(--mac-white);
-        overflow: hidden;
-        margin-top: 20px;
-        box-shadow: 2px 2px 0 var(--mac-gray);
+      /* Fixed footer player */
+      .footer-player {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 72px;
+        background: var(--footer-bg);
+        color: var(--footer-text);
+        border-top: 2px solid var(--border);
+        display: grid;
+        grid-template-columns: 72px 1fr auto auto;
+        align-items: center;
+        gap: 16px;
+        padding: 0 16px;
+        z-index: 15;
       }
-      .player-section .mac-window-body { padding: 0 20px 20px; }
-
-      .player-cover-wrap {
-        width: 100%;
-        aspect-ratio: 1;
-        background: transparent;
+      .footer-player .cover-wrap {
+        position: relative;
+        width: 56px;
+        height: 56px;
+        background: var(--surface);
+        border: 1px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
       }
-      .player-cover-wrap.placeholder {
-        background: linear-gradient(135deg, var(--mac-light-gray) 0%, var(--mac-gray) 100%);
-      }
-      .player-cover {
+      .footer-player .cover-wrap.placeholder { background: var(--card-hover); }
+      .footer-player .cover-wrap img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        display: block;
       }
-      .player-cover-wrap.placeholder .player-cover { display: none; }
-      .player-cover-wrap.placeholder::after {
+      .footer-player .cover-wrap.placeholder img { display: none; }
+      .footer-player .cover-wrap.external-logo img { object-fit: contain; }
+      .footer-player .cover-wrap.placeholder::after {
         content: "\u266B";
-        font-size: 64px;
-        color: var(--mac-gray);
+        font-size: 24px;
         opacity: 0.6;
       }
-      .player-cover-wrap.external-logo {
-        position: relative;
-        background: transparent;
-        border: none;
-        max-width: 96px;
-        max-height: 96px;
-        width: 96px;
-        height: 96px;
-        margin: 0 auto;
-        aspect-ratio: 1;
-        padding: 16px;
-        box-sizing: border-box;
-      }
-      .player-cover-wrap.external-logo .player-cover {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-      .player-cover-wrap.external-logo .player-cover-initial {
+      .footer-player .cover-initial {
         position: absolute;
         inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 48px;
+        font-size: 24px;
         font-weight: bold;
-        color: var(--mac-black);
-        background: var(--mac-light-gray);
       }
-      .player-cover-wrap.external-logo .player-cover-initial.hidden { display: none; }
-
-      .player-header {
+      .footer-player .cover-initial.hidden { display: none; }
+      .footer-player .info { min-width: 0; }
+      .footer-player .info .title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .footer-player .info .desc { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .footer-player .controls {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin: 16px 0;
-        flex-wrap: wrap;
-        gap: 12px;
+        align-items: center;
+        gap: 8px;
       }
-
-      .player-header h2 { font-size: 14px; margin: 0 0 4px 0; }
-      .player-header p { font-size: 12px; color: var(--mac-gray); margin: 0; }
-
-      .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 10px;
-        margin-top: 16px;
-      }
-
-      .stat-item {
-        background: var(--mac-light-gray);
-        border: 1px solid var(--mac-black);
-        border-radius: 4px;
-        padding: 10px 12px;
-      }
-
-      .stat-label {
-        font-size: 10px;
-        color: var(--mac-gray);
-        margin-bottom: 4px;
-        text-transform: uppercase;
-      }
-
-      .stat-value {
-        font-size: 14px;
+      .footer-player .controls button {
+        background: transparent;
+        color: var(--footer-text);
+        border: 1px solid var(--footer-text);
+        padding: 8px 14px;
+        font-size: 12px;
         font-weight: bold;
-        font-variant-numeric: tabular-nums;
+        font-family: inherit;
+        cursor: pointer;
       }
+      .footer-player .controls button:hover { background: rgba(255,255,255,0.15); }
+      .footer-player .controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .footer-player .status-text { font-size: 11px; color: var(--text-muted); max-width: 120px; text-align: right; }
 
-      /* Classic Mac buttons: rounded rect, black border, white fill */
+      /* Expandable player details (optional, below footer or in a slide-out) */
+      .player-detail {
+        padding: 16px;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        display: none;
+      }
+      .player-detail.open { display: block; }
+      .player-detail .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .player-detail .stat-item {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+      }
+      .player-detail .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+      .player-detail .stat-value { font-size: 13px; font-weight: bold; font-variant-numeric: tabular-nums; }
+      .player-detail .chat-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+      .player-detail .chat-title { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+      .player-detail .chat-messages {
+        height: 100px;
+        overflow-y: auto;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 8px;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .player-detail .chat-message { margin-bottom: 4px; word-break: break-word; }
+      .player-detail .chat-message .chat-author { font-weight: bold; margin-right: 6px; }
+      .player-detail .chat-signin-prompt { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+      .player-detail .chat-input-row { display: flex; gap: 8px; }
+      .player-detail .chat-input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); font-size: 12px; background: var(--surface); color: var(--text); }
+      .player-detail .chat-send { padding: 6px 12px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); font-weight: bold; background: var(--surface); color: var(--text); }
+
+      /* Buttons (brutalist) */
       button {
-        background: var(--mac-white);
-        color: var(--mac-black);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        border: 2px solid var(--border);
         padding: 8px 16px;
         font-size: 12px;
         font-weight: bold;
         font-family: inherit;
         cursor: pointer;
-        box-shadow: 2px 2px 0 var(--mac-black);
       }
-      button:hover { background: var(--mac-light-gray); }
-      button:active {
-        box-shadow: none;
-        transform: translate(1px, 1px);
-      }
-      button:disabled {
-        background: var(--mac-light-gray);
-        color: var(--mac-gray);
-        cursor: not-allowed;
-        box-shadow: 1px 1px 0 var(--mac-gray);
-      }
-      button[style*="background: #ef4444"],
-      button.danger {
-        background: var(--mac-white) !important;
-        color: var(--mac-black) !important;
-        border: 2px solid var(--mac-black) !important;
-      }
-      button.danger:hover { background: var(--mac-light-gray) !important; }
-
-      .status {
-        padding: 10px 14px;
-        border: 1px solid var(--mac-black);
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 12px;
-      }
-      .status.success { background: var(--mac-light-gray); }
-      .status.error { background: var(--mac-white); }
-      .status.info { background: var(--mac-light-gray); }
-      .status.playing { background: var(--mac-light-gray); }
-      .status.stopped { background: var(--mac-white); }
+      button:hover { background: var(--card-hover); }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
 
       .confirm-overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.4);
+        background: rgba(0,0,0,0.5);
         z-index: 1000;
         align-items: center;
         justify-content: center;
       }
-      .confirm-overlay.visible {
-        display: flex;
-      }
+      .confirm-overlay.visible { display: flex; }
       .confirm-dialog {
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
+        background: var(--surface);
+        border: 2px solid var(--border);
         padding: 20px 24px;
         max-width: 360px;
-        box-shadow: 4px 4px 0 var(--mac-gray);
       }
-      .confirm-dialog .confirm-title {
-        font-size: 14px;
-        font-weight: bold;
-        margin-bottom: 10px;
-      }
-      .confirm-dialog .confirm-message {
-        font-size: 12px;
-        color: var(--mac-black);
-        margin-bottom: 16px;
-        line-height: 1.4;
-      }
-      .confirm-dialog .confirm-buttons {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-      }
-      .confirm-dialog .confirm-buttons button { width: auto; }
-
-      .chat-panel {
-        margin-top: 16px;
-        border-top: 2px solid var(--mac-black);
-        padding-top: 12px;
-      }
-      .chat-title { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
-      .chat-messages {
-        height: 120px;
-        overflow-y: auto;
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 4px;
-        padding: 8px;
-        font-size: 12px;
-        margin-bottom: 8px;
-      }
-      .chat-message { margin-bottom: 6px; word-break: break-word; }
-      .chat-message .chat-author { font-weight: bold; color: var(--mac-gray); margin-right: 6px; }
-      .chat-signin-prompt { font-size: 11px; color: var(--mac-gray); margin-bottom: 8px; }
-      .chat-input-row { display: flex; gap: 8px; }
-      .chat-input { flex: 1; padding: 6px 10px; border: 2px solid var(--mac-black); border-radius: 4px; font-size: 12px; }
-      .chat-send { padding: 6px 12px; font-size: 12px; cursor: pointer; background: var(--mac-white); border: 2px solid var(--mac-black); border-radius: 4px; font-weight: bold; }
-      .chat-send:hover { background: var(--mac-light-gray); }
-      .auth-dialog { min-width: 320px; }
-      .auth-tab { padding: 6px 12px; border: 2px solid var(--mac-black); background: var(--mac-light-gray); cursor: pointer; font-weight: bold; }
-      .auth-tab.active { background: var(--mac-white); }
-      .auth-error { color: #c00; font-size: 12px; margin-top: 8px; }
+      .confirm-dialog .confirm-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+      .confirm-dialog .confirm-message { font-size: 12px; margin-bottom: 16px; line-height: 1.4; }
+      .confirm-dialog .confirm-buttons { display: flex; gap: 10px; justify-content: flex-end; }
       .form-group { margin-bottom: 10px; }
       .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
+      .form-group input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+      }
+      .auth-error { color: var(--status-offline); font-size: 12px; margin-top: 8px; }
+      .auth-tab { padding: 6px 12px; border: 2px solid var(--border); background: var(--card-hover); cursor: pointer; font-weight: bold; }
+      .auth-tab.active { background: var(--surface); }
 
-      .hidden { display: none; }
-      .mac-window.window-closed,
-      .player-section.window-closed { display: none !important; }
+      .hidden { display: none !important; }
 
       @media (max-width: 768px) {
-        .container { padding: 12px; }
         .channels-grid { grid-template-columns: 1fr; }
-        .stat-grid { grid-template-columns: repeat(2, 1fr); }
+        .footer-player { grid-template-columns: 56px 1fr auto; }
+        .footer-player .status-text { display: none; }
       }
     </style>
   </head>
   <body>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
-        <a href="/" class="topbar-logo">LAF</a>
+        <a href="#home" class="topbar-logo" id="nav-logo">LAF</a>
         <div class="topbar-nav">
+          <a href="#home" class="topbar-nav-item" id="nav-home">Home</a>
+          <a href="#live" class="topbar-nav-item" id="nav-live">Live Stations</a>
+          <a href="#about" class="topbar-nav-item" id="nav-about">About</a>
           <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
-          <a href="/client/" class="topbar-nav-item active">Live Stations</a>
-          <a href="/about/" class="topbar-nav-item">About</a>
         </div>
       </div>
+      <div class="topbar-center"></div>
       <div class="topbar-right" id="client-topbar-right">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">Dark</button>
         <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item hidden"></span>
-        <button type="button" id="client-logout-btn" class="hidden" style="background: transparent; color: var(--mac-white); border: 1px solid var(--mac-white); padding: 6px 12px; font-size: 12px; cursor: pointer; border-radius: 4px;">Logout</button>
+        <button type="button" id="client-logout-btn" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
       </div>
     </nav>
-    <div class="desktop" id="desktop">
-      <div class="channels-window-wrap">
-        <div class="mac-window" id="window-channels" data-window-id="channels" style="left: 24px; top: 24px;">
-          <div class="mac-window-title">
-            <span class="close-box" title="Close"></span>
-            <span class="minimize-box" title="Minimize"></span>
-            Live Channels
-          </div>
-          <div class="mac-window-body">
-            <div id="channels-grid" class="channels-grid"></div>
-          </div>
-        </div>
-      </div>
-      <section class="external-stations-section" id="external-stations-section">
-        <h3 class="external-stations-heading">Other stations</h3>
-        <div id="external-stations-grid" class="external-stations-grid"></div>
-      </section>
-      <div id="player-section" class="player-section hidden" data-window-id="player" style="left: 24px; top: 320px;">
-        <div class="mac-window-title">
-          <span class="close-box" title="Close"></span>
-          <span class="minimize-box" title="Minimize"></span>
-          <span id="now-playing-title">Not playing</span>
-          <span id="player-live-badge" class="live-badge hidden">LIVE</span>
-        </div>
-        <div class="player-cover-wrap placeholder" id="player-cover-wrap">
-          <img id="player-cover" class="player-cover" alt="" />
-          <span id="player-cover-initial" class="player-cover-initial hidden" aria-hidden="true"></span>
-        </div>
-        <div class="mac-window-body">
-        <div class="player-header">
-          <div style="flex: 1;">
-            <p id="now-playing-desc" style="font-size: 12px; color: #808080;"></p>
-            <p id="now-playing-program-wrap" class="hidden" style="font-size: 11px; color: #606060; margin-top: 6px;"><span class="program-label">Program:</span> <span id="now-playing-program"></span></p>
-          </div>
-          <div class="player-controls" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-            <button type="button" id="btn-prev-station" class="external-only hidden" title="Previous station">&#9664;</button>
-            <button type="button" id="btn-play-pause" style="min-width: 100px;">
-              <span id="play-pause-icon">&#9654;</span> <span id="play-pause-text">Start</span>
-            </button>
-            <button type="button" id="btn-next-station" class="external-only hidden" title="Next station">&#9654;</button>
-          </div>
-        </div>
-        
-        <div id="player-status" class="status info">
-          <span id="player-status-icon">&#10074;&#10074;</span>
-          <span id="player-status-text">Ready to listen</span>
-        </div>
-        <div id="external-stream-actions" class="hidden" style="margin-top: 8px;">
-          <a id="external-visit-website" href="#" target="_blank" rel="noopener" style="font-size: 12px;">Visit website</a>
-        </div>
-        <div class="stat-grid" id="player-stat-grid">
-          <div class="stat-item">
-            <div class="stat-label">Tier</div>
-            <div id="stat-tier" class="stat-value">-</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Loss (2s)</div>
-            <div id="stat-loss" class="stat-value">-</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Buffer</div>
-            <div id="stat-buffer" class="stat-value">-</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Late Rate</div>
-            <div id="stat-late" class="stat-value">-</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Est Latency</div>
-            <div id="stat-latency" class="stat-value">-</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">Bitrate</div>
-            <div id="stat-kbps" class="stat-value">-</div>
-          </div>
-        </div>
 
-        <div class="chat-panel" id="player-chat-panel">
-          <div class="chat-title">Live chat</div>
-          <div id="chat-messages" class="chat-messages"></div>
-          <div id="chat-signin-prompt" class="chat-signin-prompt">Sign in to participate in chat</div>
-          <div id="chat-input-row" class="chat-input-row hidden">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="2000" />
-            <button type="button" id="chat-send" class="chat-send">Send</button>
-          </div>
+    <main class="main">
+      <div id="view-home" class="view" role="main">
+        <h1 class="page-header">Welcome to LAF</h1>
+        <div class="page-content">
+          <p>Listen to live audio streams or start your own broadcast.</p>
+          <p><a href="/broadcaster/">Broadcast</a> — Go live and stream audio to listeners.</p>
+          <p><a href="#live">Live Stations</a> — Browse and listen to live stations.</p>
         </div>
+        <h2 class="section-title">Live channels</h2>
+        <div id="channels-grid-home" class="channels-grid"></div>
+        <h2 class="section-title">Other stations</h2>
+        <div id="external-stations-grid-home" class="external-stations-grid"></div>
+      </div>
+
+      <div id="view-live" class="view" role="main">
+        <h1 class="page-header">Live Stations</h1>
+        <h2 class="section-title">Live channels</h2>
+        <div id="channels-grid" class="channels-grid"></div>
+        <h2 class="section-title">Other stations</h2>
+        <div id="external-stations-grid" class="external-stations-grid"></div>
+      </div>
+
+      <div id="view-about" class="view" role="main">
+        <h1 class="page-header">About LAF</h1>
+        <div class="page-content">
+          <p>LAF is a live audio streaming platform. Broadcast your audio in real time or tune in to live stations from around the world.</p>
+          <h2>Broadcast</h2>
+          <p>Create an account, set up a channel, and go live. Stream audio from your microphone to anyone listening.</p>
+          <h2>Live Stations</h2>
+          <p>Browse stations that are currently live. Click to listen, sign in to participate in live chat.</p>
+          <h2>Technology</h2>
+          <p>LAF uses low-latency WebSocket streaming for real-time audio delivery.</p>
+        </div>
+        <h2 class="section-title">Stations</h2>
+        <div id="external-stations-grid-about" class="external-stations-grid"></div>
+      </div>
+    </main>
+
+    <footer class="footer-player" id="footer-player">
+      <div class="cover-wrap placeholder" id="player-cover-wrap">
+        <img id="player-cover" class="player-cover" alt="" />
+        <span id="player-cover-initial" class="cover-initial hidden" aria-hidden="true"></span>
+      </div>
+      <div class="info">
+        <div class="title" id="now-playing-title">Not playing</div>
+        <span id="player-live-badge" class="hidden" style="font-size:10px;margin-left:6px;">LIVE</span>
+        <div class="desc" id="now-playing-desc"></div>
+      </div>
+      <div class="controls">
+        <button type="button" id="btn-prev-station" class="external-only hidden" title="Previous">&#9664;</button>
+        <button type="button" id="btn-play-pause" style="min-width:90px;"><span id="play-pause-icon">&#9654;</span> <span id="play-pause-text">Start</span></button>
+        <button type="button" id="btn-next-station" class="external-only hidden" title="Next">&#9654;</button>
+      </div>
+      <div class="status-text" id="player-status-text">Ready to listen</div>
+    </footer>
+
+    <div class="player-detail" id="player-detail">
+      <div class="stat-grid" id="player-stat-grid">
+        <div class="stat-item"><div class="stat-label">Tier</div><div id="stat-tier" class="stat-value">-</div></div>
+        <div class="stat-item"><div class="stat-label">Loss (2s)</div><div id="stat-loss" class="stat-value">-</div></div>
+        <div class="stat-item"><div class="stat-label">Buffer</div><div id="stat-buffer" class="stat-value">-</div></div>
+        <div class="stat-item"><div class="stat-label">Late Rate</div><div id="stat-late" class="stat-value">-</div></div>
+        <div class="stat-item"><div class="stat-label">Est Latency</div><div id="stat-latency" class="stat-value">-</div></div>
+        <div class="stat-item"><div class="stat-label">Bitrate</div><div id="stat-kbps" class="stat-value">-</div></div>
+      </div>
+      <div id="external-stream-actions" class="hidden" style="margin-top:8px;"><a id="external-visit-website" href="#" target="_blank" rel="noopener">Visit website</a></div>
+      <p id="now-playing-program-wrap" class="hidden" style="font-size:11px;margin-top:8px;"><span id="now-playing-program"></span></p>
+      <div class="chat-panel" id="player-chat-panel">
+        <div class="chat-title">Live chat</div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div id="chat-signin-prompt" class="chat-signin-prompt">Sign in to participate in chat</div>
+        <div id="chat-input-row" class="chat-input-row hidden">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="2000" />
+          <button type="button" id="chat-send" class="chat-send">Send</button>
         </div>
       </div>
     </div>
 
     <div id="auth-overlay" class="confirm-overlay" aria-hidden="true">
-      <div class="confirm-dialog auth-dialog">
+      <div class="confirm-dialog">
         <div class="confirm-title">Sign in to chat</div>
-        <div id="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <div id="auth-tabs" style="display:flex;gap:8px;margin-bottom:12px;">
           <button type="button" id="auth-tab-login" class="auth-tab active">Login</button>
           <button type="button" id="auth-tab-register" class="auth-tab">Register</button>
         </div>
         <div id="auth-login-form">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="auth-login-email" placeholder="your@email.com" />
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="auth-login-password" placeholder="password" />
-          </div>
+          <div class="form-group"><label>Email</label><input type="email" id="auth-login-email" placeholder="your@email.com" /></div>
+          <div class="form-group"><label>Password</label><input type="password" id="auth-login-password" placeholder="password" /></div>
           <button type="button" id="auth-login-btn">Login</button>
         </div>
         <div id="auth-register-form" class="hidden">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="auth-register-email" placeholder="your@email.com" />
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="auth-register-password" placeholder="8+ chars, upper, lower, number, special" />
-          </div>
+          <div class="form-group"><label>Email</label><input type="email" id="auth-register-email" placeholder="your@email.com" /></div>
+          <div class="form-group"><label>Password</label><input type="password" id="auth-register-password" placeholder="8+ chars" /></div>
           <button type="button" id="auth-register-btn">Register</button>
         </div>
         <div id="auth-error" class="auth-error hidden"></div>
-        <button type="button" id="auth-close" style="margin-top: 12px;">Close</button>
+        <button type="button" id="auth-close" style="margin-top:12px;">Close</button>
       </div>
     </div>
     <div id="confirm-overlay" class="confirm-overlay" aria-hidden="true">
@@ -701,11 +543,7 @@
         </div>
       </div>
     </div>
-    <div class="desktop-taskbar" id="taskbar">
-      <button type="button" id="taskbar-channels" class="hidden">Live Channels</button>
-      <button type="button" id="taskbar-player" class="hidden">Player</button>
-    </div>
+
     <script type="module" src="/src/main.ts"></script>
-    <script type="module" src="/src/window-ui.ts"></script>
   </body>
 </html>
