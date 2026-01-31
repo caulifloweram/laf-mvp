@@ -18,7 +18,6 @@ let dragState: DragState | null = null;
 const WINDOW_IDS = [
   "login",
   "register",
-  "my-channels",
   "channels",
   "create-channel",
   "channel-settings",

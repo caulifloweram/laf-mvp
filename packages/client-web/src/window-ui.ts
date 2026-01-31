@@ -31,6 +31,15 @@ function clampWindowToViewport(win: HTMLElement) {
   win.style.top = px(vTop - deskRect.top);
 }
 
+function centerWindowInViewport(win: HTMLElement) {
+  const deskRect = desktop.getBoundingClientRect();
+  const winRect = win.getBoundingClientRect();
+  const vLeft = Math.max(VIEWPORT_PAD, (window.innerWidth - winRect.width) / 2);
+  const vTop = Math.max(VIEWPORT_PAD, (window.innerHeight - winRect.height) / 2);
+  win.style.left = px(vLeft - deskRect.left);
+  win.style.top = px(vTop - deskRect.top);
+}
+
 function bringToFront(win: HTMLElement) {
   document.querySelectorAll(WINDOW_SELECTOR).forEach((w) => w.classList.remove("bring-front"));
   win.classList.add("bring-front");
@@ -137,7 +146,9 @@ function init() {
 }
 
 (function registerGlobals() {
-  (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport = clampWindowToViewport;
+  const w = window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void; centerWindowInViewport?: (win: HTMLElement) => void };
+  w.clampWindowToViewport = clampWindowToViewport;
+  w.centerWindowInViewport = centerWindowInViewport;
 })();
 
 if (document.readyState === "loading") {

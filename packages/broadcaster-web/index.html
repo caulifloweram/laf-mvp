@@ -27,11 +27,39 @@
         font-smoothing: none;
       }
 
+      .broadcaster-topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 44px;
+        background: var(--mac-light-gray);
+        border-bottom: 2px solid var(--mac-black);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 15;
+        font-size: 13px;
+        font-weight: bold;
+      }
+      .broadcaster-topbar .topbar-title { color: var(--mac-black); }
+      .broadcaster-topbar .topbar-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .broadcaster-topbar .topbar-actions button {
+        width: auto;
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
       .desktop {
         position: relative;
         min-height: 100vh;
         padding: 24px;
       }
+      body.has-topbar .desktop { padding-top: 52px; }
 
       h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
       h3 { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
@@ -348,6 +376,13 @@
     </style>
   </head>
   <body>
+    <div id="broadcaster-topbar" class="broadcaster-topbar hidden">
+      <span class="topbar-title">LAF Broadcast</span>
+      <div class="topbar-actions">
+        <button type="button" id="btn-settings">Settings</button>
+        <button type="button" id="btn-logout">Logout</button>
+      </div>
+    </div>
     <div class="desktop" id="desktop">
       <div id="login-section" class="card" data-window-id="login" style="left: 24px; top: 24px;">
         <div class="mac-window-title">
@@ -397,19 +432,7 @@
       </div>
 
       <div id="main-section" class="hidden">
-        <div class="card" data-window-id="my-channels" style="left: 24px; top: 24px;">
-          <div class="mac-window-title">
-            <span class="close-box" title="Close"></span>
-            <span class="minimize-box" title="Minimize"></span>
-            My Channels
-          </div>
-          <div class="mac-window-body" style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button id="btn-settings" style="width: auto;">Settings</button>
-            <button id="btn-logout" style="width: auto;">Logout</button>
-          </div>
-        </div>
-
-        <div class="card" data-window-id="channels" style="left: 24px; top: 120px;">
+        <div class="card" data-window-id="channels" style="left: 24px; top: 24px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
@@ -591,7 +614,6 @@
     <div class="desktop-taskbar" id="taskbar">
       <button type="button" id="taskbar-login" class="hidden">Login</button>
       <button type="button" id="taskbar-register" class="hidden">Register</button>
-      <button type="button" id="taskbar-my-channels" class="hidden">My Channels</button>
       <button type="button" id="taskbar-channels" class="hidden">Channels</button>
       <button type="button" id="taskbar-create-channel" class="hidden">Create Channel</button>
       <button type="button" id="taskbar-channel-settings" class="hidden">Channel Settings</button>

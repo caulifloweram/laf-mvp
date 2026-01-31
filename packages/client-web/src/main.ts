@@ -554,8 +554,12 @@ function selectChannel(channel: LiveChannel) {
     playerCoverWrap.classList.add("placeholder");
   }
   playerSection.classList.remove("hidden");
+  const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
-  if (clamp) clamp(playerSection);
+  requestAnimationFrame(() => {
+    if (center) center(playerSection);
+    else if (clamp) clamp(playerSection);
+  });
   if (ws) {
     loopRunning = false; // Stop loop
     ws.close();

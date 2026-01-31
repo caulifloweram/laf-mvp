@@ -154,6 +154,8 @@ function showConfirm(options: {
   });
 }
 
+const broadcasterTopbar = document.getElementById("broadcaster-topbar")!;
+
 function showSection(section: string) {
   loginSection.classList.add("hidden");
   registerSection.classList.add("hidden");
@@ -162,6 +164,15 @@ function showSection(section: string) {
   channelSettingsSection.classList.add("hidden");
   broadcastSection.classList.add("hidden");
   settingsSection.classList.add("hidden");
+
+  const isLoggedInSection = ["main", "create", "channel-settings", "broadcast", "settings"].includes(section);
+  if (isLoggedInSection) {
+    broadcasterTopbar.classList.remove("hidden");
+    document.body.classList.add("has-topbar");
+  } else {
+    broadcasterTopbar.classList.add("hidden");
+    document.body.classList.remove("has-topbar");
+  }
 
   if (section === "login") {
     loginSection.classList.remove("hidden");
