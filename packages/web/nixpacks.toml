@@ -1,16 +1,20 @@
-# When deploying on Railway: do NOT set Root Directory to packages/web.
-# Set Root Directory to repo root (empty) and use Custom Start Command:
-#   cd packages/web && npx --yes serve dist -p $PORT
-# See README.md.
+# IMPORTANT: Do NOT set Railway Root Directory to packages/web.
+# The web launcher needs the full monorepo to build (client-web + broadcaster-web).
+#
+# In Railway for this service:
+# 1. Root Directory = leave EMPTY (repo root)
+# 2. Custom Start Command = cd packages/web && npx --yes serve dist -p $PORT
+#
+# See README.md. If you see "No package.json found in /", Root Directory is wrong.
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
+cmds = ["echo 'ERROR: Set Root Directory to repo root (empty), not packages/web. See packages/web/README.md' && exit 1"]
 
 [phases.build]
-cmds = ["pnpm run build"]
+cmds = ["true"]
 
 [start]
 cmd = "npx --yes serve dist -p $PORT"
