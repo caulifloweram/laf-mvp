@@ -84,7 +84,7 @@ class JitterBuffer {
         this.packets.delete(seq);
       }
       if (packetsToRemove.length > 0) {
-        console.warn(`⚠️ Buffer overflow: removed ${packetsToRemove.length} old packets (buffer was ${this.packets.size + packetsToRemove.length}, max: ${this.maxBufferPackets})`);
+        console.warn(`[Buffer] Overflow: removed ${packetsToRemove.length} old packets (buffer was ${this.packets.size + packetsToRemove.length}, max: ${this.maxBufferPackets})`);
       }
     }
     
@@ -114,7 +114,7 @@ class JitterBuffer {
     // Start playback once we have minimum buffer
     if (this.startPtsMs != null && this.playbackStartMs == null && this.packets.size >= this.minBufferPackets) {
       this.playbackStartMs = performance.now() + this.targetDelayMs;
-      console.log(`✅ Buffer ready: ${this.packets.size} packets, playback starts in ${this.targetDelayMs}ms`);
+      console.log(`[Buffer] ready: ${this.packets.size} packets, playback starts in ${this.targetDelayMs}ms`);
     }
 
     this.updateBuffer();
@@ -188,9 +188,9 @@ class JitterBuffer {
         if (this.lossCount === 1 || this.lossCount % 50 === 0) {
           const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
           if (availableSeqs.length > 0) {
-            console.warn(`🔇 Concealing missing packet seq ${expectedSeq} (using last packet), buffer has ${this.packets.size} packets`);
+            console.warn(`[Conceal] missing packet seq ${expectedSeq} (using last packet), buffer has ${this.packets.size} packets`);
           } else {
-            console.warn(`🔇 Concealing missing packet seq ${expectedSeq} (using last packet), buffer is empty`);
+            console.warn(`[Conceal] missing packet seq ${expectedSeq} (using last packet), buffer is empty`);
           }
         }
       } else {
@@ -198,9 +198,9 @@ class JitterBuffer {
         if (this.lossCount === 1 || this.lossCount % 50 === 0) {
           const availableSeqs = Array.from(this.packets.keys()).sort((a, b) => a - b);
           if (availableSeqs.length > 0) {
-            console.warn(`❌ Missing packet seq ${expectedSeq}, buffer has ${this.packets.size} packets, earliest: ${availableSeqs[0]}, latest: ${availableSeqs[availableSeqs.length - 1]}`);
+            console.warn(`[Missing] packet seq ${expectedSeq}, buffer has ${this.packets.size} packets, earliest: ${availableSeqs[0]}, latest: ${availableSeqs[availableSeqs.length - 1]}`);
           } else {
-            console.warn(`❌ Missing packet seq ${expectedSeq}, buffer is empty`);
+            console.warn(`[Missing] packet seq ${expectedSeq}, buffer is empty`);
           }
         }
         return null;
@@ -302,7 +302,7 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
     
     if (!newTierHasPackets) {
       // Target tier doesn't have packets, don't downgrade
-      console.warn(`⚠️ ABR wanted to downgrade to tier ${newTier} but it has no packets, staying on tier ${oldTier}`);
+      console.warn(`[ABR] Wanted to downgrade to tier ${newTier} but it has no packets, staying on tier ${oldTier}`);
       return next;
     }
     
@@ -431,7 +431,7 @@ async function loadChannels() {
         btnStart.classList.remove("hidden");
         btnStop.classList.add("hidden");
         playerLiveBadge.classList.add("hidden");
-        playIcon.textContent = "▶️";
+        playIcon.textContent = "\u25B6";
         playText.textContent = "Start";
       }
       return;
@@ -471,7 +471,7 @@ async function loadChannels() {
       btnStart.classList.remove("hidden");
       btnStop.classList.add("hidden");
       playerLiveBadge.classList.add("hidden");
-      playIcon.textContent = "▶️";
+      playIcon.textContent = "\u25B6";
       playText.textContent = "Start";
       currentChannel = null;
     }
@@ -504,7 +504,7 @@ async function startListening() {
   if (!currentChannel) return;
   btnStart.disabled = true;
 
-  console.log("▶️ Starting listening - initializing fresh state...");
+  console.log("[Listen] Starting - initializing fresh state...");
   
   // CRITICAL: Reset stopping flag and fade out state when starting a new stream
   isStopping = false;
@@ -556,7 +556,7 @@ async function startListening() {
   ws.binaryType = "arraybuffer";
 
   ws.onopen = async () => {
-    console.log("✅ WebSocket connected to relay");
+    console.log("[WS] Connected to relay");
     console.log("Connected to stream");
     console.log("AudioContext state:", audioCtx?.state);
     if (audioCtx && audioCtx.state === "suspended") {
@@ -582,7 +582,7 @@ async function startListening() {
     loop(); // Start processing
     
     // Update UI
-    updatePlayerStatus("playing", "🔴 Listening live");
+    updatePlayerStatus("playing", "Listening live");
     btnStart.classList.add("hidden");
     btnStop.classList.remove("hidden");
     playerLiveBadge.classList.remove("hidden");
@@ -593,7 +593,7 @@ async function startListening() {
   };
 
   ws.onclose = (event) => {
-    console.log("❌ WebSocket closed!");
+    console.log("[WS] Closed");
     console.log(`   Code: ${event.code}`);
     console.log(`   Reason: ${event.reason || "No reason"}`);
     console.log(`   Was clean: ${event.wasClean}`);
@@ -612,7 +612,7 @@ async function startListening() {
     btnStart.classList.remove("hidden");
     btnStop.classList.add("hidden");
     playerLiveBadge.classList.add("hidden");
-    playIcon.textContent = "▶️";
+    playIcon.textContent = "\u25B6";
     playText.textContent = "Reconnect";
   };
 
@@ -624,7 +624,7 @@ async function startListening() {
   const messageMonitor = setInterval(() => {
     const timeSinceLastMessage = performance.now() - lastMessageTime;
     if (timeSinceLastMessage > 2000 && ws && ws.readyState === WebSocket.OPEN) {
-      console.warn(`⚠️ No messages received for ${timeSinceLastMessage.toFixed(0)}ms, WebSocket state: ${ws.readyState}`);
+      console.warn(`[WS] No messages received for ${timeSinceLastMessage.toFixed(0)}ms, WebSocket state: ${ws.readyState}`);
       console.warn(`   Last message count: ${messageCount}, last seq: ${lastLoggedSeq}`);
     }
   }, 2000);
@@ -639,8 +639,8 @@ async function startListening() {
         const message = JSON.parse(ev.data);
         if (message.type === "stream_ending") {
           const countdown = message.countdown || 5;
-          console.log(`📢 Stream ending notification received - ${countdown} seconds until end`);
-          console.log(`🎵 Starting graceful fade out over ${countdown} seconds...`);
+          console.log(`[Stream] Ending notification - ${countdown} seconds until end`);
+          console.log(`[Fade] Starting graceful fade out over ${countdown} seconds...`);
           
           // Start fade out
           fadeOutStartTime = performance.now();
@@ -672,12 +672,12 @@ async function startListening() {
     
     // Log first packet always
     if (pkt.seq === 1) {
-      console.log("🎵 First packet received!", { tier: pkt.tier, seq: pkt.seq, streamId: pkt.streamId });
+      console.log("[First packet]", { tier: pkt.tier, seq: pkt.seq, streamId: pkt.streamId });
     }
     
     const buf = tiers.get(pkt.tier);
     if (!buf) {
-      console.warn("❌ Unknown tier:", pkt.tier, "available tiers:", Array.from(tiers.keys()));
+      console.warn("[Unknown tier]:", pkt.tier, "available tiers:", Array.from(tiers.keys()));
       return;
     }
     
@@ -688,12 +688,12 @@ async function startListening() {
     
     // Log initialization
     if (playbackSeqBefore === null && playbackSeqAfter !== null) {
-      console.log("✅ Jitter buffer initialized! playbackSeq:", playbackSeqAfter, "playback starts in 1000ms (1s delay for smooth streaming)");
+      console.log("[Jitter] Buffer initialized playbackSeq:", playbackSeqAfter, "playback starts in 1000ms");
     }
     
     // Log first few packets and periodically
     if (pkt.seq <= 5 || pkt.seq % 50 === 0 || beforePush === 0) {
-      console.log("📦 Pushed packet to tier", pkt.tier, ":", { 
+      console.log("[Buffer] Pushed packet to tier", pkt.tier, ":", { 
         seq: pkt.seq, 
         payloadSize: pkt.opusPayload.length, 
         receivedCount: buf.receivedCount,
@@ -742,7 +742,7 @@ function schedulePcm(ctx: AudioContext, pcm: Float32Array, isConcealed = false) 
       
       if (elapsed >= fadeOutDuration) {
         // Fade out complete - stop scheduling audio and clean up
-        console.log("🎵 Fade out complete - stopping audio and cleaning up");
+        console.log("[Fade] Complete - stopping audio and cleaning up");
         fadeOutStartTime = null;
         isStopping = true;
         
@@ -868,7 +868,7 @@ async function loop() {
   
   // Warn if loop is running slowly
   if (timeSinceLastLoop > 100 && loopIterations % 100 === 0) {
-    console.warn(`⚠️ Loop running slowly: ${timeSinceLastLoop.toFixed(0)}ms since last iteration`);
+    console.warn(`[Loop] Running slowly: ${timeSinceLastLoop.toFixed(0)}ms since last iteration`);
   }
   
   // CRITICAL: Check both loopRunning and isStopping
@@ -934,7 +934,7 @@ async function loop() {
     
     // If still no tier found, log warning and keep using current tier (will play silence)
     if (!foundTier) {
-      console.warn(`⚠️ No tier has packets available! Current tier: ${abrState.currentTier}`);
+      console.warn(`[ABR] No tier has packets available! Current tier: ${abrState.currentTier}`);
       for (const [t, buf] of tiers.entries()) {
         console.warn(`  Tier ${t}: packets=${(buf as any).packets.size}, playbackSeq=${(buf as any).playbackSeq}`);
       }
@@ -949,7 +949,7 @@ async function loop() {
     // Buffer is getting low, this might cause chopping
     // The packet loss concealment will help, but we should log this
     if (bufferPackets === 0 && Math.floor(now / 1000) !== Math.floor((now - deltaMs) / 1000)) {
-      console.warn(`⚠️ Buffer underrun: only ${bufferPackets} packets in buffer`);
+      console.warn(`[Buffer] Underrun: only ${bufferPackets} packets in buffer`);
     }
   }
   
@@ -975,7 +975,7 @@ async function loop() {
   // CRITICAL: Update ABR state to match the tier we're actually using
   // This prevents ABR from making decisions based on the wrong tier's buffer
   if (tierToUse !== abrState.currentTier) {
-    console.log(`🔄 ABR state updated: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
+    console.log(`[ABR] state updated: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
     abrState.currentTier = tierToUse;
   }
   
@@ -1012,9 +1012,9 @@ async function loop() {
         const playbackSeq = (tierBuf as any).playbackSeq;
         if (alternativeTier) {
           const altBuf = tiers.get(alternativeTier)!;
-          console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, playbackSeq=${playbackSeq}, but tier ${alternativeTier} has ${(altBuf as any).packets.size} packets - should switch!`);
+          console.warn(`[ABR] Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, playbackSeq=${playbackSeq}, but tier ${alternativeTier} has ${(altBuf as any).packets.size} packets - should switch!`);
         } else {
-          console.warn(`⚠️ Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}, no alternative tiers available`);
+          console.warn(`[ABR] Missing packet on tier ${tierToUse}: buffer=${bufferPackets}, lastSeq=${lastSeq}, playbackSeq=${playbackSeq}, no alternative tiers available`);
         }
       }
       scheduleSilence(audioCtx);
@@ -1023,7 +1023,7 @@ async function loop() {
     const isConcealed = (pkt as any).concealed === true;
     // Log first few packets to verify they're being processed
     if (pkt.seq <= 5 || (pkt.seq > 0 && pkt.seq % 100 === 0)) {
-      console.log("🎵 Processing packet:", { seq: pkt.seq, tier: pkt.tier, payloadSize: pkt.opusPayload.length, concealed: isConcealed });
+      console.log("[Process] packet:", { seq: pkt.seq, tier: pkt.tier, payloadSize: pkt.opusPayload.length, concealed: isConcealed });
     }
     abrState.consecutiveLateOrMissing = 0;
     try {
@@ -1086,7 +1086,7 @@ async function loop() {
         
         // Check if we have actual audio data (not silence)
         if (maxSample < 0.001 && pkt.seq % 50 === 0) {
-          console.warn("⚠️ Very quiet audio detected (max:", maxSample.toFixed(4), "), might be silence or mic issue");
+          console.warn("[Audio] Very quiet audio detected (max:", maxSample.toFixed(4), "), might be silence or mic issue");
         }
         
         schedulePcm(audioCtx, pcmFloat, isConcealed);
@@ -1124,7 +1124,7 @@ async function loop() {
   // CRITICAL: Sync ABR state with the tier we're actually using
   // This prevents ABR from making decisions based on wrong tier's buffer
   if (tierToUse !== abrState.currentTier) {
-    console.log(`🔄 Syncing ABR state: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
+    console.log(`[ABR] Syncing state: ${abrState.currentTier} → ${tierToUse} (using tier with packets)`);
     abrState.currentTier = tierToUse;
   }
   
@@ -1138,7 +1138,7 @@ async function loop() {
   
   // Log tier changes
   if (abrState.currentTier !== oldTier) {
-    console.log(`🔄 ABR tier changed: ${oldTier} → ${abrState.currentTier}`);
+    console.log(`[ABR] tier changed: ${oldTier} → ${abrState.currentTier}`);
   }
   
   // After ABR update, if ABR switched to a tier without packets, revert to tier with packets
@@ -1146,7 +1146,7 @@ async function loop() {
     const newTierBuf = tiers.get(abrState.currentTier);
     const newTierHasPackets = newTierBuf && ((newTierBuf as any).packets.size > 0 || (newTierBuf as any).playbackSeq !== null);
     if (!newTierHasPackets) {
-      console.warn(`⚠️ ABR switched to tier ${abrState.currentTier} but it has no packets, reverting to tier ${tierToUse}`);
+      console.warn(`[ABR] Switched to tier ${abrState.currentTier} but it has no packets, reverting to tier ${tierToUse}`);
       abrState.currentTier = tierToUse;
     }
   }
@@ -1175,7 +1175,7 @@ async function loop() {
     setTimeout(loop, Math.min(delay, 20));
   } else if (isStopping) {
     // Fade-out complete, stop the loop gracefully
-    console.log("🛑 Loop stopping due to fade-out completion");
+    console.log("[Loop] Stopping due to fade-out completion");
     loopRunning = false;
   }
 }
@@ -1183,19 +1183,19 @@ async function loop() {
 function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: string) {
   playerStatus.className = `status ${status}`;
   if (status === "playing") {
-    playerStatusIcon.textContent = "🔴";
+    playerStatusIcon.textContent = "";
     playerStatusText.textContent = message;
   } else if (status === "stopped") {
-    playerStatusIcon.textContent = "⏹️";
+    playerStatusIcon.textContent = "";
     playerStatusText.textContent = message;
   } else {
-    playerStatusIcon.textContent = "⏸️";
+    playerStatusIcon.textContent = "";
     playerStatusText.textContent = message;
   }
 }
 
 function stopListening() {
-  console.log("🛑 Stopping listening and cleaning up gracefully...");
+  console.log("[Stop] Stopping listening and cleaning up...");
   
   // CRITICAL: Set stopping flag FIRST to prevent any new audio scheduling
   isStopping = true;
@@ -1212,7 +1212,7 @@ function stopListening() {
   for (const [tier, buf] of tiers.entries()) {
     buf.reset(); // Use the reset method to clean up all state
   }
-  console.log("🔇 Jitter buffers cleared");
+  console.log("[Stop] Jitter buffers cleared");
   
   // Close WebSocket
   if (ws) {
@@ -1233,9 +1233,9 @@ function stopListening() {
   if (audioCtx && audioCtx.state === "running") {
     try {
       audioCtx.suspend();
-      console.log("🔇 AudioContext suspended - audio stopped gracefully");
+      console.log("[Stop] AudioContext suspended");
     } catch (err) {
-      console.warn("⚠️ Error suspending AudioContext:", err);
+      console.warn("[Error] Suspending AudioContext:", err);
     }
   }
   
@@ -1267,19 +1267,19 @@ function stopListening() {
     isStopping = false;
   }, 100);
   
-  console.log("✅ Cleanup complete - all state reset, audio stopped cleanly");
+  console.log("[Cleanup] Complete - state reset, audio stopped");
   updatePlayerStatus("stopped", "Stream ended");
   btnStart.disabled = false;
   btnStart.classList.remove("hidden");
   btnStop.classList.add("hidden");
   playerLiveBadge.classList.add("hidden");
-  playIcon.textContent = "▶️";
+  playIcon.textContent = "\u25B6";
   playText.textContent = "Start";
 }
 
 btnStart.onclick = () => {
   if (!currentChannel) return;
-  playIcon.textContent = "⏳";
+  playIcon.textContent = "\u25B6";
   playText.textContent = "Connecting...";
   btnStart.disabled = true;
   updatePlayerStatus("ready", "Connecting...");
@@ -1288,7 +1288,7 @@ btnStart.onclick = () => {
     alert(`Failed to start: ${e.message}`);
     updatePlayerStatus("stopped", `Error: ${e.message}`);
     btnStart.disabled = false;
-    playIcon.textContent = "▶️";
+    playIcon.textContent = "\u25B6";
     playText.textContent = "Start";
   });
 };

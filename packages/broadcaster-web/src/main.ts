@@ -337,7 +337,7 @@ function escapeHtml(text: string): string {
 function updateBroadcastStatus(status: "ready" | "live" | "stopped", message: string) {
   broadcastStatus.className = `status ${status}`;
   if (status === "live") {
-    statusIcon.textContent = "🔴";
+    statusIcon.textContent = "";
     statusText.textContent = message;
     liveIndicator.classList.remove("hidden");
     broadcastStats.classList.remove("hidden");
@@ -346,25 +346,25 @@ function updateBroadcastStatus(status: "ready" | "live" | "stopped", message: st
     btnStopLive.disabled = false;
   } else if (status === "stopped") {
     // Stream finished state - clear visual indication
-    statusIcon.textContent = "✅";
+    statusIcon.textContent = "";
     statusText.textContent = message || "Stream Finished";
     statusText.style.color = "#10b981"; // Green color for finished
     liveIndicator.classList.add("hidden");
     broadcastStats.classList.add("hidden");
     btnGoLive.classList.remove("hidden");
     btnGoLive.disabled = false;
-    btnGoLive.textContent = "▶️ Start New Stream";
+    btnGoLive.textContent = "Start New Stream";
     btnStopLive.classList.add("hidden");
   } else {
     // Ready state - can start new stream
-    statusIcon.textContent = "⏸️";
+    statusIcon.textContent = "";
     statusText.textContent = message;
     statusText.style.color = ""; // Reset to default
     liveIndicator.classList.add("hidden");
     broadcastStats.classList.add("hidden");
     btnGoLive.classList.remove("hidden");
     btnGoLive.disabled = false;
-    btnGoLive.textContent = "▶️ Go Live";
+    btnGoLive.textContent = "Go Live";
     btnStopLive.classList.add("hidden");
   }
 }
@@ -506,7 +506,7 @@ async function startBroadcast() {
     // CRITICAL: Reuse existing mediaStream and AudioContext if available (for restart)
     // Only request new mediaStream if we don't have one
     if (!mediaStream) {
-      console.log("📱 Requesting microphone access...");
+      console.log("[Mic] Requesting access...");
       // Get microphone with optimized audio constraints
       mediaStream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -517,13 +517,13 @@ async function startBroadcast() {
           channelCount: CHANNELS
         } 
       });
-      console.log("✅ Microphone access granted");
+      console.log("[Mic] Access granted");
     } else {
-      console.log("✅ Reusing existing mediaStream (restart)");
+      console.log("[Mic] Reusing existing mediaStream (restart)");
       // Check if tracks are still active
       const tracks = mediaStream.getAudioTracks();
       if (tracks.length === 0 || tracks[0].readyState === 'ended') {
-        console.log("⚠️ MediaStream tracks ended, requesting new stream...");
+        console.log("[Mic] MediaStream tracks ended, requesting new stream...");
         mediaStream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
@@ -542,9 +542,9 @@ async function startBroadcast() {
         sampleRate: SAMPLE_RATE,
         latencyHint: 'interactive' // Low latency for real-time streaming
       });
-      console.log("✅ Created new AudioContext");
+      console.log("[Audio] Created new AudioContext");
     } else {
-      console.log("✅ Reusing existing AudioContext (restart)");
+      console.log("[Audio] Reusing existing AudioContext (restart)");
     }
     
     // CRITICAL: Ensure AudioContext is running (browsers require user interaction)
@@ -557,9 +557,9 @@ async function startBroadcast() {
     // Keep AudioContext alive with periodic resume attempts
     const audioContextKeepAlive = setInterval(() => {
       if (audioCtx && audioCtx.state === 'suspended') {
-        console.warn("⚠️ AudioContext suspended, attempting to resume...");
+        console.warn("[Audio] AudioContext suspended, attempting to resume...");
         audioCtx.resume().then(() => {
-          console.log("✅ AudioContext resumed");
+          console.log("[Audio] AudioContext resumed");
         }).catch(err => {
           console.error("Failed to resume AudioContext:", err);
         });
@@ -584,7 +584,7 @@ async function startBroadcast() {
       
       ws!.onopen = () => {
         clearTimeout(timeout);
-        console.log("✅ WebSocket connected successfully");
+        console.log("[WS] Connected successfully");
         res();
       };
       
@@ -598,7 +598,7 @@ async function startBroadcast() {
     
     // Add WebSocket event handlers for debugging (after connection is established)
     ws.onerror = (error) => {
-      console.error("❌ WebSocket error:", error);
+      console.error("[WS] Error:", error);
       console.error("   WebSocket state:", ws?.readyState);
       console.error("   Stream ID:", streamId);
       console.error("   Packets sent:", packetsSent);
@@ -606,7 +606,7 @@ async function startBroadcast() {
     };
     
     ws.onclose = async (event) => {
-      console.log("🔌 WebSocket closed");
+      console.log("[WS] Closed");
       console.log(`   Code: ${event.code}`);
       console.log(`   Reason: ${event.reason || "No reason"}`);
       console.log(`   Was clean: ${event.wasClean}`);
@@ -634,19 +634,19 @@ async function startBroadcast() {
       // Only call stop-live API if it was an unexpected closure
       if (event.code !== 1000 && currentChannel && streamId) {
         try {
-          console.log("🔄 WebSocket closed unexpectedly, calling stop-live API...");
+          console.log("[WS] Closed unexpectedly, calling stop-live API...");
           await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
             method: "POST",
           });
-          console.log("✅ Stream marked as finished in database");
-          updateBroadcastStatus("stopped", "✅ Stream Finished (unexpected closure)");
+          console.log("[API] Stream marked as finished in database");
+          updateBroadcastStatus("stopped", "Stream Finished (unexpected closure)");
         } catch (err) {
-          console.error("⚠️ Failed to call stop-live API:", err);
-          updateBroadcastStatus("stopped", "⚠️ Stream finished (server update failed)");
+          console.error("[API] Failed to call stop-live API:", err);
+          updateBroadcastStatus("stopped", "Stream finished (server update failed)");
         }
       } else if (event.code === 1000) {
         // Normal closure - stopBroadcast already handled the API call
-        console.log("✅ WebSocket closed normally (stream finished)");
+        console.log("[WS] Closed normally (stream finished)");
       }
       
       // Reset UI state
@@ -659,7 +659,7 @@ async function startBroadcast() {
     let lastWsCheck = performance.now();
     const wsHealthMonitor = setInterval(() => {
       if (!ws) {
-        console.error("⚠️ WebSocket is null!");
+        console.error("[WS] WebSocket is null");
         clearInterval(wsHealthMonitor);
         return;
       }
@@ -669,16 +669,16 @@ async function startBroadcast() {
       lastWsCheck = performance.now();
       
       if (wsState !== WebSocket.OPEN) {
-        console.error(`⚠️ WebSocket not open: state=${wsState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+        console.error(`[WS] Not open: state=${wsState} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
         console.error(`   This will cause the stream to disappear from client page!`);
       } else {
         const buffered = ws.bufferedAmount;
         if (buffered > 0) {
-          console.warn(`⚠️ WebSocket buffer: ${buffered} bytes (${(buffered / 1024).toFixed(1)} KB)`);
+          console.warn(`[WS] Buffer: ${buffered} bytes (${(buffered / 1024).toFixed(1)} KB)`);
         }
         // Log health every 10 seconds (every 500 packets at ~50 packets/sec = 10 seconds)
         if (packetsSent % 500 === 0 && packetsSent > 0) {
-          console.log(`✅ WebSocket healthy: state=${wsState}, buffer=${buffered} bytes, packets=${packetsSent}, timeSinceLastCheck=${timeSinceLastCheck.toFixed(0)}ms`);
+          console.log(`[WS] Healthy: state=${wsState}, buffer=${buffered} bytes, packets=${packetsSent}, timeSinceLastCheck=${timeSinceLastCheck.toFixed(0)}ms`);
         }
         
         // CRITICAL: Send a keep-alive ping if no packets sent recently
@@ -689,9 +689,9 @@ async function startBroadcast() {
           // Use text message so it doesn't interfere with audio packet processing
           try {
             ws.send(JSON.stringify({ type: "keepalive", timestamp: Date.now() }));
-            console.log(`💓 Sent WebSocket keep-alive (no packets for ${timeSinceLastPacket.toFixed(0)}ms)`);
+            console.log(`[WS] Sent keep-alive (no packets for ${timeSinceLastPacket.toFixed(0)}ms)`);
           } catch (err) {
-            console.error("⚠️ Failed to send keep-alive:", err);
+            console.error("[WS] Failed to send keep-alive:", err);
             // If send fails, WebSocket might be closing - log for debugging
             console.error(`   WebSocket state: ${ws.readyState}, buffered: ${ws.bufferedAmount}`);
           }
@@ -706,17 +706,17 @@ async function startBroadcast() {
     // NEW APPROACH: Use 8-bit PCM instead of 16-bit to reduce bandwidth by 2x
     // This is simpler and more reliable than Opus encoding
     // 8-bit PCM = 384 kbps vs 16-bit PCM = 768 kbps (2x reduction)
-    console.log("🎙️ Using 8-bit PCM encoding (2x bandwidth reduction, 384 kbps)");
-    console.log("📊 AudioContext state:", audioCtx.state);
-    console.log("📊 MediaStream tracks:", mediaStream.getAudioTracks().length);
-    console.log("📊 WebSocket state:", ws?.readyState);
-    console.log("📊 Stream ID:", streamId);
+    console.log("[Audio] Using 8-bit PCM encoding (2x bandwidth reduction, 384 kbps)");
+    console.log("[Audio] AudioContext state:", audioCtx.state);
+    console.log("[Audio] MediaStream tracks:", mediaStream.getAudioTracks().length);
+    console.log("[WS] State:", ws?.readyState);
+    console.log("[Stream] ID:", streamId);
     
     sampleBuffer = new Float32Array(0); // Reset module-level buffer
     
     // SIMPLIFIED: Use ScriptProcessor (deprecated but simple and reliable)
     // Workaround for 2-second stop: reconnect processor periodically
-    console.log("✅ Using ScriptProcessor (simple, reliable approach)");
+    console.log("[Audio] Using ScriptProcessor (simple, reliable approach)");
     
     // Reset state for fresh start - use module-level variables
     seq = 0;
@@ -779,7 +779,7 @@ async function startBroadcast() {
             
             try {
               if (ws.bufferedAmount > 512 * 1024) {
-                console.warn(`⚠️ WebSocket buffer: ${ws.bufferedAmount} bytes, skipping packet`);
+                console.warn(`[WS] Buffer: ${ws.bufferedAmount} bytes, skipping packet`);
                 continue;
               }
               
@@ -808,7 +808,7 @@ async function startBroadcast() {
     const processorKeepAlive = setInterval(() => {
       const timeSinceLastProcess = performance.now() - lastProcessTime;
       if (timeSinceLastProcess > 3000 && processingActive) {
-        console.log("🔄 Recreating ScriptProcessor (workaround for 2-second stop issue)");
+        console.log("[Audio] Recreating ScriptProcessor (workaround for 2-second stop issue)");
         try {
           processor.disconnect();
           source.disconnect();
@@ -827,20 +827,20 @@ async function startBroadcast() {
       const timeSinceLastProcess = performance.now() - lastProcessTime;
       
       if (timeSinceLastProcess > 500) {
-        console.error(`⚠️ Audio processing appears to have stopped! Last process: ${timeSinceLastProcess.toFixed(0)}ms ago`);
+        console.error(`[Audio] Processing appears to have stopped: Last process: ${timeSinceLastProcess.toFixed(0)}ms ago`);
         console.error(`   Process count: ${processCount}, Packets sent: ${packetsSent}`);
         console.error(`   WebSocket state: ${ws?.readyState}, Processing active: ${processingActive}`);
         console.error(`   AudioContext state: ${audioCtx?.state}`);
         
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().then(() => {
-            console.log("✅ AudioContext resumed");
+            console.log("[Audio] AudioContext resumed");
           }).catch(err => {
             console.error("Failed to resume AudioContext:", err);
           });
         }
       } else if (processCount % 250 === 0 && processCount > 0) {
-        console.log(`✅ Audio processing healthy: ${processCount} processes, ${packetsSent} packets sent, WS: ${ws?.readyState}`);
+        console.log(`[Audio] Processing healthy: ${processCount} processes, ${packetsSent} packets sent, WS: ${ws?.readyState}`);
       }
     }, 1000);
     
@@ -859,20 +859,20 @@ async function startBroadcast() {
 
     broadcastStartTime = Date.now();
     broadcastPacketCount = 0;
-    updateBroadcastStatus("live", "🔴 Broadcasting live");
+    updateBroadcastStatus("live", "Broadcasting live");
     updateBroadcastStats();
     
-    console.log("✅ Broadcast started successfully!");
-    console.log("📊 All systems ready - audio processing should begin shortly");
+    console.log("[Broadcast] Started successfully");
+    console.log("[Broadcast] All systems ready");
   } catch (err: any) {
-    console.error("❌ Broadcast start error:", err);
+    console.error("[Broadcast] Start error:", err);
     console.error("   Error name:", err.name);
     console.error("   Error message:", err.message);
     console.error("   Error stack:", err.stack);
     alert(`Failed to start broadcast: ${err.message}`);
     updateBroadcastStatus("ready", `Error: ${err.message}`);
     btnGoLive.disabled = false;
-    goLiveIcon.textContent = "▶️";
+    goLiveIcon.textContent = "\u25B6";
     
     // Clean up on error
     if (ws) {
@@ -895,16 +895,16 @@ async function stopBroadcast() {
     return;
   }
 
-  console.log("🛑 Starting 5-second countdown before finishing livestream...");
+  console.log("[Stop] Starting 5-second countdown before finishing livestream...");
   btnStopLive.disabled = true;
   
   // Send "stream ending" message to clients so they can fade out gracefully
   if (ws && ws.readyState === WebSocket.OPEN) {
     try {
       ws.send(JSON.stringify({ type: "stream_ending", countdown: 5 }));
-      console.log("📤 Sent stream ending notification to clients");
+      console.log("[Stop] Sent stream ending notification to clients");
     } catch (err) {
-      console.error("⚠️ Failed to send stream ending message:", err);
+      console.error("[WS] Failed to send stream ending message:", err);
     }
   }
   
@@ -926,7 +926,7 @@ async function stopBroadcast() {
 }
 
 async function actuallyStopBroadcast() {
-  console.log("🛑 Finishing livestream and cleaning up...");
+  console.log("[Stop] Finishing livestream and cleaning up...");
   
   // CRITICAL: Stop audio processing NOW to prevent new packets
   processingActive = false;
@@ -937,24 +937,24 @@ async function actuallyStopBroadcast() {
   let stopLiveSuccess = false;
   if (currentChannel) {
     try {
-      console.log(`🔄 Calling stop-live API for channel ${currentChannel.id}...`);
+      console.log(`[API] Calling stop-live for channel ${currentChannel.id}...`);
       const result = await apiCall(`/api/me/channels/${currentChannel.id}/stop-live`, {
         method: "POST",
       });
-      console.log("✅ Stop-live API response:", result);
+      console.log("[API] Stop-live response:", result);
       
       // Verify the response indicates success
       if (result && (result.success || result.stoppedStreamIds)) {
         const stoppedCount = result.stoppedStreamIds?.length || 0;
-        console.log(`✅ Successfully finished ${stoppedCount} stream(s) on server`);
+        console.log(`[API] Successfully finished ${stoppedCount} stream(s) on server`);
         console.log(`   Finished stream IDs: ${result.stoppedStreamIds?.join(", ") || "N/A"}`);
         console.log(`   Verified: ${result.verified !== false ? "Yes" : "No"}`);
         stopLiveSuccess = true;
       } else {
-        console.warn("⚠️ Stop-live API returned unexpected response:", result);
+        console.warn("[API] Stop-live returned unexpected response:", result);
       }
     } catch (err: any) {
-      console.error("❌ Failed to finish stream on server:", err);
+      console.error("[API] Failed to finish stream on server:", err);
       console.error("   Error details:", {
         message: err.message,
         status: err.status,
@@ -963,7 +963,7 @@ async function actuallyStopBroadcast() {
       // Continue with cleanup even if API call fails
     }
   } else {
-    console.warn("⚠️ No currentChannel set, cannot call stop-live API");
+    console.warn("[API] No currentChannel set, cannot call stop-live API");
   }
   
   // Now clean up local resources
@@ -1014,7 +1014,7 @@ async function actuallyStopBroadcast() {
   // Just suspend the AudioContext to stop processing
   if (audioCtx && audioCtx.state !== "closed") {
     await audioCtx.suspend();
-    console.log("✅ AudioContext suspended (kept alive for restart)");
+    console.log("[Audio] AudioContext suspended (kept alive for restart)");
   }
   
   // Reset state variables
@@ -1033,7 +1033,7 @@ async function actuallyStopBroadcast() {
   // Update UI based on success
   if (stopLiveSuccess) {
     // Show "finished" state (not "stopped")
-    updateBroadcastStatus("stopped", "✅ Stream Finished Successfully");
+    updateBroadcastStatus("stopped", "Stream Finished Successfully");
     
     // After 2 seconds, show ready state with clear message
     setTimeout(() => {
@@ -1041,7 +1041,7 @@ async function actuallyStopBroadcast() {
     }, 2000);
   } else {
     // API call failed, but still show finished state
-    updateBroadcastStatus("stopped", "⚠️ Stream finished (server update may have failed)");
+    updateBroadcastStatus("stopped", "Stream finished (server update may have failed)");
     setTimeout(() => {
       updateBroadcastStatus("ready", "Ready to start a new stream");
     }, 2000);
@@ -1049,8 +1049,8 @@ async function actuallyStopBroadcast() {
   
   btnStopLive.disabled = false;
   btnGoLive.disabled = false;
-  goLiveIcon.textContent = "▶️";
-  console.log("✅ Broadcast finished - ready to restart");
+  goLiveIcon.textContent = "\u25B6";
+  console.log("[Broadcast] Finished - ready to restart");
 }
 
 // Event handlers
