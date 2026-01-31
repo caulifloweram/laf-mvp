@@ -359,6 +359,7 @@
         opacity: 0.6;
       }
       .player-cover-wrap.external-logo {
+        position: relative;
         background: transparent;
         border: none;
         max-width: 96px;
@@ -375,6 +376,18 @@
         height: 100%;
         object-fit: contain;
       }
+      .player-cover-wrap.external-logo .player-cover-initial {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        font-weight: bold;
+        color: var(--mac-black);
+        background: var(--mac-light-gray);
+      }
+      .player-cover-wrap.external-logo .player-cover-initial.hidden { display: none; }
 
       .player-header {
         display: flex;
@@ -581,6 +594,7 @@
         </div>
         <div class="player-cover-wrap placeholder" id="player-cover-wrap">
           <img id="player-cover" class="player-cover" alt="" />
+          <span id="player-cover-initial" class="player-cover-initial hidden" aria-hidden="true"></span>
         </div>
         <div class="mac-window-body">
         <div class="player-header">

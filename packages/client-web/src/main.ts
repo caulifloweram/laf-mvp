@@ -481,6 +481,7 @@ const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
 const playerCoverWrap = document.getElementById("player-cover-wrap")!;
 const playerCover = document.getElementById("player-cover")! as HTMLImageElement;
+const playerCoverInitial = document.getElementById("player-cover-initial")!;
 const btnPlayPause = document.getElementById("btn-play-pause") as HTMLButtonElement;
 const playPauseIcon = document.getElementById("play-pause-icon")!;
 const playPauseText = document.getElementById("play-pause-text")!;
@@ -629,6 +630,8 @@ let currentChannel: LiveChannel | null = null;
 let currentExternalStation: ExternalStation | null = null;
 /** Cache stream status so we don't re-show "Checking…" on every re-render. */
 const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
+/** Stations whose logo failed to load; show initial letter from the start on re-render (no blink). */
+const logoLoadFailed = new Set<string>();
 let externalAudio: HTMLAudioElement | null = null;
 let playheadTime = 0;
 let loopRunning = false;
@@ -770,8 +773,11 @@ function renderExternalStations() {
     const { text: statusText, statusClass } = getStatusLabel(cached);
     const hasLogo = !!station.logoUrl;
     const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
+    const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
     const logoHtml = hasLogo
-      ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
+      ? logoFailed
+        ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
+        : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
       : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
     card.innerHTML = `
       ${logoHtml}
@@ -780,11 +786,12 @@ function renderExternalStations() {
       <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
       <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
     `;
-    if (hasLogo) {
+    if (hasLogo && !logoFailed) {
       const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
       const fallback = card.querySelector(".ext-station-initial");
       if (img && fallback) {
         img.onerror = () => {
+          logoLoadFailed.add(station.streamUrl);
           img.style.display = "none";
           fallback.classList.remove("hidden");
         };
@@ -846,16 +853,24 @@ function selectExternalStation(station: ExternalStation) {
   playerStatGrid.classList.add("hidden");
   playerChatPanel.classList.add("hidden");
   playerCoverWrap.classList.add("external-logo");
+  const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
+  playerCoverInitial.textContent = initial;
+  playerCoverInitial.classList.add("hidden");
+  playerCover.style.display = "";
   if (station.logoUrl) {
     playerCover.src = station.logoUrl;
     playerCoverWrap.classList.remove("placeholder");
     playerCover.onerror = () => {
-      playerCoverWrap.classList.add("placeholder");
+      logoLoadFailed.add(station.streamUrl);
+      playerCover.style.display = "none";
       playerCover.removeAttribute("src");
+      playerCoverInitial.textContent = initial;
+      playerCoverInitial.classList.remove("hidden");
     };
   } else {
     playerCoverWrap.classList.add("placeholder");
     playerCover.removeAttribute("src");
+    playerCoverInitial.classList.add("hidden");
   }
   playerSection.classList.remove("hidden", "window-closed");
   const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
@@ -969,6 +984,8 @@ function stopExternalStream() {
   playerStatGrid.classList.remove("hidden");
   playerChatPanel.classList.remove("hidden");
   playerCoverWrap.classList.remove("external-logo");
+  playerCoverInitial.classList.add("hidden");
+  playerCover.style.display = "";
   nowPlayingTitle.textContent = "Not playing";
   nowPlayingDesc.textContent = "";
   nowPlayingProgramWrap.classList.add("hidden");
@@ -1002,6 +1019,8 @@ function selectChannel(channel: LiveChannel) {
   btnPrevStation.classList.add("hidden");
   btnNextStation.classList.add("hidden");
   playerCoverWrap.classList.remove("external-logo");
+  playerCoverInitial.classList.add("hidden");
+  playerCover.style.display = "";
   playerCover.onerror = null;
   if (channel.coverUrl) {
     playerCover.src = channel.coverUrl;
