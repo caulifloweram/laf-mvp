@@ -318,10 +318,12 @@ async function handleDeleteAccount() {
 }
 
 let editingChannel: Channel | null = null;
+let latestChannels: Channel[] = [];
 
 async function loadChannels() {
   try {
     const channels: Channel[] = await apiCall("/api/me/channels");
+    latestChannels = channels;
     channelsList.innerHTML = "";
     if (channels.length === 0) {
       channelsList.innerHTML = "<p style='opacity: 0.7;'>No channels yet. Create one to start streaming!</p>";
@@ -330,6 +332,7 @@ async function loadChannels() {
     channels.forEach((ch) => {
       const item = document.createElement("div");
       item.className = "channel-item";
+      item.setAttribute("data-channel-id", ch.id);
       item.style.cursor = "pointer";
       item.title = "Click to open channel settings";
       const coverHtml = ch.cover_url
@@ -345,21 +348,32 @@ async function loadChannels() {
         </div>
         <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
       `;
-      item.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement).closest(".btn-go-live")) return;
-        e.preventDefault();
-        openChannelSettings(ch);
-      });
-      item.querySelector(".btn-go-live")!.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        selectChannel(ch);
-      });
       channelsList.appendChild(item);
     });
   } catch (err) {
     console.error("Failed to load channels:", err);
   }
+}
+
+function setupChannelsListClick() {
+  channelsList.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest(".channel-item");
+    if (!item) return;
+    const channelId = item.getAttribute("data-channel-id");
+    if (!channelId) return;
+    const ch = latestChannels.find((c) => c.id === channelId);
+    if (!ch) return;
+    if (target.closest(".btn-go-live")) {
+      e.preventDefault();
+      e.stopPropagation();
+      selectChannel(ch);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    openChannelSettings(ch);
+  });
 }
 
 function escapeAttr(s: string): string {
@@ -1228,7 +1242,8 @@ btnDeleteChannel.onclick = async () => {
   }
 };
 
-// Check if already logged in
+setupChannelsListClick();
+
 if (token) {
   loadChannels().then(() => showSection("main")).catch(() => {
     token = null;

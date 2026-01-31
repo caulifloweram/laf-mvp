@@ -196,8 +196,10 @@
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
+        pointer-events: auto;
       }
       .channel-item:hover { background: var(--mac-white); }
+      .channel-item * { pointer-events: auto; }
 
       .channel-cover-preview {
         min-height: 60px;
