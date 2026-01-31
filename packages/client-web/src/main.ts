@@ -424,6 +424,7 @@ const externalVisitWebsite = document.getElementById("external-visit-website")! 
 const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
+const nowPlayingProgram = document.getElementById("now-playing-program")!;
 
 let token: string | null = localStorage.getItem("laf_token");
 let userEmail: string | null = localStorage.getItem("laf_user_email");
@@ -672,6 +673,7 @@ function selectExternalStation(station: ExternalStation) {
   externalStreamActions.classList.remove("hidden");
   playerStatGrid.classList.add("hidden");
   playerChatPanel.classList.add("hidden");
+  playerCoverWrap.classList.add("external-logo");
   if (station.logoUrl) {
     playerCover.src = station.logoUrl;
     playerCoverWrap.classList.remove("placeholder");
@@ -683,7 +685,9 @@ function selectExternalStation(station: ExternalStation) {
     playerCoverWrap.classList.add("placeholder");
     playerCover.removeAttribute("src");
   }
-  playerSection.classList.remove("hidden");
+  nowPlayingProgram.classList.add("hidden");
+  nowPlayingProgram.textContent = "";
+  playerSection.classList.remove("hidden", "window-closed");
   const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
   requestAnimationFrame(() => {
@@ -694,6 +698,13 @@ function selectExternalStation(station: ExternalStation) {
     externalAudio.pause();
     externalAudio.src = "";
   }
+  fetchStreamMetadata(station.streamUrl).then((program) => {
+    if (currentExternalStation?.streamUrl === station.streamUrl && program) {
+      nowPlayingProgram.textContent = program.length > 80 ? program.slice(0, 77) + "…" : program;
+      nowPlayingProgram.classList.remove("hidden");
+    }
+  }).catch(() => {});
+
   externalAudio = new Audio(station.streamUrl);
   externalAudio.onplaying = () => updatePlayerStatus("playing", "Listening to stream");
   externalAudio.onerror = () => updatePlayerStatus("stopped", "Stream error");
@@ -712,6 +723,28 @@ function selectExternalStation(station: ExternalStation) {
   playerLiveBadge.classList.remove("hidden");
 }
 
+async function fetchStreamMetadata(streamUrl: string): Promise<string | null> {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 8000);
+  try {
+    const res = await fetch(streamUrl, {
+      method: "GET",
+      signal: ac.signal,
+      headers: { "Icy-MetaData": "1" },
+    });
+    clearTimeout(t);
+    const icyName = res.headers.get("icy-name")?.trim();
+    const icyDesc = res.headers.get("icy-description")?.trim();
+    ac.abort();
+    if (icyDesc) return icyDesc;
+    if (icyName) return icyName;
+    return null;
+  } catch {
+    clearTimeout(t);
+    return null;
+  }
+}
+
 function stopExternalStream() {
   if (externalAudio) {
     externalAudio.pause();
@@ -722,8 +755,11 @@ function stopExternalStream() {
   externalStreamActions.classList.add("hidden");
   playerStatGrid.classList.remove("hidden");
   playerChatPanel.classList.remove("hidden");
+  playerCoverWrap.classList.remove("external-logo");
   nowPlayingTitle.textContent = "Not playing";
   nowPlayingDesc.textContent = "";
+  nowPlayingProgram.classList.add("hidden");
+  nowPlayingProgram.textContent = "";
   updatePlayerStatus("ready", "Ready to listen");
   btnStart.classList.remove("hidden");
   btnStop.classList.add("hidden");
@@ -748,6 +784,9 @@ function selectChannel(channel: LiveChannel) {
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
   nowPlayingDesc.textContent = channel.description || "";
+  nowPlayingProgram.classList.add("hidden");
+  nowPlayingProgram.textContent = "";
+  playerCoverWrap.classList.remove("external-logo");
   playerCover.onerror = null;
   if (channel.coverUrl) {
     playerCover.src = channel.coverUrl;
@@ -756,7 +795,7 @@ function selectChannel(channel: LiveChannel) {
     playerCover.removeAttribute("src");
     playerCoverWrap.classList.add("placeholder");
   }
-  playerSection.classList.remove("hidden");
+  playerSection.classList.remove("hidden", "window-closed");
   const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
   requestAnimationFrame(() => {
@@ -1741,6 +1780,12 @@ document.getElementById("client-logout-btn")!.onclick = () => {
 };
 
 // Load runtime config (API/relay URLs from /config.json) then start
+window.addEventListener("window-closed", ((e: CustomEvent<{ windowId: string }>) => {
+  if (e.detail?.windowId !== "player") return;
+  stopExternalStream();
+  stopListening();
+}) as EventListener);
+
 loadRuntimeConfig().then(() => {
   updateTopBarAuth();
   loadChannels();
