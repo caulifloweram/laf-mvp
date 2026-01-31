@@ -54,6 +54,35 @@ interface LiveChannel {
   streamId: number;
 }
 
+/** External online radio stations (stream URLs from [Radio Browser API](https://api.radio-browser.info/)) */
+interface ExternalStation {
+  name: string;
+  description: string;
+  websiteUrl: string;
+  streamUrl: string;
+}
+
+const EXTERNAL_STATIONS: ExternalStation[] = [
+  {
+    name: "Refuge Worldwide",
+    description: "Community radio from Berlin. Music and issues we care about.",
+    websiteUrl: "https://refugeworldwide.com/",
+    streamUrl: "https://streaming.radio.co/s3699c5e49/listen",
+  },
+  {
+    name: "Mutant Radio",
+    description: "Independent station streaming worldwide. Experimental, electronic, folk.",
+    websiteUrl: "https://www.mutantradio.net/",
+    streamUrl: "https://listen.radioking.com/radio/282820/stream/328621",
+  },
+  {
+    name: "Radio 80000",
+    description: "Non-commercial online radio from Munich. Music, dialogue, events.",
+    websiteUrl: "https://www.radio80k.de/",
+    streamUrl: "https://radio80k.out.airtime.pro:8000/radio80k_a",
+  },
+];
+
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
   const view = new DataView(buf);
   let off = 0;
@@ -386,6 +415,11 @@ const chatSigninPrompt = document.getElementById("chat-signin-prompt")!;
 const chatInputRow = document.getElementById("chat-input-row")!;
 const chatInput = document.getElementById("chat-input")! as HTMLInputElement;
 const chatSendBtn = document.getElementById("chat-send")!;
+const externalStreamActions = document.getElementById("external-stream-actions")!;
+const externalVisitWebsite = document.getElementById("external-visit-website")! as HTMLAnchorElement;
+const playerStatGrid = document.getElementById("player-stat-grid")!;
+const playerChatPanel = document.getElementById("player-chat-panel")!;
+const externalStationsGrid = document.getElementById("external-stations-grid")!;
 
 let token: string | null = localStorage.getItem("laf_token");
 let userEmail: string | null = localStorage.getItem("laf_user_email");
@@ -486,6 +520,8 @@ let lossCountWindow = 0;
 let recvCountWindow = 0;
 let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
+let currentExternalStation: ExternalStation | null = null;
+let externalAudio: HTMLAudioElement | null = null;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
@@ -525,6 +561,7 @@ async function loadChannels() {
     channelsGrid.innerHTML = "";
     if (channels.length === 0) {
       channelsGrid.innerHTML = "<p style='opacity: 0.7;'>No live channels at the moment.</p>";
+      renderExternalStations();
       // If we were listening to a channel that's no longer live, stop listening
       if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
         console.log("Current channel is no longer live, stopping...");
@@ -585,11 +622,95 @@ async function loadChannels() {
       playText.textContent = "Start";
       currentChannel = null;
     }
+    renderExternalStations();
   } catch (err: any) {
     console.error("[loadChannels] Exception caught:", err);
     console.error("[loadChannels] Error details:", err.message, err.stack);
     channelsGrid.innerHTML = `<p style='opacity: 0.7; color: #ef4444;'>Error: ${err.message || "Failed to load channels"}</p>`;
+    renderExternalStations();
   }
+}
+
+function renderExternalStations() {
+  externalStationsGrid.innerHTML = "";
+  EXTERNAL_STATIONS.forEach((station) => {
+    const card = document.createElement("div");
+    card.className = "external-station-card";
+    card.innerHTML = `
+      <div class="ext-name">${escapeHtml(station.name)}</div>
+      <div class="ext-desc">${escapeHtml(station.description)}</div>
+      <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
+    `;
+    card.onclick = (e) => {
+      e.preventDefault();
+      selectExternalStation(station);
+    };
+    externalStationsGrid.appendChild(card);
+  });
+}
+
+function selectExternalStation(station: ExternalStation) {
+  if (currentExternalStation?.streamUrl === station.streamUrl) return;
+  if (currentChannel || ws) {
+    stopListening();
+    currentChannel = null;
+  }
+  stopExternalStream();
+  currentExternalStation = station;
+  nowPlayingTitle.textContent = station.name;
+  nowPlayingDesc.textContent = station.description;
+  externalVisitWebsite.href = station.websiteUrl;
+  externalVisitWebsite.textContent = "Visit " + station.name;
+  externalStreamActions.classList.remove("hidden");
+  playerStatGrid.classList.add("hidden");
+  playerChatPanel.classList.add("hidden");
+  playerCoverWrap.classList.add("placeholder");
+  playerCover.removeAttribute("src");
+  playerSection.classList.remove("hidden");
+  const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
+  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
+  requestAnimationFrame(() => {
+    if (center) center(playerSection);
+    else if (clamp) clamp(playerSection);
+  });
+  if (externalAudio) {
+    externalAudio.pause();
+    externalAudio.src = "";
+  }
+  externalAudio = new Audio(station.streamUrl);
+  externalAudio.onplaying = () => updatePlayerStatus("playing", "Listening to stream");
+  externalAudio.onerror = () => updatePlayerStatus("stopped", "Stream error");
+  externalAudio.onended = () => {
+    if (currentExternalStation?.streamUrl === station.streamUrl) {
+      updatePlayerStatus("ready", "Stream ended");
+    }
+  };
+  externalAudio.play().catch((err) => {
+    console.error("[External stream] Play failed:", err);
+    updatePlayerStatus("stopped", "Could not start stream");
+  });
+  updatePlayerStatus("playing", "Connecting…");
+  btnStart.classList.add("hidden");
+  btnStop.classList.remove("hidden");
+  playerLiveBadge.classList.remove("hidden");
+}
+
+function stopExternalStream() {
+  if (externalAudio) {
+    externalAudio.pause();
+    externalAudio.src = "";
+    externalAudio = null;
+  }
+  currentExternalStation = null;
+  externalStreamActions.classList.add("hidden");
+  playerStatGrid.classList.remove("hidden");
+  playerChatPanel.classList.remove("hidden");
+  nowPlayingTitle.textContent = "Not playing";
+  nowPlayingDesc.textContent = "";
+  updatePlayerStatus("ready", "Ready to listen");
+  btnStart.classList.remove("hidden");
+  btnStop.classList.add("hidden");
+  playerLiveBadge.classList.add("hidden");
 }
 
 function escapeHtml(text: string): string {
@@ -605,6 +726,7 @@ function escapeAttr(s: string): string {
 }
 
 function selectChannel(channel: LiveChannel) {
+  if (currentExternalStation) stopExternalStream();
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
   nowPlayingDesc.textContent = channel.description || "";
@@ -1444,6 +1566,10 @@ btnStart.onclick = () => {
 };
 
 btnStop.onclick = async () => {
+  if (currentExternalStation) {
+    stopExternalStream();
+    return;
+  }
   if (await showConfirm({ message: "Stop listening to this stream?" })) {
     stopListening();
   }

@@ -240,6 +240,32 @@
         margin-top: 6px;
       }
 
+      .external-stations-heading {
+        font-size: 14px;
+        font-weight: bold;
+        margin: 24px 0 12px;
+        color: var(--mac-black);
+        border-top: 2px solid var(--mac-gray);
+        padding-top: 16px;
+      }
+      .external-stations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .external-station-card {
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        padding: 12px 14px;
+        cursor: pointer;
+        box-shadow: 2px 2px 0 var(--mac-gray);
+      }
+      .external-station-card:hover { background: var(--mac-light-gray); }
+      .external-station-card .ext-name { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--mac-black); }
+      .external-station-card .ext-desc { font-size: 12px; color: var(--mac-gray); line-height: 1.4; }
+      .external-station-card .ext-link { font-size: 11px; margin-top: 8px; color: var(--mac-gray); }
+
       .player-section {
         min-width: 380px;
         max-width: 520px;
@@ -523,6 +549,8 @@
         </div>
         <div class="mac-window-body">
           <div id="channels-grid" class="channels-grid"></div>
+          <h3 class="external-stations-heading">Other stations</h3>
+          <div id="external-stations-grid" class="external-stations-grid"></div>
         </div>
       </div>
       <div id="player-section" class="player-section hidden" data-window-id="player" style="left: 24px; top: 320px;">
@@ -562,7 +590,10 @@
           <span id="player-status-icon">&#10074;&#10074;</span>
           <span id="player-status-text">Ready to listen</span>
         </div>
-        <div class="stat-grid">
+        <div id="external-stream-actions" class="hidden" style="margin-top: 8px;">
+          <a id="external-visit-website" href="#" target="_blank" rel="noopener" style="font-size: 12px;">Visit website</a>
+        </div>
+        <div class="stat-grid" id="player-stat-grid">
           <div class="stat-item">
             <div class="stat-label">Tier</div>
             <div id="stat-tier" class="stat-value">-</div>
@@ -589,7 +620,7 @@
           </div>
         </div>
 
-        <div class="chat-panel">
+        <div class="chat-panel" id="player-chat-panel">
           <div class="chat-title">Live chat</div>
           <div id="chat-messages" class="chat-messages"></div>
           <div id="chat-signin-prompt" class="chat-signin-prompt">Sign in to participate in chat</div>
