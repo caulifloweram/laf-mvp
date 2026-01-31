@@ -400,10 +400,9 @@ const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
 const playerCoverWrap = document.getElementById("player-cover-wrap")!;
 const playerCover = document.getElementById("player-cover")! as HTMLImageElement;
-const btnStart = document.getElementById("btn-start") as HTMLButtonElement;
-const btnStop = document.getElementById("btn-stop") as HTMLButtonElement;
-const playIcon = document.getElementById("play-icon")!;
-const playText = document.getElementById("play-text")!;
+const btnPlayPause = document.getElementById("btn-play-pause") as HTMLButtonElement;
+const playPauseIcon = document.getElementById("play-pause-icon")!;
+const playPauseText = document.getElementById("play-pause-text")!;
 const playerLiveBadge = document.getElementById("player-live-badge")!;
 const playerStatus = document.getElementById("player-status")!;
 const playerStatusIcon = document.getElementById("player-status-icon")!;
@@ -426,9 +425,22 @@ const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
 const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
-const playerPrevNextWrap = document.getElementById("player-prev-next-wrap")!;
 const btnPrevStation = document.getElementById("btn-prev-station")!;
 const btnNextStation = document.getElementById("btn-next-station")!;
+
+function showPauseButton() {
+  btnPlayPause.disabled = false;
+  btnPlayPause.classList.remove("hidden");
+  playPauseIcon.textContent = "\u23F8"; // ⏸ Pause
+  playPauseText.textContent = "Pause";
+}
+
+function showPlayButton(label: "Start" | "Play" = "Play") {
+  btnPlayPause.disabled = false;
+  btnPlayPause.classList.remove("hidden");
+  playPauseIcon.textContent = "\u25B6"; // ▶
+  playPauseText.textContent = label;
+}
 
 let token: string | null = localStorage.getItem("laf_token");
 let userEmail: string | null = localStorage.getItem("laf_user_email");
@@ -598,11 +610,8 @@ async function loadChannels() {
           ws = null;
         }
         updatePlayerStatus("stopped", "Stream ended");
-        btnStart.classList.remove("hidden");
-        btnStop.classList.add("hidden");
+        showPlayButton("Start");
         playerLiveBadge.classList.add("hidden");
-        playIcon.textContent = "\u25B6";
-        playText.textContent = "Start";
       }
       return;
     }
@@ -644,11 +653,8 @@ async function loadChannels() {
         ws = null;
       }
       updatePlayerStatus("stopped", "Stream ended");
-      btnStart.classList.remove("hidden");
-      btnStop.classList.add("hidden");
+      showPlayButton("Start");
       playerLiveBadge.classList.add("hidden");
-      playIcon.textContent = "\u25B6";
-      playText.textContent = "Start";
       currentChannel = null;
     }
     renderExternalStations();
@@ -726,7 +732,8 @@ function selectExternalStation(station: ExternalStation) {
     mediaSource = null;
   }
   externalAudio = new Audio(station.streamUrl);
-  playerPrevNextWrap.classList.remove("hidden");
+  btnPrevStation.classList.remove("hidden");
+  btnNextStation.classList.remove("hidden");
   nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
   Promise.all([
@@ -753,8 +760,7 @@ function selectExternalStation(station: ExternalStation) {
     updatePlayerStatus("stopped", "Could not start stream");
   });
   updatePlayerStatus("playing", "Connecting…");
-  btnStart.classList.add("hidden");
-  btnStop.classList.remove("hidden");
+  showPauseButton();
   playerLiveBadge.classList.remove("hidden");
 }
 
@@ -784,6 +790,27 @@ async function fetchStationNowPlayingViaApi(websiteUrl: string): Promise<string 
   }
 }
 
+function pauseExternalStream() {
+  if (externalAudio) {
+    externalAudio.pause();
+    // Keep externalAudio and currentExternalStation so we can resume
+  }
+  updatePlayerStatus("ready", "Paused");
+  showPlayButton("Play");
+  playerLiveBadge.classList.add("hidden");
+}
+
+function resumeExternalStream() {
+  if (!currentExternalStation || !externalAudio) return;
+  externalAudio.play().catch((err) => {
+    console.error("[External stream] Resume failed:", err);
+    updatePlayerStatus("stopped", "Could not resume stream");
+  });
+  updatePlayerStatus("playing", "Listening to stream");
+  showPauseButton();
+  playerLiveBadge.classList.remove("hidden");
+}
+
 function stopExternalStream() {
   if (externalAudio) {
     externalAudio.pause();
@@ -795,7 +822,8 @@ function stopExternalStream() {
     mediaSource = null;
   }
   currentExternalStation = null;
-  playerPrevNextWrap.classList.add("hidden");
+  btnPrevStation.classList.add("hidden");
+  btnNextStation.classList.add("hidden");
   externalStreamActions.classList.add("hidden");
   playerStatGrid.classList.remove("hidden");
   playerChatPanel.classList.remove("hidden");
@@ -805,8 +833,7 @@ function stopExternalStream() {
   nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
   updatePlayerStatus("ready", "Ready to listen");
-  btnStart.classList.remove("hidden");
-  btnStop.classList.add("hidden");
+  showPlayButton("Start");
   playerLiveBadge.classList.add("hidden");
   playerSection.classList.add("hidden");
 }
@@ -831,7 +858,8 @@ function selectChannel(channel: LiveChannel) {
   nowPlayingDesc.textContent = channel.description || "";
   nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
-  playerPrevNextWrap.classList.add("hidden");
+  btnPrevStation.classList.add("hidden");
+  btnNextStation.classList.add("hidden");
   playerCoverWrap.classList.remove("external-logo");
   playerCover.onerror = null;
   if (channel.coverUrl) {
@@ -854,21 +882,21 @@ function selectChannel(channel: LiveChannel) {
     ws = null;
   }
   if (wasPlayingLaf) {
-    btnStart.classList.add("hidden");
-    btnStop.classList.remove("hidden");
+    showPauseButton();
     playerLiveBadge.classList.remove("hidden");
     startListening().catch((e) => {
       console.error("Failed to switch channel:", e);
-      btnStart.classList.remove("hidden");
-      btnStop.classList.add("hidden");
+      showPlayButton("Play");
       playerLiveBadge.classList.add("hidden");
     });
+  } else {
+    showPlayButton("Start");
   }
 }
 
 async function startListening() {
   if (!currentChannel) return;
-  btnStart.disabled = true;
+  btnPlayPause.disabled = true;
 
   console.log("[Listen] Starting - initializing fresh state...");
   
@@ -942,8 +970,7 @@ async function startListening() {
     
     // Update UI
     updatePlayerStatus("playing", "Listening live");
-    btnStart.classList.add("hidden");
-    btnStop.classList.remove("hidden");
+    showPauseButton();
     playerLiveBadge.classList.remove("hidden");
   };
 
@@ -967,15 +994,12 @@ async function startListening() {
     }
     
     stopListening();
-    
+
     const reason = event.reason || "";
     updatePlayerStatus("stopped", reason.includes("Stream ended") ? "Stream ended" : "Disconnected");
-    btnStart.disabled = false;
-    btnStart.classList.remove("hidden");
-    btnStop.classList.add("hidden");
+    showPlayButton("Play");
+    playPauseText.textContent = "Reconnect";
     playerLiveBadge.classList.add("hidden");
-    playIcon.textContent = "\u25B6";
-    playText.textContent = "Reconnect";
   };
 
   let lastMessageTime = performance.now();
@@ -1654,36 +1678,36 @@ function stopListening() {
   
   console.log("[Cleanup] Complete - state reset, audio stopped");
   updatePlayerStatus("stopped", "Stream ended");
-  btnStart.disabled = false;
-  btnStart.classList.remove("hidden");
-  btnStop.classList.add("hidden");
+  showPlayButton("Play");
   playerLiveBadge.classList.add("hidden");
-  playIcon.textContent = "\u25B6";
-  playText.textContent = "Start";
 }
 
-btnStart.onclick = () => {
+btnPlayPause.onclick = () => {
+  // External station: toggle pause/resume
+  if (currentExternalStation) {
+    if (externalAudio && !externalAudio.paused) {
+      pauseExternalStream();
+    } else {
+      resumeExternalStream();
+    }
+    return;
+  }
+  // LAF channel: start or pause
   if (!currentChannel) return;
-  playIcon.textContent = "\u25B6";
-  playText.textContent = "Connecting...";
-  btnStart.disabled = true;
+  const isPlaying = ws != null && ws.readyState === WebSocket.OPEN;
+  if (isPlaying) {
+    stopListening();
+    return;
+  }
+  playPauseText.textContent = "Connecting...";
+  btnPlayPause.disabled = true;
   updatePlayerStatus("ready", "Connecting...");
   startListening().catch((e) => {
     console.error("Failed to start listening:", e);
     alert(`Failed to start: ${e.message}`);
     updatePlayerStatus("stopped", `Error: ${e.message}`);
-    btnStart.disabled = false;
-    playIcon.textContent = "\u25B6";
-    playText.textContent = "Start";
+    showPlayButton(currentChannel ? "Play" : "Start");
   });
-};
-
-btnStop.onclick = () => {
-  if (currentExternalStation) {
-    stopExternalStream();
-    return;
-  }
-  stopListening();
 };
 
 btnPrevStation.onclick = () => {
