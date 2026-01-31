@@ -729,8 +729,13 @@ function selectExternalStation(station: ExternalStation) {
   playerPrevNextWrap.classList.remove("hidden");
   nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
-  fetchStreamMetadataViaApi(station.streamUrl).then((text) => {
-    if (currentExternalStation?.streamUrl === station.streamUrl && text) {
+  Promise.all([
+    fetchStationNowPlayingViaApi(station.websiteUrl),
+    fetchStreamMetadataViaApi(station.streamUrl),
+  ]).then(([scraped, icy]) => {
+    if (currentExternalStation?.streamUrl !== station.streamUrl) return;
+    const text = (scraped && scraped.trim()) || (icy && icy.trim()) || null;
+    if (text) {
       nowPlayingProgram.textContent = text.length > 120 ? text.slice(0, 117) + "…" : text;
       nowPlayingProgramWrap.classList.remove("hidden");
     }
@@ -763,6 +768,17 @@ async function fetchStreamMetadataViaApi(streamUrl: string): Promise<string | nu
     if (desc) return desc;
     if (name) return name;
     return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchStationNowPlayingViaApi(websiteUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/station-now-playing?url=${encodeURIComponent(websiteUrl)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { text?: string | null };
+    return data.text?.trim() ?? null;
   } catch {
     return null;
   }

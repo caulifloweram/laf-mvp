@@ -122,6 +122,102 @@ app.get("/api/stream-metadata", async (req, res) => {
   }
 });
 
+// Scrape station website for "now playing" / program title (often in live player or Next Up section)
+app.get("/api/station-now-playing", async (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    return res.status(400).json({ error: "Invalid url" });
+  }
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; LAF/1.0; +https://github.com/caulifloweram/laf-mvp)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    clearTimeout(t);
+    if (!response.ok) return res.json({ text: null });
+    const html = await response.text();
+    let text: string | null = null;
+
+    const decode = (raw: string) => raw.replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10))).trim();
+    const isValid = (s: string) => s.length > 4 && s.length < 200 && !/^(loading|refuge|mutant|radio|80000|home|listen|play)$/i.test(s);
+
+    // 1. Live player title: data attributes (common in React/JS players)
+    if (!text) {
+      const dataMatch = html.match(/data-(?:now[-_]?playing|track[-_]?name|current[-_]?show|title|show[-_]?name)=["']([^"']{5,180})["']/i)
+        || html.match(/data-title=["']([^"']{5,180})["']/i);
+      if (dataMatch?.[1]) {
+        const raw = decode(dataMatch[1]);
+        if (isValid(raw)) text = raw;
+      }
+    }
+
+    // 2. Live player: class names often used for "now playing" title (capture following text)
+    if (!text) {
+      const playerTitleBlock = html.match(/class="[^"]*(?:now[-_]?playing|current[-_]?track|player[-_]?title|live[-_]?title|show[-_]?title|track[-_]?title|np[-_]?title|stream[-_]?title)[^"]*"[^>]*>[\s\S]{0,200}?([^<]{5,150})</i)
+        || html.match(/id="(?:now[-_]?playing|current[-_]?track|player[-_]?title)[^"]*"[^>]*>[\s\S]{0,200}?([^<]{5,150})</i);
+      if (playerTitleBlock?.[1]) {
+        const raw = decode(playerTitleBlock[1]);
+        if (isValid(raw)) text = raw;
+      }
+    }
+
+    // 3. og:title (often page or current show)
+    if (!text) {
+      const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+      if (ogTitle?.[1]) {
+        const decoded = decode(ogTitle[1]);
+        if (isValid(decoded)) text = decoded;
+      }
+    }
+
+    // 4. "Next Up" / "Now Playing" / "Live" section: heading or title-like content after label
+    if (!text) {
+      const section = html.match(/(?:next\s*up|now\s*playing|live\s*now|currently\s*playing|on\s*air)[\s\S]{0,1200}/i);
+      if (section) {
+        const chunk = section[0];
+        const inTag = chunk.match(/<h[1-6][^>]*>([^<]+)</i)
+          || chunk.match(/<[a-z]+[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)</i)
+          || chunk.match(/<[a-z]+[^>]*class="[^"]*(?:show|program|track)[^"]*"[^>]*>([^<]{8,120})</i)
+          || chunk.match(/<a[^>]+href="[^"]*\/radio\/[^"]*"[^>]*>([^<]+)</i)
+          || chunk.match(/>(Ecology of Listening|Residency|The Breakfast Show|[A-Za-z0-9\s|&'\-–—]{10,100})</);
+        if (inTag?.[1]) {
+          const raw = decode(inTag[1]);
+          if (isValid(raw)) text = raw;
+        }
+      }
+    }
+
+    // 5. First link to /radio/... (show slug) - use link text as show name
+    if (!text) {
+      const radioLink = html.match(/<a[^>]+href="[^"]*\/radio\/([^"?#]+)"[^>]*>([^<]{5,120})</i);
+      if (radioLink?.[2]) {
+        const raw = decode(radioLink[2]);
+        if (raw.length > 3 && !/^\d|^loading$/i.test(raw)) text = raw;
+      }
+    }
+
+    // 6. JSON-LD or script blob: "name" / "title" near "BroadcastEvent" or "RadioBroadcast"
+    if (!text) {
+      const jsonLd = html.match(/(?:BroadcastEvent|RadioBroadcast|RadioStation)[\s\S]{0,500}?"(?:name|title)"\s*:\s*"([^"]{8,150})"/i);
+      if (jsonLd?.[1]) {
+        const raw = decode(jsonLd[1]);
+        if (isValid(raw)) text = raw;
+      }
+    }
+
+    res.json({ text: text || null });
+  } catch {
+    res.json({ text: null });
+  }
+});
+
 // Initialize database on startup (non-blocking)
 // Don't block server startup if DB fails
 initDb()
