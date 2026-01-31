@@ -87,6 +87,7 @@ function closeWindow(win: HTMLElement) {
   if (id) {
     const taskbarBtn = document.getElementById(`taskbar-${id}`);
     if (taskbarBtn) taskbarBtn.classList.add("hidden");
+    window.dispatchEvent(new CustomEvent("window-closed", { detail: { windowId: id } }));
   }
 }
 

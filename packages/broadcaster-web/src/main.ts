@@ -200,25 +200,26 @@ function showSection(section: string) {
   }
 
   if (section === "login") {
-    loginSection.classList.remove("hidden");
+    loginSection.classList.remove("hidden", "window-closed");
   } else if (section === "register") {
-    registerSection.classList.remove("hidden");
+    registerSection.classList.remove("hidden", "window-closed");
   } else if (section === "main") {
     mainSection.classList.remove("hidden");
+    document.querySelector('.card[data-window-id="channels"]')?.classList.remove("window-closed");
     document.querySelectorAll(".card.bring-front").forEach((c) => c.classList.remove("bring-front"));
     document.querySelector('.card[data-window-id="channels"]')?.classList.add("bring-front");
   } else if (section === "create") {
-    mainSection.classList.remove("hidden");
-    createChannelSection.classList.remove("hidden");
+    mainSection.classList.remove("hidden", "window-closed");
+    createChannelSection.classList.remove("hidden", "window-closed");
   } else if (section === "channel-settings") {
-    mainSection.classList.remove("hidden");
-    channelSettingsSection.classList.remove("hidden");
+    mainSection.classList.remove("hidden", "window-closed");
+    channelSettingsSection.classList.remove("hidden", "window-closed");
   } else if (section === "broadcast") {
-    mainSection.classList.remove("hidden");
-    broadcastSection.classList.remove("hidden");
+    mainSection.classList.remove("hidden", "window-closed");
+    broadcastSection.classList.remove("hidden", "window-closed");
   } else if (section === "settings") {
-    mainSection.classList.remove("hidden");
-    settingsSection.classList.remove("hidden");
+    mainSection.classList.remove("hidden", "window-closed");
+    settingsSection.classList.remove("hidden", "window-closed");
     loadUserProfile();
   }
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
@@ -226,6 +227,14 @@ function showSection(section: string) {
     document.querySelectorAll(".card:not(.window-closed):not(.hidden)").forEach((el) => clamp(el as HTMLElement));
   }
 }
+
+// When user closes a secondary window (red close button), go back to main so they can reopen via UI
+window.addEventListener("window-closed", ((e: CustomEvent<{ windowId: string }>) => {
+  const { windowId } = e.detail;
+  if (["channel-settings", "create-channel", "broadcast", "settings"].includes(windowId)) {
+    showSection("main");
+  }
+}) as EventListener);
 
 async function apiCall(endpoint: string, options: RequestInit = {}) {
   const headers: HeadersInit = {
