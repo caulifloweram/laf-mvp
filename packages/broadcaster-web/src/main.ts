@@ -334,22 +334,28 @@ async function loadChannels() {
     channels.forEach((ch) => {
       const item = document.createElement("div");
       item.className = "channel-item";
-      item.setAttribute("data-channel-id", ch.id);
-      item.style.cursor = "pointer";
-      item.title = "Click to open channel settings";
       const coverHtml = ch.cover_url
         ? `<img src="${escapeAttr(ch.cover_url)}" alt="" class="channel-item-cover" />`
         : "";
       item.innerHTML = `
-        <div class="channel-item-info" style="display: flex; align-items: center; gap: 12px; flex: 1;">
-          ${coverHtml}
-          <div>
-            <strong>${escapeHtml(ch.title)}</strong>
-            <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
-          </div>
-        </div>
-        <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
+        <button type="button" class="channel-row-btn" data-channel-id="${escapeAttr(ch.id)}">
+          <span class="channel-item-info" style="display: flex; align-items: center; gap: 12px; flex: 1; text-align: left;">
+            ${coverHtml}
+            <span>
+              <strong>${escapeHtml(ch.title)}</strong>
+              <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
+            </span>
+          </span>
+        </button>
+        <button type="button" class="btn-go-live" data-channel-id="${escapeAttr(ch.id)}" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
       `;
+      const rowBtn = item.querySelector(".channel-row-btn") as HTMLButtonElement;
+      const goLiveBtn = item.querySelector(".btn-go-live") as HTMLButtonElement;
+      rowBtn.addEventListener("click", () => openChannelSettings(ch));
+      goLiveBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectChannel(ch);
+      });
       channelsList.appendChild(item);
     });
   } catch (err) {
@@ -357,30 +363,6 @@ async function loadChannels() {
   }
 }
 
-function setupChannelsListClick() {
-  channelsList.addEventListener(
-    "click",
-    (e) => {
-      const target = e.target as HTMLElement;
-      const item = target.closest(".channel-item");
-      if (!item) return;
-      const channelId = item.getAttribute("data-channel-id");
-      if (!channelId) return;
-      const ch = latestChannels.find((c) => c.id === channelId);
-      if (!ch) return;
-      if (target.closest(".btn-go-live")) {
-        e.preventDefault();
-        e.stopPropagation();
-        selectChannel(ch);
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      openChannelSettings(ch);
-    },
-    true
-  );
-}
 
 function escapeAttr(s: string): string {
   const div = document.createElement("div");
@@ -1247,8 +1229,6 @@ btnDeleteChannel.onclick = async () => {
     channelSettingsStatus.textContent = err.message || "Failed to delete.";
   }
 };
-
-setupChannelsListClick();
 
 if (token) {
   loadChannels().then(() => showSection("main")).catch(() => {
