@@ -78,9 +78,10 @@ function closeWindow(win: HTMLElement) {
   const id = win.getAttribute("data-window-id");
   if (!id) return;
   win.classList.add("window-closed");
+  // Close = hide window only; do not show taskbar button (user reopens via app flow)
   const taskbarBtn = document.getElementById(`taskbar-${id}`);
   if (taskbarBtn) {
-    taskbarBtn.classList.remove("hidden");
+    taskbarBtn.classList.add("hidden");
   }
 }
 

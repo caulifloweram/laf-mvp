@@ -82,11 +82,11 @@ function onMouseUp() {
 
 function closeWindow(win: HTMLElement) {
   const id = win.getAttribute("data-window-id");
-  if (!id) return;
   win.classList.add("window-closed");
-  const taskbarBtn = document.getElementById(`taskbar-${id}`);
-  if (taskbarBtn) {
-    taskbarBtn.classList.remove("hidden");
+  // Close = hide window only; do not show taskbar button (user reopens via UI)
+  if (id) {
+    const taskbarBtn = document.getElementById(`taskbar-${id}`);
+    if (taskbarBtn) taskbarBtn.classList.add("hidden");
   }
 }
 
