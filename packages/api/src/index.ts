@@ -99,6 +99,29 @@ app.get("/", (req, res) => {
   });
 });
 
+// Proxy for ICY stream metadata (CORS blocks client from reading stream headers directly)
+app.get("/api/stream-metadata", async (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    return res.status(400).json({ error: "Invalid url" });
+  }
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 6000);
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { "Icy-MetaData": "1" },
+    });
+    clearTimeout(t);
+    const name = response.headers.get("icy-name")?.trim() ?? null;
+    const description = response.headers.get("icy-description")?.trim() ?? null;
+    res.json({ name, description });
+  } catch {
+    res.json({ name: null, description: null });
+  }
+});
+
 // Initialize database on startup (non-blocking)
 // Don't block server startup if DB fails
 initDb()

@@ -425,6 +425,10 @@ const playerStatGrid = document.getElementById("player-stat-grid")!;
 const playerChatPanel = document.getElementById("player-chat-panel")!;
 const externalStationsGrid = document.getElementById("external-stations-grid")!;
 const nowPlayingProgram = document.getElementById("now-playing-program")!;
+const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap")!;
+const playerPrevNextWrap = document.getElementById("player-prev-next-wrap")!;
+const btnPrevStation = document.getElementById("btn-prev-station")!;
+const btnNextStation = document.getElementById("btn-next-station")!;
 
 let token: string | null = localStorage.getItem("laf_token");
 let userEmail: string | null = localStorage.getItem("laf_user_email");
@@ -505,8 +509,6 @@ let opusDecoder: OpusDecoder | null = null;
 let analyserNode: AnalyserNode | null = null;
 let lafGain: GainNode | null = null;
 let mediaSource: MediaElementAudioSourceNode | null = null;
-let soundwaveRafId: number | null = null;
-const SOUNDWAVE_BARS = 30;
 const FREQ_BIN_COUNT = 256;
 
 const tiers = new Map<number, JitterBuffer>();
@@ -552,52 +554,6 @@ async function getOrCreateAudioContext(): Promise<AudioContext | null> {
   analyserNode.connect(audioCtx.destination);
   if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
   return audioCtx;
-}
-
-function startSoundwaveAnimation() {
-  if (soundwaveRafId != null) return;
-  const bars = document.querySelectorAll<HTMLElement>("#player-soundwave .sw-bar");
-  if (bars.length !== SOUNDWAVE_BARS) return;
-  const freqData = analyserNode ? new Uint8Array(analyserNode.frequencyBinCount) : null;
-
-  function tick() {
-    soundwaveRafId = requestAnimationFrame(tick);
-    const playingLaf = ws && ws.readyState === WebSocket.OPEN && loopRunning;
-    const playingExternal = currentExternalStation != null && externalAudio != null && !externalAudio.paused;
-    const playing = playingLaf || playingExternal;
-
-    if (!playing) {
-      bars.forEach((bar) => { bar.style.transform = "scaleY(0.2)"; });
-      return;
-    }
-    if (playingLaf && analyserNode && freqData) {
-      analyserNode.getByteFrequencyData(freqData);
-      const step = Math.floor(freqData.length / SOUNDWAVE_BARS);
-      for (let i = 0; i < SOUNDWAVE_BARS; i++) {
-        let sum = 0;
-        for (let j = 0; j < step; j++) sum += freqData[i * step + j] ?? 0;
-        const avg = sum / step;
-        const scale = 0.15 + 0.85 * (avg / 255);
-        bars[i].style.transform = `scaleY(${scale})`;
-      }
-    } else {
-      const t = Date.now() / 120;
-      for (let i = 0; i < SOUNDWAVE_BARS; i++) {
-        const scale = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t + i * 0.3));
-        bars[i].style.transform = `scaleY(${scale})`;
-      }
-    }
-  }
-  tick();
-}
-
-function stopSoundwaveAnimation() {
-  if (soundwaveRafId != null) {
-    cancelAnimationFrame(soundwaveRafId);
-    soundwaveRafId = null;
-  }
-  const bars = document.querySelectorAll<HTMLElement>("#player-soundwave .sw-bar");
-  bars.forEach((bar) => { bar.style.transform = "scaleY(0.2)"; });
 }
 
 async function loadChannels() {
@@ -754,8 +710,6 @@ function selectExternalStation(station: ExternalStation) {
     playerCoverWrap.classList.add("placeholder");
     playerCover.removeAttribute("src");
   }
-  nowPlayingProgram.classList.add("hidden");
-  nowPlayingProgram.textContent = "";
   playerSection.classList.remove("hidden", "window-closed");
   const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
@@ -772,11 +726,13 @@ function selectExternalStation(station: ExternalStation) {
     mediaSource = null;
   }
   externalAudio = new Audio(station.streamUrl);
-  startSoundwaveAnimation();
-  fetchStreamMetadata(station.streamUrl).then((program) => {
-    if (currentExternalStation?.streamUrl === station.streamUrl && program) {
-      nowPlayingProgram.textContent = program.length > 80 ? program.slice(0, 77) + "…" : program;
-      nowPlayingProgram.classList.remove("hidden");
+  playerPrevNextWrap.classList.remove("hidden");
+  nowPlayingProgramWrap.classList.add("hidden");
+  nowPlayingProgram.textContent = "";
+  fetchStreamMetadataViaApi(station.streamUrl).then((text) => {
+    if (currentExternalStation?.streamUrl === station.streamUrl && text) {
+      nowPlayingProgram.textContent = text.length > 120 ? text.slice(0, 117) + "…" : text;
+      nowPlayingProgramWrap.classList.remove("hidden");
     }
   }).catch(() => {});
 
@@ -797,24 +753,17 @@ function selectExternalStation(station: ExternalStation) {
   playerLiveBadge.classList.remove("hidden");
 }
 
-async function fetchStreamMetadata(streamUrl: string): Promise<string | null> {
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 8000);
+async function fetchStreamMetadataViaApi(streamUrl: string): Promise<string | null> {
   try {
-    const res = await fetch(streamUrl, {
-      method: "GET",
-      signal: ac.signal,
-      headers: { "Icy-MetaData": "1" },
-    });
-    clearTimeout(t);
-    const icyName = res.headers.get("icy-name")?.trim();
-    const icyDesc = res.headers.get("icy-description")?.trim();
-    ac.abort();
-    if (icyDesc) return icyDesc;
-    if (icyName) return icyName;
+    const res = await fetch(`${API_URL}/api/stream-metadata?url=${encodeURIComponent(streamUrl)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { name?: string | null; description?: string | null };
+    const desc = data.description?.trim();
+    const name = data.name?.trim();
+    if (desc) return desc;
+    if (name) return name;
     return null;
   } catch {
-    clearTimeout(t);
     return null;
   }
 }
@@ -829,15 +778,15 @@ function stopExternalStream() {
     try { mediaSource.disconnect(); } catch (_) {}
     mediaSource = null;
   }
-  stopSoundwaveAnimation();
   currentExternalStation = null;
+  playerPrevNextWrap.classList.add("hidden");
   externalStreamActions.classList.add("hidden");
   playerStatGrid.classList.remove("hidden");
   playerChatPanel.classList.remove("hidden");
   playerCoverWrap.classList.remove("external-logo");
   nowPlayingTitle.textContent = "Not playing";
   nowPlayingDesc.textContent = "";
-  nowPlayingProgram.classList.add("hidden");
+  nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
   updatePlayerStatus("ready", "Ready to listen");
   btnStart.classList.remove("hidden");
@@ -864,8 +813,9 @@ function selectChannel(channel: LiveChannel) {
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
   nowPlayingDesc.textContent = channel.description || "";
-  nowPlayingProgram.classList.add("hidden");
+  nowPlayingProgramWrap.classList.add("hidden");
   nowPlayingProgram.textContent = "";
+  playerPrevNextWrap.classList.add("hidden");
   playerCoverWrap.classList.remove("external-logo");
   playerCover.onerror = null;
   if (channel.coverUrl) {
@@ -920,7 +870,6 @@ async function startListening() {
   lafGain = audioCtx.createGain();
   lafGain.gain.value = 1;
   lafGain.connect(analyserNode!);
-  startSoundwaveAnimation();
   
   // Ensure ABR state is reset
   abrState = {
@@ -1681,7 +1630,6 @@ function stopListening() {
     try { lafGain.disconnect(); } catch (_) {}
     lafGain = null;
   }
-  stopSoundwaveAnimation();
 
   // Reset stopping flag after a brief delay to ensure all audio has stopped
   setTimeout(() => {
@@ -1720,6 +1668,20 @@ btnStop.onclick = () => {
     return;
   }
   stopListening();
+};
+
+btnPrevStation.onclick = () => {
+  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
+  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation.streamUrl);
+  const prevIdx = (idx - 1 + EXTERNAL_STATIONS.length) % EXTERNAL_STATIONS.length;
+  selectExternalStation(EXTERNAL_STATIONS[prevIdx]);
+};
+
+btnNextStation.onclick = () => {
+  if (!currentExternalStation || EXTERNAL_STATIONS.length === 0) return;
+  const idx = EXTERNAL_STATIONS.findIndex((s) => s.streamUrl === currentExternalStation.streamUrl);
+  const nextIdx = (idx + 1) % EXTERNAL_STATIONS.length;
+  selectExternalStation(EXTERNAL_STATIONS[nextIdx]);
 };
 
 function sendChatMessage() {
