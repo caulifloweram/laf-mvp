@@ -15,6 +15,8 @@
         --text-muted: #444;
         --topbar-bg: #111;
         --topbar-text: #fff;
+        --footer-bg: #111;
+        --footer-text: #fff;
         --card-hover: #eee;
       }
       [data-theme="dark"] {
@@ -25,6 +27,8 @@
         --text-muted: #aaa;
         --topbar-bg: #000;
         --topbar-text: #eee;
+        --footer-bg: #000;
+        --footer-text: #eee;
         --card-hover: #252525;
       }
 
@@ -33,6 +37,7 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
+        padding-bottom: 80px;
         -webkit-font-smoothing: none;
         font-smoothing: none;
       }
@@ -127,6 +132,47 @@
       .nav-drawer .theme-toggle { width: 100%; justify-content: center; min-height: 44px; }
       body.nav-open .nav-backdrop { display: block; opacity: 1; }
       body.nav-open .nav-drawer { transform: translateX(0); }
+      .topbar-center { justify-self: center; }
+
+      /* Fixed footer player (same as main site) */
+      .footer-player {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 72px;
+        background: var(--footer-bg);
+        color: var(--footer-text);
+        border-top: 2px solid var(--border);
+        display: grid;
+        grid-template-columns: 72px 1fr auto;
+        align-items: center;
+        gap: 16px;
+        padding: 0 16px;
+        z-index: 15;
+      }
+      .footer-player .cover-wrap {
+        position: relative;
+        width: 56px;
+        height: 56px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .footer-player .cover-wrap.placeholder { background: var(--card-hover); }
+      .footer-player .cover-wrap.placeholder::after {
+        content: "\u266B";
+        font-size: 24px;
+        opacity: 0.6;
+      }
+      .footer-player .info { min-width: 0; }
+      .footer-player .info .title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .footer-player .info .desc { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .footer-player .status-text { font-size: 11px; color: var(--text-muted); max-width: 200px; text-align: right; }
+      .footer-player .status-text a { color: var(--footer-text); text-decoration: underline; }
 
       .main { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
       .section { display: none; }
@@ -279,6 +325,7 @@
       .hidden { display: none !important; }
       @media (max-width: 768px) {
         body.nav-open { overflow: hidden; }
+        body { padding-bottom: 64px; }
         .site-topbar { grid-template-columns: 1fr auto auto; padding: 0 12px; }
         .menu-toggle { display: flex; }
         .topbar-nav { display: none !important; }
@@ -289,6 +336,9 @@
         .channel-item { flex-wrap: wrap; }
         #broadcast-stats > div { grid-template-columns: 1fr; }
         .confirm-dialog { max-width: calc(100vw - 24px); margin: 0 12px; }
+        .footer-player { grid-template-columns: 56px 1fr auto; gap: 10px; padding: 0 12px; height: 64px; }
+        .footer-player .cover-wrap { width: 44px; height: 44px; }
+        .footer-player .status-text { display: none; }
       }
       @media (max-width: 480px) {
         .site-topbar { height: 44px; }
@@ -302,11 +352,13 @@
         <a href="/" class="topbar-logo">LAF</a>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
-          <a href="/broadcaster/" class="topbar-nav-item active">Broadcast</a>
-          <a href="/" class="topbar-nav-item">Live Stations</a>
+          <a href="/#home" class="topbar-nav-item">Home</a>
+          <a href="/#live" class="topbar-nav-item">Live Stations</a>
           <a href="/#about" class="topbar-nav-item">About</a>
+          <a href="/broadcaster/" class="topbar-nav-item active">Broadcast</a>
         </div>
       </div>
+      <div class="topbar-center"></div>
       <div class="topbar-right hidden" id="topbar-account">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">Dark</button>
         <button type="button" id="btn-settings">Settings</button>
@@ -314,9 +366,10 @@
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
-      <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
-      <a href="/" class="topbar-nav-item">Live Stations</a>
+      <a href="/#home" class="topbar-nav-item">Home</a>
+      <a href="/#live" class="topbar-nav-item">Live Stations</a>
       <a href="/#about" class="topbar-nav-item">About</a>
+      <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
       <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
       <button type="button" id="btn-settings-drawer">Settings</button>
       <button type="button" id="btn-logout-drawer" style="background:transparent;border:1px solid currentColor;color:inherit;padding:10px 14px;width:100%;text-align:left;font-weight:bold;cursor:pointer;">Logout</button>
@@ -538,6 +591,17 @@
         </div>
       </div>
     </main>
+
+    <footer class="footer-player" id="footer-player">
+      <div class="cover-wrap placeholder"></div>
+      <div class="info">
+        <div class="title">Not playing</div>
+        <div class="desc">You're on the Broadcast page.</div>
+      </div>
+      <div class="status-text">
+        <a href="/#live">Listen on Live Stations &rarr;</a>
+      </div>
+    </footer>
 
     <div id="confirm-overlay" class="confirm-overlay" aria-hidden="true">
       <div class="confirm-dialog">

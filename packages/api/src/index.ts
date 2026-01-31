@@ -99,11 +99,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// Check if a stream URL is reachable (returns quickly; does not read full body)
-app.get("/api/stream-check", async (req, res) => {
-  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+// Shared: check if a stream URL is reachable (returns quickly; does not read full body)
+async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: string }> {
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
-    return res.status(400).json({ ok: false, status: "invalid_url" });
+    return { ok: false, status: "invalid_url" };
   }
   try {
     const controller = new AbortController();
@@ -114,13 +113,18 @@ app.get("/api/stream-check", async (req, res) => {
       headers: { "Icy-MetaData": "1" },
     });
     clearTimeout(t);
-    // Don't read body; just check we got a successful response (streams often return 200)
     const ok = response.ok || response.status === 200 || response.status === 206;
-    res.json({ ok: !!ok, status: ok ? "live" : "unavailable" });
+    return { ok: !!ok, status: ok ? "live" : "unavailable" };
   } catch (err: unknown) {
     const status = err instanceof Error && err.name === "AbortError" ? "timeout" : "error";
-    res.json({ ok: false, status });
+    return { ok: false, status };
   }
+}
+
+app.get("/api/stream-check", async (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
+  const result = await checkStreamUrl(url);
+  res.json(result);
 });
 
 // Proxy for ICY stream metadata (CORS blocks client from reading stream headers directly)
@@ -280,6 +284,13 @@ app.post("/api/external-stations", authMiddleware, async (req, res) => {
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     return res.status(400).json({ error: "Stream URL must be http or https" });
   }
+  const { ok, status } = await checkStreamUrl(url);
+  if (!ok) {
+    return res.status(400).json({
+      error: "Stream is not reachable or not live. Station was not added.",
+      status: status === "timeout" ? "timeout" : status === "error" ? "error" : "unavailable",
+    });
+  }
   const website = (websiteUrl && typeof websiteUrl === "string" ? websiteUrl.trim() : url) || url;
   const stationName = (name && typeof name === "string" ? name.trim() : null) || "User station";
   const desc = (description && typeof description === "string" ? description.trim() : null) || "";
@@ -295,6 +306,26 @@ app.post("/api/external-stations", authMiddleware, async (req, res) => {
   } catch (err: any) {
     console.error("Error creating external station:", err);
     res.status(500).json({ error: "Failed to add station", details: err.message });
+  }
+});
+
+// Protected: Delete an external station (only the submitter can delete)
+app.delete("/api/external-stations/:id", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const id = req.params.id;
+  if (!id) return res.status(400).json({ error: "Station id is required" });
+  try {
+    const result = await pool.query(
+      `DELETE FROM external_stations WHERE id = $1 AND submitted_by = $2 RETURNING id`,
+      [id, user.id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Station not found or you are not the submitter" });
+    }
+    res.status(204).send();
+  } catch (err: any) {
+    console.error("Error deleting external station:", err);
+    res.status(500).json({ error: "Failed to delete station", details: err.message });
   }
 });
 

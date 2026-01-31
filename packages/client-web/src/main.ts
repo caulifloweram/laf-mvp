@@ -57,6 +57,7 @@ interface LiveChannel {
 
 /** One playable external stream (single channel). */
 interface ExternalStation {
+  id?: string;
   name: string;
   description: string;
   websiteUrl: string;
@@ -254,6 +255,7 @@ async function loadExternalStations(): Promise<void> {
   try {
     const res = await fetch(`${API_URL}/api/external-stations`);
     const rows = (await res.json()) as Array<{
+      id?: string;
       name: string;
       description?: string | null;
       websiteUrl: string;
@@ -261,6 +263,7 @@ async function loadExternalStations(): Promise<void> {
       logoUrl?: string | null;
     }>;
     const userStations: ExternalStation[] = (rows || []).map((r) => ({
+      id: r.id,
       name: r.name || "Station",
       description: r.description || "",
       websiteUrl: r.websiteUrl || r.streamUrl,
@@ -936,16 +939,19 @@ async function checkExternalStationsStreams() {
       try {
         const res = await fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(station.streamUrl)}`);
         const data = (await res.json()) as { ok?: boolean; status?: string };
-        return { streamUrl: station.streamUrl, ok: !!data.ok, status: data.status || "error" };
+        return { station, ok: !!data.ok, status: data.status || "error" };
       } catch {
-        return { streamUrl: station.streamUrl, ok: false, status: "error" };
+        return { station, ok: false, status: "error" };
       }
     })
   );
+  const toRemove: ExternalStation[] = [];
   results.forEach((outcome) => {
     if (outcome.status !== "fulfilled") return;
-    const { streamUrl, ok, status } = outcome.value;
+    const { station, ok, status } = outcome.value;
+    const { streamUrl } = station;
     streamStatusCache[streamUrl] = { ok, status };
+    if (!ok && station.id) toRemove.push(station);
     document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
       const el = card.querySelector(".ext-stream-status");
       if (!el) return;
@@ -957,6 +963,19 @@ async function checkExternalStationsStreams() {
       else card.classList.add("stream-offline");
     });
   });
+  if (toRemove.length > 0) {
+    const urlsToRemove = new Set(toRemove.map((s) => s.streamUrl));
+    allExternalStations = allExternalStations.filter((s) => !(s.id && urlsToRemove.has(s.streamUrl)));
+    await Promise.all(
+      toRemove.map((s) =>
+        s.id && token
+          ? fetch(`${API_URL}/api/external-stations/${s.id}`, { method: "DELETE", credentials: "include", headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+          : Promise.resolve()
+      )
+    );
+    renderExternalStationsToGrid(externalStationsGrid);
+    renderExternalStationsToGrid(externalStationsGridHome);
+  }
 }
 
 function selectExternalStation(station: ExternalStation) {
