@@ -340,6 +340,8 @@ const channelsGrid = document.getElementById("channels-grid")!;
 const playerSection = document.getElementById("player-section")!;
 const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
+const playerCoverWrap = document.getElementById("player-cover-wrap")!;
+const playerCover = document.getElementById("player-cover")! as HTMLImageElement;
 const btnStart = document.getElementById("btn-start") as HTMLButtonElement;
 const btnStop = document.getElementById("btn-stop") as HTMLButtonElement;
 const playIcon = document.getElementById("play-icon")!;
@@ -503,6 +505,13 @@ function selectChannel(channel: LiveChannel) {
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
   nowPlayingDesc.textContent = channel.description || "";
+  if (channel.coverUrl) {
+    playerCover.src = channel.coverUrl;
+    playerCoverWrap.classList.remove("placeholder");
+  } else {
+    playerCover.removeAttribute("src");
+    playerCoverWrap.classList.add("placeholder");
+  }
   playerSection.classList.remove("hidden");
   if (ws) {
     loopRunning = false; // Stop loop
@@ -1193,6 +1202,7 @@ async function loop() {
 
 function updatePlayerStatus(status: "ready" | "playing" | "stopped", message: string) {
   playerStatus.className = `status ${status}`;
+  playerSection.classList.toggle("is-playing", status === "playing");
   if (status === "playing") {
     playerStatusIcon.textContent = "";
     playerStatusText.textContent = message;
