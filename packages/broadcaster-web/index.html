@@ -27,38 +27,42 @@
         font-smoothing: none;
       }
 
-      .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+      .desktop {
+        position: relative;
+        min-height: 100vh;
+        padding: 24px;
+      }
 
       h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
       h3 { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
 
       .card {
+        position: absolute;
+        min-width: 300px;
+        max-width: 480px;
+        z-index: 1;
         background: var(--mac-white);
         border: 2px solid var(--mac-black);
         border-radius: 6px;
         overflow: hidden;
-        margin-bottom: 16px;
         box-shadow: 2px 2px 0 var(--mac-gray);
       }
+      .card.bring-front { z-index: 2; }
 
       .mac-window-title {
-        background: repeating-linear-gradient(
-          180deg,
-          var(--mac-white) 0,
-          var(--mac-white) 2px,
-          var(--mac-title-stripe) 2px,
-          var(--mac-title-stripe) 4px
-        );
+        background: var(--mac-light-gray);
         border-bottom: 1px solid var(--mac-black);
-        padding: 6px 10px 6px 28px;
+        padding: 6px 10px 6px 52px;
         font-size: 13px;
         font-weight: bold;
         position: relative;
+        cursor: move;
+        user-select: none;
       }
       .mac-window-title .live-badge { margin-left: 8px; }
-      .mac-window-title .close-box {
+      .mac-window-title .close-box,
+      .mac-window-title .minimize-box {
         position: absolute;
-        left: 6px;
         top: 50%;
         transform: translateY(-50%);
         width: 14px;
@@ -66,8 +70,47 @@
         border: 1px solid var(--mac-black);
         border-radius: 1px;
         background: var(--mac-white);
+        cursor: pointer;
+      }
+      .mac-window-title .close-box { left: 6px; }
+      .mac-window-title .minimize-box {
+        left: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mac-window-title .minimize-box::after {
+        content: "";
+        width: 8px;
+        height: 2px;
+        background: var(--mac-black);
       }
       .mac-window-body { padding: 16px 20px 20px; }
+
+      .desktop-taskbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 6px 12px;
+        font-size: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        z-index: 10;
+      }
+      .desktop-taskbar button {
+        background: transparent;
+        border: 1px solid var(--mac-white);
+        color: var(--mac-white);
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        box-shadow: none;
+      }
+      .desktop-taskbar button:hover { background: var(--mac-gray); }
 
       .form-group { margin-bottom: 14px; }
       label {
@@ -185,6 +228,7 @@
       a:hover { color: var(--mac-gray); }
 
       .hidden { display: none; }
+      .card.window-closed { display: none !important; }
 
       #broadcast-stats {
         background: var(--mac-light-gray);
@@ -229,10 +273,11 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <div id="login-section" class="card">
+    <div class="desktop" id="desktop">
+      <div id="login-section" class="card" data-window-id="login" style="left: 24px; top: 24px;">
         <div class="mac-window-title">
-          <span class="close-box"></span>
+          <span class="close-box" title="Close"></span>
+          <span class="minimize-box" title="Minimize"></span>
           Login
         </div>
         <div class="mac-window-body">
@@ -251,9 +296,10 @@
         </div>
       </div>
 
-      <div id="register-section" class="card hidden">
+      <div id="register-section" class="card hidden" data-window-id="register" style="left: 24px; top: 24px;">
         <div class="mac-window-title">
-          <span class="close-box"></span>
+          <span class="close-box" title="Close"></span>
+          <span class="minimize-box" title="Minimize"></span>
           Register
         </div>
         <div class="mac-window-body">
@@ -276,9 +322,10 @@
       </div>
 
       <div id="main-section" class="hidden">
-        <div class="card">
+        <div class="card" data-window-id="my-channels" style="left: 24px; top: 24px;">
           <div class="mac-window-title">
-            <span class="close-box"></span>
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
             My Channels
           </div>
           <div class="mac-window-body" style="display: flex; justify-content: flex-end; gap: 8px;">
@@ -287,9 +334,10 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-window-id="channels" style="left: 24px; top: 120px;">
           <div class="mac-window-title">
-            <span class="close-box"></span>
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
             Channels
           </div>
           <div class="mac-window-body">
@@ -298,9 +346,10 @@
           </div>
         </div>
 
-        <div id="create-channel-section" class="card hidden">
+        <div id="create-channel-section" class="card hidden" data-window-id="create-channel" style="left: 24px; top: 220px;">
           <div class="mac-window-title">
-            <span class="close-box"></span>
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
             Create Channel
           </div>
           <div class="mac-window-body">
@@ -317,9 +366,10 @@
           </div>
         </div>
 
-        <div id="broadcast-section" class="card hidden">
+        <div id="broadcast-section" class="card hidden" data-window-id="broadcast" style="left: 24px; top: 320px;">
           <div class="mac-window-title">
-            <span class="close-box"></span>
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
             <span id="broadcast-channel-title">Broadcasting</span>
             <span id="live-indicator" class="live-badge hidden">LIVE</span>
           </div>
@@ -363,9 +413,10 @@
           </div>
         </div>
 
-        <div id="settings-section" class="card hidden">
+        <div id="settings-section" class="card hidden" data-window-id="settings" style="left: 24px; top: 480px;">
           <div class="mac-window-title">
-            <span class="close-box"></span>
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
             Account Settings
           </div>
           <div class="mac-window-body">
@@ -413,6 +464,16 @@
         </div>
       </div>
     </div>
+    <div class="desktop-taskbar" id="taskbar">
+      <button type="button" id="taskbar-login" class="hidden">Login</button>
+      <button type="button" id="taskbar-register" class="hidden">Register</button>
+      <button type="button" id="taskbar-my-channels" class="hidden">My Channels</button>
+      <button type="button" id="taskbar-channels" class="hidden">Channels</button>
+      <button type="button" id="taskbar-create-channel" class="hidden">Create Channel</button>
+      <button type="button" id="taskbar-broadcast" class="hidden">Broadcast</button>
+      <button type="button" id="taskbar-settings" class="hidden">Settings</button>
+    </div>
     <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/window-ui.ts"></script>
   </body>
 </html>

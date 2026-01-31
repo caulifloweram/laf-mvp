@@ -28,40 +28,67 @@
       }
 
       /* Menu bar (classic Mac top strip) */
-      .container {
-        max-width: 900px;
-        margin: 0 auto;
+      .desktop-taskbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--mac-black);
+        color: var(--mac-white);
+        padding: 6px 12px;
+        font-size: 12px;
+        display: flex;
+        gap: 12px;
+        z-index: 10;
+      }
+      .desktop-taskbar button {
+        background: transparent;
+        border: 1px solid var(--mac-white);
+        color: var(--mac-white);
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        box-shadow: none;
+      }
+      .desktop-taskbar button:hover { background: var(--mac-gray); }
+
+      /* Desktop: windows are positioned absolutely */
+      .desktop {
+        position: relative;
+        min-height: 100vh;
         padding: 24px;
       }
 
-      /* Window: white content, black border, striped title bar */
-      .mac-window {
+      /* Window: white content, black border, solid title bar */
+      .mac-window,
+      .player-section {
+        position: absolute;
+        min-width: 320px;
+        max-width: 560px;
+        z-index: 1;
         background: var(--mac-white);
         border: 2px solid var(--mac-black);
         border-radius: 6px;
         overflow: hidden;
-        margin-bottom: 20px;
         box-shadow: 2px 2px 0 var(--mac-gray);
       }
+      .mac-window.bring-front,
+      .player-section.bring-front { z-index: 2; }
 
       .mac-window-title {
-        background: repeating-linear-gradient(
-          180deg,
-          var(--mac-white) 0,
-          var(--mac-white) 2px,
-          var(--mac-title-stripe) 2px,
-          var(--mac-title-stripe) 4px
-        );
+        background: var(--mac-light-gray);
         border-bottom: 1px solid var(--mac-black);
-        padding: 6px 10px 6px 28px;
+        padding: 6px 10px 6px 52px;
         font-size: 13px;
         font-weight: bold;
         position: relative;
+        cursor: move;
+        user-select: none;
       }
       .mac-window-title .live-badge { margin-left: 8px; }
-      .mac-window-title .close-box {
+      .mac-window-title .close-box,
+      .mac-window-title .minimize-box {
         position: absolute;
-        left: 6px;
         top: 50%;
         transform: translateY(-50%);
         width: 14px;
@@ -69,6 +96,21 @@
         border: 1px solid var(--mac-black);
         border-radius: 1px;
         background: var(--mac-white);
+        cursor: pointer;
+      }
+      .mac-window-title .close-box { left: 6px; }
+      .mac-window-title .minimize-box {
+        left: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mac-window-title .minimize-box::after {
+        content: "";
+        width: 8px;
+        height: 2px;
+        background: var(--mac-black);
       }
 
       .mac-window-body { padding: 16px 20px 20px; }
@@ -97,7 +139,7 @@
         box-shadow: 2px 2px 0 var(--mac-gray);
       }
       .channel-card:hover { background: var(--mac-light-gray); }
-      .channel-card .mac-window-title { padding: 6px 10px 6px 28px; }
+      .channel-card .mac-window-title { padding: 6px 10px 6px 28px; cursor: default; }
       .channel-card .mac-window-body { padding: 12px 14px; }
 
       .channel-title {
@@ -219,6 +261,8 @@
       .status.stopped { background: var(--mac-white); }
 
       .hidden { display: none; }
+      .mac-window.window-closed,
+      .player-section.window-closed { display: none !important; }
 
       @media (max-width: 768px) {
         .container { padding: 12px; }
@@ -228,19 +272,21 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="mac-window">
+    <div class="desktop" id="desktop">
+      <div class="mac-window" id="window-channels" data-window-id="channels" style="left: 24px; top: 24px;">
         <div class="mac-window-title">
-          <span class="close-box"></span>
+          <span class="close-box" title="Close"></span>
+          <span class="minimize-box" title="Minimize"></span>
           Live Channels
         </div>
         <div class="mac-window-body">
           <div id="channels-grid" class="channels-grid"></div>
         </div>
       </div>
-      <div id="player-section" class="player-section hidden">
+      <div id="player-section" class="player-section hidden" data-window-id="player" style="left: 24px; top: 320px;">
         <div class="mac-window-title">
-          <span class="close-box"></span>
+          <span class="close-box" title="Close"></span>
+          <span class="minimize-box" title="Minimize"></span>
           <span id="now-playing-title">Not playing</span>
           <span id="player-live-badge" class="live-badge hidden">LIVE</span>
         </div>
@@ -292,6 +338,11 @@
         </div>
       </div>
     </div>
+    <div class="desktop-taskbar" id="taskbar">
+      <button type="button" id="taskbar-channels" class="hidden">Live Channels</button>
+      <button type="button" id="taskbar-player" class="hidden">Player</button>
+    </div>
     <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/window-ui.ts"></script>
   </body>
 </html>
