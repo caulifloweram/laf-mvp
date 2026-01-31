@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LAF</title>
+    <title>About — LAF</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -24,33 +24,6 @@
         font-smoothing: none;
       }
 
-      .desktop {
-        position: relative;
-        min-height: calc(100vh - 44px);
-        padding: 24px;
-      }
-
-      .home-content {
-        max-width: 560px;
-        margin: 0 auto;
-        padding: 48px 24px;
-      }
-      .home-content h1 {
-        font-size: 24px;
-        margin-bottom: 16px;
-      }
-      .home-content p {
-        font-size: 14px;
-        line-height: 1.5;
-        margin-bottom: 12px;
-      }
-      .home-content a {
-        color: var(--mac-black);
-        text-decoration: underline;
-      }
-      .home-content a:hover { color: var(--mac-gray); }
-
-      /* Site-wide top bar (macOS-style) */
       .site-topbar {
         position: sticky;
         top: 0;
@@ -98,45 +71,56 @@
       .site-topbar .topbar-nav-item.active {
         background: var(--mac-gray);
       }
-      .site-topbar .topbar-right {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+
+      .about-content {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 48px 24px;
       }
-      .site-topbar .topbar-right button {
-        padding: 6px 12px;
-        font-size: 12px;
-        background: transparent;
-        color: var(--mac-white);
-        border: 1px solid var(--mac-white);
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-        font-family: inherit;
+      .about-content h1 {
+        font-size: 24px;
+        margin-bottom: 24px;
       }
-      .site-topbar .topbar-right button:hover { background: var(--mac-gray); }
+      .about-content h2 {
+        font-size: 16px;
+        margin: 24px 0 12px;
+      }
+      .about-content p {
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 12px;
+      }
+      .about-content a {
+        color: var(--mac-black);
+        text-decoration: underline;
+      }
+      .about-content a:hover { color: var(--mac-gray); }
     </style>
   </head>
   <body>
-    <nav class="site-topbar" id="site-topbar">
+    <nav class="site-topbar">
       <div class="topbar-left">
         <a href="/" class="topbar-logo">LAF</a>
         <div class="topbar-nav">
-          <a href="/" class="topbar-nav-item active">Home</a>
+          <a href="/" class="topbar-nav-item">Home</a>
           <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
           <a href="/client/" class="topbar-nav-item">Live Stations</a>
-          <a href="/about/" class="topbar-nav-item">About</a>
+          <a href="/about/" class="topbar-nav-item active">About</a>
         </div>
       </div>
-      <div class="topbar-right"></div>
     </nav>
-    <div class="desktop" id="desktop">
-      <div class="home-content">
-        <h1>Welcome to LAF</h1>
-        <p>Listen to live audio streams or start your own broadcast.</p>
-        <p><a href="/broadcaster/">Broadcast</a> — Go live and stream audio to listeners.</p>
-        <p><a href="/client/">Live Stations</a> — Browse and listen to live stations.</p>
-      </div>
-    </div>
+    <main class="about-content">
+      <h1>About LAF</h1>
+      <p>LAF is a live audio streaming platform. Broadcast your audio in real time or tune in to live stations from around the world.</p>
+
+      <h2>Broadcast</h2>
+      <p>Create an account, set up a channel, and go live. Stream audio from your microphone to anyone listening. You can manage your channels, set cover art, and chat with your audience.</p>
+
+      <h2>Live Stations</h2>
+      <p>Browse stations that are currently live. Click to listen, sign in to participate in live chat, and enjoy real-time audio streaming.</p>
+
+      <h2>Technology</h2>
+      <p>LAF uses low-latency WebSocket streaming for real-time audio delivery, with a Mac-inspired interface for a simple, focused experience.</p>
+    </main>
   </body>
 </html>
