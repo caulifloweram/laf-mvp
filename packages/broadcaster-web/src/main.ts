@@ -1216,7 +1216,7 @@ btnSaveChannelSettings.onclick = async () => {
       title,
       description: channelEditDesc.value?.trim() || null,
     };
-    const coverValue = channelCoverDataUrl ?? channelCoverUrl.value?.trim() || null;
+    const coverValue = (channelCoverDataUrl ?? channelCoverUrl.value?.trim()) || null;
     if (coverValue !== undefined && coverValue !== null) body.cover_url = coverValue;
     await apiCall(`/api/me/channels/${editingChannel.id}`, {
       method: "PATCH",
