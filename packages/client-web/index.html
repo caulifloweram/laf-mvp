@@ -242,6 +242,9 @@
         margin-top: 6px;
       }
 
+      .channels-window-wrap {
+        min-height: 280px;
+      }
       .external-stations-section {
         width: calc(100% + 48px);
         margin: 20px -24px 0;
@@ -534,14 +537,16 @@
       </div>
     </nav>
     <div class="desktop" id="desktop">
-      <div class="mac-window" id="window-channels" data-window-id="channels" style="left: 24px; top: 24px;">
-        <div class="mac-window-title">
-          <span class="close-box" title="Close"></span>
-          <span class="minimize-box" title="Minimize"></span>
-          Live Channels
-        </div>
-        <div class="mac-window-body">
-          <div id="channels-grid" class="channels-grid"></div>
+      <div class="channels-window-wrap">
+        <div class="mac-window" id="window-channels" data-window-id="channels" style="left: 24px; top: 24px;">
+          <div class="mac-window-title">
+            <span class="close-box" title="Close"></span>
+            <span class="minimize-box" title="Minimize"></span>
+            Live Channels
+          </div>
+          <div class="mac-window-body">
+            <div id="channels-grid" class="channels-grid"></div>
+          </div>
         </div>
       </div>
       <section class="external-stations-section" id="external-stations-section">
