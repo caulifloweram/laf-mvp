@@ -1,27 +1,20 @@
+# Supports both Root Directory = repo root (empty) and Root Directory = packages/relay.
+
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
 cmds = [
-  "cd /app && pnpm install --frozen-lockfile",
-  "echo 'Install complete'",
-  "echo 'Verifying ws module...'",
-  "cd /app/packages/relay && ls -la node_modules/ws 2>/dev/null || echo 'WARNING: ws not found in relay node_modules'",
-  "cd /app && ls -la node_modules/ws 2>/dev/null || echo 'WARNING: ws not found in root node_modules'"
+  "cd /app && if [ -d packages/relay ]; then pnpm install --frozen-lockfile; else pnpm install; fi",
+  "echo 'Install complete'"
 ]
 
 [phases.build]
 cmds = [
-  "echo 'Starting build...'",
-  "cd /app && pwd && ls -la",
-  "echo 'Building relay package...'",
-  "cd /app/packages/relay && pnpm build",
-  "echo 'Verifying build output...'",
-  "ls -la /app/packages/relay/dist/ || echo 'ERROR: dist folder still not found'",
-  "test -f /app/packages/relay/dist/index.js && echo '✅ Build successful!' || (echo '❌ Build failed!' && exit 1)",
-  "echo 'Verifying dependencies are installed...'",
-  "cd /app/packages/relay && test -d node_modules/ws && echo '✅ ws module found' || (echo '❌ ws module missing, installing...' && pnpm install ws)"
+  "cd /app && if [ -d packages/relay ]; then cd packages/relay && pnpm build; else pnpm build; fi",
+  "test -f /app/packages/relay/dist/index.js 2>/dev/null || test -f /app/dist/index.js || (echo 'Build failed' && exit 1)",
+  "echo 'Build complete'"
 ]
 
 [start]
-cmd = "cd /app/packages/relay && if [ ! -d node_modules/ws ] && [ ! -d ../../node_modules/ws ]; then echo 'Installing missing dependencies...' && pnpm install --no-frozen-lockfile; fi && NODE_PATH=/app/packages/relay/node_modules:/app/node_modules node dist/index.js"
+cmd = "if [ -f /app/packages/relay/dist/index.js ]; then cd /app/packages/relay && NODE_PATH=/app/packages/relay/node_modules:/app/node_modules node dist/index.js; else cd /app && NODE_PATH=/app/node_modules node dist/index.js; fi"
