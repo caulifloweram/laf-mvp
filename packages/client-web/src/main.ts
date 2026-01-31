@@ -627,6 +627,8 @@ let recvCountWindow = 0;
 let lateCountWindow = 0;
 let currentChannel: LiveChannel | null = null;
 let currentExternalStation: ExternalStation | null = null;
+/** Cache stream status so we don't re-show "Checking…" on every re-render. */
+const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
 let externalAudio: HTMLAudioElement | null = null;
 let playheadTime = 0;
 let loopRunning = false;
@@ -747,36 +749,58 @@ async function loadChannels() {
   }
 }
 
+function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { text: string; statusClass: string } {
+  if (!cached) return { text: "Checking…", statusClass: "status-checking" };
+  if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
+  const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
+  const statusClass = cached.status === "timeout" ? "status-timeout" : cached.status === "unavailable" ? "status-offline" : "status-error";
+  return { text: label, statusClass };
+}
+
 function renderExternalStations() {
   externalStationsGrid.innerHTML = "";
   const stations = getExternalStationsFlat();
+  const needCheck = Object.keys(streamStatusCache).length === 0;
   stations.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
     card.dataset.streamUrl = station.streamUrl;
     if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
+    const cached = streamStatusCache[station.streamUrl];
+    const { text: statusText, statusClass } = getStatusLabel(cached);
     const hasLogo = !!station.logoUrl;
+    const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
     const logoHtml = hasLogo
-      ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
+      ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
       : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
     card.innerHTML = `
       ${logoHtml}
       ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
       <div class="ext-desc">${escapeHtml(station.description)}</div>
       <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
-      <div class="ext-stream-status status-checking" aria-live="polite">Checking…</div>
+      <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
     `;
+    if (hasLogo) {
+      const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
+      const fallback = card.querySelector(".ext-station-initial");
+      if (img && fallback) {
+        img.onerror = () => {
+          img.style.display = "none";
+          fallback.classList.remove("hidden");
+        };
+      }
+    }
+    if (cached && !cached.ok) card.classList.add("stream-offline");
     card.onclick = (e) => {
       e.preventDefault();
       selectExternalStation(station);
     };
     externalStationsGrid.appendChild(card);
   });
-  checkExternalStationsStreams();
+  if (needCheck) checkExternalStationsStreams();
 }
 
 async function checkExternalStationsStreams() {
-  const cards = externalStationsGrid.querySelectorAll<HTMLElement>(".external-station-card");
   const stations = getExternalStationsFlat();
   const results = await Promise.allSettled(
     stations.map(async (station) => {
@@ -789,24 +813,20 @@ async function checkExternalStationsStreams() {
       }
     })
   );
-  results.forEach((outcome, i) => {
+  results.forEach((outcome) => {
     if (outcome.status !== "fulfilled") return;
     const { streamUrl, ok, status } = outcome.value;
-    const card = Array.from(cards).find((c) => c.dataset.streamUrl === streamUrl);
+    streamStatusCache[streamUrl] = { ok, status };
+    const card = externalStationsGrid.querySelector<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`);
     if (!card) return;
     const el = card.querySelector(".ext-stream-status");
     if (!el) return;
+    const { text, statusClass } = getStatusLabel({ ok, status });
     el.classList.remove("status-checking", "status-live", "status-offline", "status-error", "status-timeout");
-    if (ok) {
-      el.textContent = "LIVE";
-      el.classList.add("status-live");
-      card.classList.remove("stream-offline");
-    } else {
-      const label = status === "timeout" ? "Timeout" : status === "unavailable" ? "Offline" : "Error";
-      el.textContent = label;
-      el.classList.add(status === "timeout" ? "status-timeout" : status === "unavailable" ? "status-offline" : "status-error");
-      card.classList.add("stream-offline");
-    }
+    el.textContent = text;
+    el.classList.add(statusClass);
+    if (ok) card.classList.remove("stream-offline");
+    else card.classList.add("stream-offline");
   });
 }
 

@@ -273,15 +273,34 @@
       }
       .external-station-card:hover { background: var(--mac-light-gray); }
       .external-station-card.now-playing { border-color: var(--mac-black); box-shadow: 3px 3px 0 var(--mac-black); background: var(--mac-light-gray); }
+      .external-station-card .ext-station-logo-wrap {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 8px;
+      }
       .external-station-card .ext-station-logo {
         display: block;
         width: 48px;
         height: 48px;
         object-fit: contain;
-        margin-bottom: 8px;
         border: 1px solid var(--mac-gray);
         border-radius: 4px;
       }
+      .external-station-card .ext-station-initial {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: bold;
+        color: var(--mac-black);
+        background: var(--mac-light-gray);
+        border: 1px solid var(--mac-gray);
+        border-radius: 4px;
+      }
+      .external-station-card .ext-station-initial.hidden { display: none; }
       .external-station-card .ext-station-name-only {
         font-size: 16px;
         font-weight: bold;
