@@ -1188,17 +1188,25 @@ function renderUnifiedStations(): void {
 }
 
 function getStatusLabel(cached: { ok: boolean; status: string } | undefined): { text: string; statusClass: string } {
-  if (!cached) return { text: "Checking…", statusClass: "status-checking" };
+  // When uncached, show LIVE optimistically so we never stick on "Checking…"; background check will update to Offline/Error if needed
+  if (!cached) return { text: "LIVE", statusClass: "status-live" };
   if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
   const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
   const statusClass = cached.status === "timeout" ? "status-timeout" : cached.status === "unavailable" ? "status-offline" : "status-error";
   return { text: label, statusClass };
 }
 
+let streamCheckInProgress = false;
+
 function renderExternalStations() {
-  const needCheck = Object.keys(streamStatusCache).length === 0;
+  const needCheck = Object.keys(streamStatusCache).length === 0 && !streamCheckInProgress;
   renderUnifiedStations();
-  if (needCheck) checkExternalStationsStreams();
+  if (needCheck) {
+    streamCheckInProgress = true;
+    checkExternalStationsStreams().finally(() => {
+      streamCheckInProgress = false;
+    });
+  }
 }
 
 const STREAM_CHECK_TIMEOUT_MS = 8000;
