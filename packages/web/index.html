@@ -26,7 +26,7 @@
 
       .desktop {
         position: relative;
-        min-height: 100vh;
+        min-height: calc(100vh - 44px);
         padding: 24px;
       }
 
@@ -80,9 +80,86 @@
         color: var(--mac-black);
         text-shadow: 0 1px 0 var(--mac-white);
       }
+
+      /* Site-wide top bar (macOS-style) */
+      .site-topbar {
+        position: sticky;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 44px;
+        background: var(--mac-black);
+        color: var(--mac-white);
+        border-bottom: 2px solid var(--mac-black);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 10;
+        font-size: 13px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+      .site-topbar .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .site-topbar .topbar-logo {
+        color: var(--mac-white);
+        text-decoration: none;
+        font-weight: bold;
+      }
+      .site-topbar .topbar-logo:hover { opacity: 0.9; }
+      .site-topbar .topbar-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .site-topbar .topbar-nav-item {
+        color: var(--mac-white);
+        text-decoration: none;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+      }
+      .site-topbar .topbar-nav-item:hover {
+        background: var(--mac-gray);
+      }
+      .site-topbar .topbar-nav-item.active {
+        background: var(--mac-gray);
+      }
+      .site-topbar .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .site-topbar .topbar-right button {
+        padding: 6px 12px;
+        font-size: 12px;
+        background: transparent;
+        color: var(--mac-white);
+        border: 1px solid var(--mac-white);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        font-family: inherit;
+      }
+      .site-topbar .topbar-right button:hover { background: var(--mac-gray); }
     </style>
   </head>
   <body>
+    <nav class="site-topbar" id="site-topbar">
+      <div class="topbar-left">
+        <a href="/" class="topbar-logo">LAF</a>
+        <div class="topbar-nav">
+          <a href="/" class="topbar-nav-item active">Home</a>
+          <a href="/client/" class="topbar-nav-item">Radio</a>
+          <a href="/broadcaster/" class="topbar-nav-item">Broadcaster</a>
+        </div>
+      </div>
+      <div class="topbar-right"></div>
+    </nav>
     <div class="desktop" id="desktop">
       <div class="desktop-icons">
         <div class="desktop-icon" id="icon-broadcaster" data-app="broadcaster" title="Open Broadcaster" role="button">

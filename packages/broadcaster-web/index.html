@@ -27,7 +27,8 @@
         font-smoothing: none;
       }
 
-      .broadcaster-topbar {
+      /* Site-wide top bar (macOS-style) */
+      .site-topbar {
         position: sticky;
         top: 0;
         left: 0;
@@ -45,30 +46,60 @@
         font-weight: bold;
         flex-shrink: 0;
       }
-      .broadcaster-topbar .topbar-title { color: var(--mac-white); }
-      .broadcaster-topbar .topbar-actions {
+      .site-topbar .topbar-left {
         display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .site-topbar .topbar-logo {
+        color: var(--mac-white);
+        text-decoration: none;
+        font-weight: bold;
+      }
+      .site-topbar .topbar-logo:hover { opacity: 0.9; }
+      .site-topbar .topbar-nav {
+        display: flex;
+        align-items: center;
         gap: 8px;
       }
-      .broadcaster-topbar .topbar-actions button {
+      .site-topbar .topbar-nav-item {
+        color: var(--mac-white);
+        text-decoration: none;
+        padding: 6px 12px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+      }
+      .site-topbar .topbar-nav-item:hover {
+        background: var(--mac-gray);
+      }
+      .site-topbar .topbar-nav-item.active {
+        background: var(--mac-gray);
+      }
+      .site-topbar .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .site-topbar .topbar-right button {
         width: auto;
         padding: 6px 12px;
         font-size: 12px;
         background: transparent;
         color: var(--mac-white);
         border: 1px solid var(--mac-white);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        font-family: inherit;
       }
-      .broadcaster-topbar .topbar-actions button:hover {
+      .site-topbar .topbar-right button:hover {
         background: var(--mac-gray);
       }
 
       .desktop {
         position: relative;
-        min-height: 100vh;
-        padding: 24px;
-      }
-      body.has-topbar .desktop {
         min-height: calc(100vh - 44px);
+        padding: 24px;
       }
 
       h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
@@ -386,13 +417,20 @@
     </style>
   </head>
   <body>
-    <div id="broadcaster-topbar" class="broadcaster-topbar hidden">
-      <span class="topbar-title">LAF Broadcast</span>
-      <div class="topbar-actions">
+    <nav class="site-topbar" id="site-topbar">
+      <div class="topbar-left">
+        <a href="/" class="topbar-logo">LAF</a>
+        <div class="topbar-nav">
+          <a href="/" class="topbar-nav-item">Home</a>
+          <a href="/client/" class="topbar-nav-item">Radio</a>
+          <a href="/broadcaster/" class="topbar-nav-item active">Broadcaster</a>
+        </div>
+      </div>
+      <div class="topbar-right hidden" id="topbar-account">
         <button type="button" id="btn-settings">Settings</button>
         <button type="button" id="btn-logout">Logout</button>
       </div>
-    </div>
+    </nav>
     <div class="desktop" id="desktop">
       <div id="login-section" class="card" data-window-id="login" style="left: 24px; top: 24px;">
         <div class="mac-window-title">

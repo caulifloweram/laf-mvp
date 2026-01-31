@@ -168,7 +168,7 @@ function showConfirm(options: {
   });
 }
 
-const broadcasterTopbar = document.getElementById("broadcaster-topbar")!;
+const topbarAccount = document.getElementById("topbar-account")!;
 
 function showSection(section: string) {
   loginSection.classList.add("hidden");
@@ -181,11 +181,9 @@ function showSection(section: string) {
 
   const isLoggedInSection = ["main", "create", "channel-settings", "broadcast", "settings"].includes(section);
   if (isLoggedInSection) {
-    broadcasterTopbar.classList.remove("hidden");
-    document.body.classList.add("has-topbar");
+    topbarAccount.classList.remove("hidden");
   } else {
-    broadcasterTopbar.classList.add("hidden");
-    document.body.classList.remove("has-topbar");
+    topbarAccount.classList.add("hidden");
   }
 
   if (section === "login") {
