@@ -540,9 +540,9 @@ let fadeOutStartTime: number | null = null; // When fade out started (for smooth
 let fadeOutDuration = 5000; // 5 seconds fade out
 const LOOKAHEAD_PACKETS = 10; // Schedule 10 packets (200ms) ahead for smooth playback - increased for better stability
 
-function getOrCreateAudioContext(): AudioContext | null {
+async function getOrCreateAudioContext(): Promise<AudioContext | null> {
   if (audioCtx) {
-    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
     return audioCtx;
   }
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
@@ -550,7 +550,7 @@ function getOrCreateAudioContext(): AudioContext | null {
   analyserNode.fftSize = FREQ_BIN_COUNT * 2;
   analyserNode.smoothingTimeConstant = 0.6;
   analyserNode.connect(audioCtx.destination);
-  audioCtx.resume().catch(() => {});
+  if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 
@@ -717,7 +717,7 @@ function renderExternalStations() {
   });
 }
 
-function selectExternalStation(station: ExternalStation) {
+async function selectExternalStation(station: ExternalStation) {
   if (currentExternalStation?.streamUrl === station.streamUrl) return;
   if (currentChannel || ws) {
     stopListening();
@@ -762,7 +762,7 @@ function selectExternalStation(station: ExternalStation) {
     mediaSource = null;
   }
   externalAudio = new Audio(station.streamUrl);
-  getOrCreateAudioContext();
+  await getOrCreateAudioContext();
   if (audioCtx && analyserNode) {
     mediaSource = audioCtx.createMediaElementSource(externalAudio);
     mediaSource.connect(analyserNode);
@@ -906,12 +906,9 @@ async function startListening() {
   fadeOutStartTime = null;
   (window as any).lastShownCountdown = null; // Reset countdown tracker
   
-  getOrCreateAudioContext();
-  if (!audioCtx) return;
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-    console.log("Audio context resumed");
-  }
+  const ctx = await getOrCreateAudioContext();
+  if (!ctx) return;
+  audioCtx = ctx;
   playheadTime = audioCtx.currentTime;
 
   if (lafGain) lafGain.disconnect();
