@@ -96,11 +96,12 @@
         background: var(--mac-gray);
       }
 
+      /* Content starts below top bar (44px) with comfortable spacing */
       .desktop {
         position: relative;
         min-height: calc(100vh - 44px);
-        padding: 24px 24px 24px 24px;
-        padding-top: 68px; /* clear the 44px top bar + 24px spacing */
+        padding: 24px;
+        padding-top: 96px; /* 44px top bar + 52px spacing so windows open naturally below */
       }
 
       h2 { font-size: 14px; font-weight: bold; margin-bottom: 12px; }
@@ -433,7 +434,7 @@
       </div>
     </nav>
     <div class="desktop" id="desktop">
-      <div id="login-section" class="card" data-window-id="login" style="left: 24px; top: 24px;">
+      <div id="login-section" class="card" data-window-id="login" style="left: 24px; top: 32px;">
         <div class="mac-window-title">
           <span class="close-box" title="Close"></span>
           <span class="minimize-box" title="Minimize"></span>
@@ -455,7 +456,7 @@
         </div>
       </div>
 
-      <div id="register-section" class="card hidden" data-window-id="register" style="left: 24px; top: 24px;">
+      <div id="register-section" class="card hidden" data-window-id="register" style="left: 24px; top: 32px;">
         <div class="mac-window-title">
           <span class="close-box" title="Close"></span>
           <span class="minimize-box" title="Minimize"></span>
@@ -481,7 +482,7 @@
       </div>
 
       <div id="main-section" class="hidden">
-        <div class="card" data-window-id="channels" style="left: 24px; top: 24px;">
+        <div class="card" data-window-id="channels" style="left: 24px; top: 32px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
@@ -501,7 +502,7 @@
           </div>
         </div>
 
-        <div id="create-channel-section" class="card hidden" data-window-id="create-channel" style="left: 24px; top: 220px;">
+        <div id="create-channel-section" class="card hidden" data-window-id="create-channel" style="left: 24px; top: 228px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
@@ -521,7 +522,7 @@
           </div>
         </div>
 
-        <div id="channel-settings-section" class="card hidden" data-window-id="channel-settings" style="left: 24px; top: 380px;">
+        <div id="channel-settings-section" class="card hidden" data-window-id="channel-settings" style="left: 24px; top: 388px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
@@ -552,7 +553,7 @@
           </div>
         </div>
 
-        <div id="broadcast-section" class="card hidden" data-window-id="broadcast" style="left: 24px; top: 320px;">
+        <div id="broadcast-section" class="card hidden" data-window-id="broadcast" style="left: 24px; top: 328px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
@@ -599,7 +600,7 @@
           </div>
         </div>
 
-        <div id="settings-section" class="card hidden" data-window-id="settings" style="left: 24px; top: 480px;">
+        <div id="settings-section" class="card hidden" data-window-id="settings" style="left: 24px; top: 488px;">
           <div class="mac-window-title">
             <span class="close-box" title="Close"></span>
             <span class="minimize-box" title="Minimize"></span>
