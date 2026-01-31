@@ -113,6 +113,47 @@ const btnDeleteAccount = document.getElementById("btn-delete-account")!;
 const linkRegister = document.getElementById("link-register")!;
 const linkLogin = document.getElementById("link-login")!;
 
+function showConfirm(options: {
+  message: string;
+  title?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+}): Promise<boolean> {
+  const overlay = document.getElementById("confirm-overlay")!;
+  const titleEl = document.getElementById("confirm-title")!;
+  const messageEl = document.getElementById("confirm-message")!;
+  const cancelBtn = document.getElementById("confirm-cancel-btn")!;
+  const okBtn = document.getElementById("confirm-ok-btn")!;
+  titleEl.textContent = options.title ?? "Confirm";
+  messageEl.textContent = options.message;
+  cancelBtn.textContent = options.cancelText ?? "Cancel";
+  okBtn.textContent = options.confirmText ?? "OK";
+  okBtn.classList.toggle("danger", !!options.danger);
+  overlay.classList.add("visible");
+  overlay.setAttribute("aria-hidden", "false");
+  return new Promise((resolve) => {
+    const done = (value: boolean) => {
+      overlay.classList.remove("visible");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.onclick = null;
+      cancelBtn.onclick = null;
+      okBtn.onclick = null;
+      window.removeEventListener("keydown", onKey);
+      resolve(value);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") done(false);
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) done(false);
+    };
+    window.addEventListener("keydown", onKey);
+    cancelBtn.onclick = () => done(false);
+    okBtn.onclick = () => done(true);
+  });
+}
+
 function showSection(section: string) {
   loginSection.classList.add("hidden");
   registerSection.classList.add("hidden");
@@ -143,6 +184,10 @@ function showSection(section: string) {
     mainSection.classList.remove("hidden");
     settingsSection.classList.remove("hidden");
     loadUserProfile();
+  }
+  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
+  if (clamp) {
+    document.querySelectorAll(".card:not(.window-closed):not(.hidden)").forEach((el) => clamp(el as HTMLElement));
   }
 }
 
@@ -203,21 +248,20 @@ async function register(email: string, password: string) {
   }
 }
 
-function logout() {
-  if (confirm("Are you sure you want to logout?")) {
-    token = null;
-    localStorage.removeItem("token");
-    currentChannel = null;
-    if (ws) {
-      ws.close();
-      ws = null;
-    }
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(track => track.stop());
-      mediaStream = null;
-    }
-    showSection("login");
+async function logout() {
+  if (!(await showConfirm({ message: "Are you sure you want to logout?" }))) return;
+  token = null;
+  localStorage.removeItem("token");
+  currentChannel = null;
+  if (ws) {
+    ws.close();
+    ws = null;
   }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  showSection("login");
 }
 
 async function loadUserProfile() {
@@ -284,7 +328,7 @@ async function handleDeleteAccount() {
   }
 
   const confirmMessage = "Are you absolutely sure? This will permanently delete your account and all your channels. This action cannot be undone.";
-  if (!confirm(confirmMessage)) {
+  if (!(await showConfirm({ message: confirmMessage, confirmText: "Delete account", danger: true }))) {
     return;
   }
 
@@ -977,7 +1021,7 @@ async function startBroadcast() {
 }
 
 async function stopBroadcast() {
-  if (!confirm("Are you sure you want to finish this livestream?")) {
+  if (!(await showConfirm({ message: "Are you sure you want to finish this livestream?" }))) {
     return;
   }
 
@@ -1240,7 +1284,7 @@ btnSaveChannelSettings.onclick = async () => {
 
 btnDeleteChannel.onclick = async () => {
   if (!editingChannel) return;
-  if (!confirm(`Delete channel "${editingChannel.title}"? This cannot be undone.`)) return;
+  if (!(await showConfirm({ message: `Delete channel "${editingChannel.title}"? This cannot be undone.`, confirmText: "Delete", danger: true }))) return;
   const channelIdToDelete = editingChannel.id;
   try {
     await apiCall(`/api/me/channels/${channelIdToDelete}`, { method: "DELETE" });

@@ -264,6 +264,44 @@
       a { color: var(--mac-black); text-decoration: underline; }
       a:hover { color: var(--mac-gray); }
 
+      .confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+      .confirm-overlay.visible {
+        display: flex;
+      }
+      .confirm-dialog {
+        background: var(--mac-white);
+        border: 2px solid var(--mac-black);
+        border-radius: 6px;
+        padding: 20px 24px;
+        max-width: 360px;
+        box-shadow: 4px 4px 0 var(--mac-gray);
+      }
+      .confirm-dialog .confirm-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .confirm-dialog .confirm-message {
+        font-size: 12px;
+        color: var(--mac-black);
+        margin-bottom: 16px;
+        line-height: 1.4;
+      }
+      .confirm-dialog .confirm-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+      .confirm-dialog .confirm-buttons button { width: auto; }
+
       .hidden { display: none; }
       .card.window-closed { display: none !important; }
 
@@ -537,6 +575,16 @@
 
           <button id="btn-close-settings" style="margin-top: 16px;">Close Settings</button>
           </div>
+        </div>
+      </div>
+    </div>
+    <div id="confirm-overlay" class="confirm-overlay" aria-hidden="true">
+      <div class="confirm-dialog">
+        <div class="confirm-title" id="confirm-title">Confirm</div>
+        <div class="confirm-message" id="confirm-message"></div>
+        <div class="confirm-buttons">
+          <button type="button" id="confirm-cancel-btn">Cancel</button>
+          <button type="button" id="confirm-ok-btn">OK</button>
         </div>
       </div>
     </div>

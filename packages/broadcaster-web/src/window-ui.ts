@@ -26,8 +26,21 @@ const WINDOW_IDS = [
   "settings",
 ];
 
+const VIEWPORT_PAD = 16;
+
 function px(num: number): string {
   return `${num}px`;
+}
+
+function clampWindowToViewport(win: HTMLElement) {
+  const deskRect = desktop.getBoundingClientRect();
+  const winRect = win.getBoundingClientRect();
+  const maxLeft = window.innerWidth - winRect.width - VIEWPORT_PAD;
+  const maxTop = window.innerHeight - winRect.height - VIEWPORT_PAD;
+  const vLeft = Math.max(VIEWPORT_PAD, Math.min(winRect.left, maxLeft));
+  const vTop = Math.max(VIEWPORT_PAD, Math.min(winRect.top, maxTop));
+  win.style.left = px(vLeft - deskRect.left);
+  win.style.top = px(vTop - deskRect.top);
 }
 
 function bringToFront(win: HTMLElement) {
@@ -56,8 +69,10 @@ function onMouseMove(e: MouseEvent) {
   e.preventDefault();
   const dx = e.clientX - dragState.startX;
   const dy = e.clientY - dragState.startY;
-  dragState.windowEl.style.left = px(dragState.startLeft + dx);
-  dragState.windowEl.style.top = px(dragState.startTop + dy);
+  const newLeft = dragState.startLeft + dx;
+  const newTop = dragState.startTop + dy;
+  dragState.windowEl.style.left = px(newLeft);
+  dragState.windowEl.style.top = px(newTop);
 }
 
 function onMouseUp() {
@@ -81,6 +96,7 @@ function restoreWindow(id: string) {
   win.classList.remove("window-closed");
   taskbarBtn.classList.add("hidden");
   bringToFront(win);
+  clampWindowToViewport(win);
 }
 
 function minimizeWindow(win: HTMLElement) {
@@ -91,6 +107,12 @@ function minimizeWindow(win: HTMLElement) {
 }
 
 function init() {
+  document.querySelectorAll(WINDOW_SELECTOR).forEach((winEl) => {
+    const win = winEl as HTMLElement;
+    if (!win.classList.contains("window-closed") && !win.classList.contains("hidden")) {
+      clampWindowToViewport(win);
+    }
+  });
   document.querySelectorAll(WINDOW_SELECTOR).forEach((winEl) => {
     const win = winEl as HTMLElement;
     if (!win.hasAttribute("data-window-id")) return;
@@ -125,6 +147,10 @@ function init() {
     document.getElementById(`taskbar-${id}`)?.addEventListener("click", () => restoreWindow(id));
   });
 }
+
+(function registerGlobals() {
+  (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport = clampWindowToViewport;
+})();
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);

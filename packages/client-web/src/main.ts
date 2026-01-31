@@ -357,6 +357,47 @@ const statLate = document.getElementById("stat-late")!;
 const statLatency = document.getElementById("stat-latency")!;
 const statKbps = document.getElementById("stat-kbps")!;
 
+function showConfirm(options: {
+  message: string;
+  title?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+}): Promise<boolean> {
+  const overlay = document.getElementById("confirm-overlay")!;
+  const titleEl = document.getElementById("confirm-title")!;
+  const messageEl = document.getElementById("confirm-message")!;
+  const cancelBtn = document.getElementById("confirm-cancel-btn")!;
+  const okBtn = document.getElementById("confirm-ok-btn")!;
+  titleEl.textContent = options.title ?? "Confirm";
+  messageEl.textContent = options.message;
+  cancelBtn.textContent = options.cancelText ?? "Cancel";
+  okBtn.textContent = options.confirmText ?? "OK";
+  okBtn.classList.toggle("danger", !!options.danger);
+  overlay.classList.add("visible");
+  overlay.setAttribute("aria-hidden", "false");
+  return new Promise((resolve) => {
+    const done = (value: boolean) => {
+      overlay.classList.remove("visible");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.onclick = null;
+      cancelBtn.onclick = null;
+      okBtn.onclick = null;
+      window.removeEventListener("keydown", onKey);
+      resolve(value);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") done(false);
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) done(false);
+    };
+    window.addEventListener("keydown", onKey);
+    cancelBtn.onclick = () => done(false);
+    okBtn.onclick = () => done(true);
+  });
+}
+
 let ws: WebSocket | null = null;
 let audioCtx: AudioContext | null = null;
 let opusDecoder: OpusDecoder | null = null;
@@ -513,6 +554,8 @@ function selectChannel(channel: LiveChannel) {
     playerCoverWrap.classList.add("placeholder");
   }
   playerSection.classList.remove("hidden");
+  const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
+  if (clamp) clamp(playerSection);
   if (ws) {
     loopRunning = false; // Stop loop
     ws.close();
@@ -1314,8 +1357,8 @@ btnStart.onclick = () => {
   });
 };
 
-btnStop.onclick = () => {
-  if (confirm("Stop listening to this stream?")) {
+btnStop.onclick = async () => {
+  if (await showConfirm({ message: "Stop listening to this stream?" })) {
     stopListening();
   }
 };
