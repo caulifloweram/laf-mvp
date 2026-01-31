@@ -54,12 +54,13 @@ interface LiveChannel {
   streamId: number;
 }
 
-/** External online radio stations (stream URLs from [Radio Browser API](https://api.radio-browser.info/)) */
+/** External online radio stations (stream URLs from [Radio Browser API](https://api.radio-browser.info/)); logoUrl = site favicon/apple-touch-icon */
 interface ExternalStation {
   name: string;
   description: string;
   websiteUrl: string;
   streamUrl: string;
+  logoUrl: string;
 }
 
 const EXTERNAL_STATIONS: ExternalStation[] = [
@@ -68,18 +69,21 @@ const EXTERNAL_STATIONS: ExternalStation[] = [
     description: "Community radio from Berlin. Music and issues we care about.",
     websiteUrl: "https://refugeworldwide.com/",
     streamUrl: "https://streaming.radio.co/s3699c5e49/listen",
+    logoUrl: "https://refugeworldwide.com/apple-touch-icon.png",
   },
   {
     name: "Mutant Radio",
     description: "Independent station streaming worldwide. Experimental, electronic, folk.",
     websiteUrl: "https://www.mutantradio.net/",
     streamUrl: "https://listen.radioking.com/radio/282820/stream/328621",
+    logoUrl: "https://www.mutantradio.net/icon?e5faaecf67dfe01a",
   },
   {
     name: "Radio 80000",
     description: "Non-commercial online radio from Munich. Music, dialogue, events.",
     websiteUrl: "https://www.radio80k.de/",
     streamUrl: "https://radio80k.out.airtime.pro:8000/radio80k_a",
+    logoUrl: "https://www.radio80k.de/app/uploads/2022/10/cropped-favicon-8000-192x192.gif",
   },
 ];
 
@@ -636,7 +640,11 @@ function renderExternalStations() {
   EXTERNAL_STATIONS.forEach((station) => {
     const card = document.createElement("div");
     card.className = "external-station-card";
+    const logoHtml = station.logoUrl
+      ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
+      : "";
     card.innerHTML = `
+      ${logoHtml}
       <div class="ext-name">${escapeHtml(station.name)}</div>
       <div class="ext-desc">${escapeHtml(station.description)}</div>
       <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
@@ -664,8 +672,17 @@ function selectExternalStation(station: ExternalStation) {
   externalStreamActions.classList.remove("hidden");
   playerStatGrid.classList.add("hidden");
   playerChatPanel.classList.add("hidden");
-  playerCoverWrap.classList.add("placeholder");
-  playerCover.removeAttribute("src");
+  if (station.logoUrl) {
+    playerCover.src = station.logoUrl;
+    playerCoverWrap.classList.remove("placeholder");
+    playerCover.onerror = () => {
+      playerCoverWrap.classList.add("placeholder");
+      playerCover.removeAttribute("src");
+    };
+  } else {
+    playerCoverWrap.classList.add("placeholder");
+    playerCover.removeAttribute("src");
+  }
   playerSection.classList.remove("hidden");
   const center = (window as unknown as { centerWindowInViewport?: (win: HTMLElement) => void }).centerWindowInViewport;
   const clamp = (window as unknown as { clampWindowToViewport?: (win: HTMLElement) => void }).clampWindowToViewport;
@@ -711,6 +728,7 @@ function stopExternalStream() {
   btnStart.classList.remove("hidden");
   btnStop.classList.add("hidden");
   playerLiveBadge.classList.add("hidden");
+  playerSection.classList.add("hidden");
 }
 
 function escapeHtml(text: string): string {
@@ -730,6 +748,7 @@ function selectChannel(channel: LiveChannel) {
   currentChannel = channel;
   nowPlayingTitle.textContent = channel.title;
   nowPlayingDesc.textContent = channel.description || "";
+  playerCover.onerror = null;
   if (channel.coverUrl) {
     playerCover.src = channel.coverUrl;
     playerCoverWrap.classList.remove("placeholder");
