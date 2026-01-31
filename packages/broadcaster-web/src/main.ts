@@ -330,25 +330,24 @@ async function loadChannels() {
     channels.forEach((ch) => {
       const item = document.createElement("div");
       item.className = "channel-item";
+      item.style.cursor = "pointer";
+      item.title = "Click to open channel settings";
       const coverHtml = ch.cover_url
         ? `<img src="${escapeAttr(ch.cover_url)}" alt="" class="channel-item-cover" />`
         : "";
       item.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+        <div class="channel-item-info" style="display: flex; align-items: center; gap: 12px; flex: 1;">
           ${coverHtml}
           <div>
             <strong>${escapeHtml(ch.title)}</strong>
             <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 0.25rem;">${escapeHtml(ch.description || "")}</p>
           </div>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" class="btn-channel-settings" style="width: auto; padding: 0.5rem 0.75rem;">Settings</button>
-          <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
-        </div>
+        <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
       `;
-      item.querySelector(".btn-channel-settings")!.addEventListener("click", (e) => {
+      item.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).closest(".btn-go-live")) return;
         e.preventDefault();
-        e.stopPropagation();
         openChannelSettings(ch);
       });
       item.querySelector(".btn-go-live")!.addEventListener("click", (e) => {
