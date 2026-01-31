@@ -1,6 +1,6 @@
-# LAF Web (unified launcher)
+# LAF Web (home screen)
 
-Mac-style desktop with **Broadcaster** and **Radio** icons. Double-click opens each app in a window.
+Mac-style home screen with **Broadcaster** and **Radio** icons. Click an icon to go to that app (full-page redirect).
 
 ## Railway deployment
 

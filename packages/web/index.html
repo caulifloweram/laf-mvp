@@ -80,77 +80,12 @@
         color: var(--mac-black);
         text-shadow: 0 1px 0 var(--mac-white);
       }
-
-      .app-window {
-        position: absolute;
-        min-width: 400px;
-        min-height: 300px;
-        max-width: 95vw;
-        max-height: 85vh;
-        width: 900px;
-        height: 600px;
-        z-index: 1;
-        background: var(--mac-white);
-        border: 2px solid var(--mac-black);
-        border-radius: 6px;
-        overflow: hidden;
-        box-shadow: 2px 2px 0 var(--mac-gray);
-        display: flex;
-        flex-direction: column;
-      }
-      .app-window.bring-front { z-index: 2; }
-
-      .app-window-title {
-        background: var(--mac-light-gray);
-        border-bottom: 1px solid var(--mac-black);
-        padding: 6px 10px 6px 52px;
-        font-size: 13px;
-        font-weight: bold;
-        position: relative;
-        cursor: move;
-        user-select: none;
-        flex-shrink: 0;
-      }
-      .app-window-title .close-box,
-      .app-window-title .minimize-box {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        border: 1px solid var(--mac-black);
-        border-radius: 1px;
-        background: var(--mac-white);
-        cursor: pointer;
-      }
-      .app-window-title .close-box { left: 6px; }
-      .app-window-title .minimize-box {
-        left: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .app-window-title .minimize-box::after {
-        content: "";
-        width: 8px;
-        height: 2px;
-        background: var(--mac-black);
-      }
-
-      .app-window-frame {
-        flex: 1;
-        min-height: 0;
-        border: none;
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
     </style>
   </head>
   <body>
     <div class="desktop" id="desktop">
       <div class="desktop-icons">
-        <div class="desktop-icon" id="icon-broadcaster" data-app="broadcaster" title="Double-click to open">
+        <div class="desktop-icon" id="icon-broadcaster" data-app="broadcaster" title="Open Broadcaster" role="button">
           <div class="desktop-icon-img" aria-hidden="true">
             <svg viewBox="0 0 32 32" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="16" cy="10" r="5"/>
@@ -159,7 +94,7 @@
           </div>
           <span class="desktop-icon-label">Broadcaster</span>
         </div>
-        <div class="desktop-icon" id="icon-radio" data-app="radio" title="Double-click to open">
+        <div class="desktop-icon" id="icon-radio" data-app="radio" title="Open Radio" role="button">
           <div class="desktop-icon-img" aria-hidden="true">
             <svg viewBox="0 0 32 32" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="6" y="8" width="20" height="16" rx="1"/>
