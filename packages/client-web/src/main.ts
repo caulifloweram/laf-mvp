@@ -139,27 +139,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
       { name: "Channel 2", streamUrl: "https://stream-relay-geo.ntslive.net/stream2" },
     ],
   },
-  {
-    name: "Manila Community Radio",
-    description: "Independent, not-for-profit radio platform by the community for the community.",
-    websiteUrl: "https://manilacommunityradio.live/",
-    streamUrl: "https://manilacommunityradio.out.airtime.pro/manilacommunityradio_a",
-    logoUrl: "https://www.google.com/s2/favicons?domain=manilacommunityradio.live&sz=128",
-  },
-  {
-    name: "dublab",
-    description: "Non-profit radio. Experimental, jazz, indie, hip-hop, dub. LA and worldwide.",
-    websiteUrl: "https://www.dublab.com/",
-    streamUrl: "https://stream.dublab.com/live",
-    logoUrl: "https://www.dublab.com/favicon.ico",
-  },
-  {
-    name: "Rinse FM",
-    description: "Underground music 24/7. London and Paris. Grime, dubstep, D&B, garage.",
-    websiteUrl: "https://rinse.fm/",
-    streamUrl: "http://admin.stream.rinse.fm:8820/stream.m3u",
-    logoUrl: "https://rinse.fm/favicon.ico",
-  },
 ];
 
 /** Expand configs into a flat list of playable stations (one per channel or one per station). */
@@ -776,12 +755,13 @@ function renderExternalStations() {
     card.className = "external-station-card";
     card.dataset.streamUrl = station.streamUrl;
     if (currentExternalStation?.streamUrl === station.streamUrl) card.classList.add("now-playing");
-    const logoHtml = station.logoUrl
+    const hasLogo = !!station.logoUrl;
+    const logoHtml = hasLogo
       ? `<img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" />`
-      : "";
+      : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
     card.innerHTML = `
       ${logoHtml}
-      <div class="ext-name">${escapeHtml(station.name)}</div>
+      ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
       <div class="ext-desc">${escapeHtml(station.description)}</div>
       <div class="ext-link">Stream · ${escapeHtml(station.websiteUrl)}</div>
       <div class="ext-stream-status status-checking" aria-live="polite">Checking…</div>
