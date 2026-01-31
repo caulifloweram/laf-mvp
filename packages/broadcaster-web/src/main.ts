@@ -124,6 +124,8 @@ function showSection(section: string) {
     registerSection.classList.remove("hidden");
   } else if (section === "main") {
     mainSection.classList.remove("hidden");
+    document.querySelectorAll(".card.bring-front").forEach((c) => c.classList.remove("bring-front"));
+    document.querySelector('.card[data-window-id="channels"]')?.classList.add("bring-front");
   } else if (section === "create") {
     mainSection.classList.remove("hidden");
     createChannelSection.classList.remove("hidden");
@@ -356,24 +358,28 @@ async function loadChannels() {
 }
 
 function setupChannelsListClick() {
-  channelsList.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    const item = target.closest(".channel-item");
-    if (!item) return;
-    const channelId = item.getAttribute("data-channel-id");
-    if (!channelId) return;
-    const ch = latestChannels.find((c) => c.id === channelId);
-    if (!ch) return;
-    if (target.closest(".btn-go-live")) {
+  channelsList.addEventListener(
+    "click",
+    (e) => {
+      const target = e.target as HTMLElement;
+      const item = target.closest(".channel-item");
+      if (!item) return;
+      const channelId = item.getAttribute("data-channel-id");
+      if (!channelId) return;
+      const ch = latestChannels.find((c) => c.id === channelId);
+      if (!ch) return;
+      if (target.closest(".btn-go-live")) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectChannel(ch);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
-      selectChannel(ch);
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    openChannelSettings(ch);
-  });
+      openChannelSettings(ch);
+    },
+    true
+  );
 }
 
 function escapeAttr(s: string): string {
