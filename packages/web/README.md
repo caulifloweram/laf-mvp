@@ -4,10 +4,16 @@ Mac-style desktop with **Broadcaster** and **Radio** icons. Double-click opens e
 
 ## Railway deployment
 
+The web package needs the full monorepo to build (client-web + broadcaster-web). Use **repo root** as the service root:
+
 1. In Railway, create a **new service** from this repo.
-2. Set **Root Directory** to `packages/web`.
-3. Deploy. The service will build client-web, broadcaster-web, and the launcher, then serve `dist/` (launcher at `/`, Radio at `/client/`, Broadcaster at `/broadcaster/`).
-4. Your launcher URL is the service’s public URL (e.g. `https://your-web-service.up.railway.app`).
+2. Set **Root Directory** to **empty** (repo root). Do **not** set it to `packages/web`.
+3. In the service **Settings** → **Deploy** (or **Variables**), set **Custom Start Command** to:
+   ```bash
+   cd packages/web && npx --yes serve dist -p $PORT
+   ```
+4. Deploy. The root `nixpacks.toml` runs `pnpm install && pnpm build`, which builds the web package (and thus client-web, broadcaster-web, then launcher). The start command serves `packages/web/dist/`.
+5. Your launcher URL is the service’s public URL (e.g. `https://your-web-service.up.railway.app`).
 
 **Env vars (optional):** If your API and relay are on different hosts, set these in the Railway service so the built Radio/Broadcaster apps use them:
 - `VITE_API_URL` – e.g. `https://your-api.up.railway.app`
