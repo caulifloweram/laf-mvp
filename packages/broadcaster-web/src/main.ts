@@ -342,14 +342,19 @@ async function loadChannels() {
           </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" style="width: auto; padding: 0.5rem 0.75rem;" data-channel-id="${ch.id}" class="btn-channel-settings">Settings</button>
-          <button style="width: auto; padding: 0.5rem 1rem;" data-channel-id="${ch.id}">Go Live</button>
+          <button type="button" class="btn-channel-settings" style="width: auto; padding: 0.5rem 0.75rem;">Settings</button>
+          <button type="button" class="btn-go-live" style="width: auto; padding: 0.5rem 1rem;">Go Live</button>
         </div>
       `;
-      item.querySelector("button[data-channel-id]")!.onclick = () => selectChannel(ch);
       item.querySelector(".btn-channel-settings")!.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         openChannelSettings(ch);
+      });
+      item.querySelector(".btn-go-live")!.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectChannel(ch);
       });
       channelsList.appendChild(item);
     });
