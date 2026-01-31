@@ -132,8 +132,12 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     name: "NTS Radio",
     description: "Don't Assume. Two live channels, 24/7.",
     websiteUrl: "https://www.nts.live/",
-    streamUrl: "https://stream-relay.nts.live/live",
+    streamUrl: "https://stream-relay-geo.ntslive.net/stream",
     logoUrl: "https://www.nts.live/favicon.ico",
+    channels: [
+      { name: "Channel 1", streamUrl: "https://stream-relay-geo.ntslive.net/stream" },
+      { name: "Channel 2", streamUrl: "https://stream-relay-geo.ntslive.net/stream2" },
+    ],
   },
   {
     name: "Manila Community Radio",
