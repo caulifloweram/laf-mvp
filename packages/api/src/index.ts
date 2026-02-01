@@ -504,6 +504,20 @@ initDb()
     // Don't crash - API can still serve some endpoints
   });
 
+// Public: Get station overrides (admin-edited name/description/logo for any station by stream URL)
+app.get("/api/station-overrides", async (_req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl"
+      FROM station_overrides
+    `);
+    res.json(result.rows);
+  } catch (err: any) {
+    console.error("Error fetching station overrides:", err);
+    res.status(500).json({ error: "Failed to fetch overrides", details: err.message });
+  }
+});
+
 // Public: Get all external stations (user-submitted; client merges with built-in list)
 app.get("/api/external-stations", async (_req, res) => {
   try {
@@ -658,6 +672,48 @@ app.delete("/api/external-stations/:id", authMiddleware, async (req, res) => {
   } catch (err: any) {
     console.error("Error deleting external station:", err);
     res.status(500).json({ error: "Failed to delete station", details: err.message });
+  }
+});
+
+// Protected: Upsert station override (admin only; for built-in or any station by stream URL)
+app.patch("/api/station-overrides", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const email = (user?.email ?? "").toString().toLowerCase();
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "Only authorized admins can edit station overrides" });
+  }
+  const { streamUrl, name, description, websiteUrl, logoUrl } = req.body;
+  if (!streamUrl || typeof streamUrl !== "string" || !streamUrl.trim()) {
+    return res.status(400).json({ error: "streamUrl is required" });
+  }
+  const url = streamUrl.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return res.status(400).json({ error: "streamUrl must be http or https" });
+  }
+  const nameVal = name !== undefined && typeof name === "string" ? name.trim() || null : null;
+  const descVal = description !== undefined ? (typeof description === "string" ? description.trim() || null : null) : null;
+  const webVal = websiteUrl !== undefined && typeof websiteUrl === "string" && websiteUrl.trim() ? websiteUrl.trim() : null;
+  const logoVal = logoUrl !== undefined ? (typeof logoUrl === "string" && logoUrl.trim() ? logoUrl.trim() : null) : null;
+  try {
+    await pool.query(
+      `INSERT INTO station_overrides (stream_url, name, description, website_url, logo_url, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (stream_url) DO UPDATE SET
+         name = EXCLUDED.name,
+         description = EXCLUDED.description,
+         website_url = EXCLUDED.website_url,
+         logo_url = EXCLUDED.logo_url,
+         updated_at = NOW()`,
+      [url, nameVal, descVal, webVal, logoVal]
+    );
+    const result = await pool.query(
+      `SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl" FROM station_overrides WHERE stream_url = $1`,
+      [url]
+    );
+    res.json(result.rows[0] || { streamUrl: url, name: nameVal, description: descVal, websiteUrl: webVal, logoUrl: logoVal });
+  } catch (err: any) {
+    console.error("Error upserting station override:", err);
+    res.status(500).json({ error: "Failed to save override", details: err.message });
   }
 });
 

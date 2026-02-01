@@ -378,6 +378,24 @@ let allExternalStations: ExternalStation[] = (() => {
 })();
 let stationsSearchQuery = "";
 
+/** Admin overrides for any station (built-in or added) keyed by streamUrl. */
+let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null }> = {};
+
+function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string }>(
+  station: T,
+  streamUrl: string
+): T {
+  const o = stationOverrides[streamUrl];
+  if (!o) return station;
+  return {
+    ...station,
+    ...(o.name !== undefined && o.name !== null && { name: o.name }),
+    ...(o.description !== undefined && o.description !== null && { description: o.description }),
+    ...(o.websiteUrl !== undefined && o.websiteUrl !== null && { websiteUrl: o.websiteUrl }),
+    ...(o.logoUrl !== undefined && o.logoUrl !== null && { logoUrl: o.logoUrl }),
+  } as T;
+}
+
 function getExternalStationsFlat(): ExternalStation[] {
   const q = stationsSearchQuery.trim().toLowerCase();
   if (!q) return allExternalStations;
@@ -408,9 +426,12 @@ async function loadExternalStations(): Promise<void> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_STATIONS_FETCH_TIMEOUT_MS);
-    const res = await fetch(`${API_URL}/api/external-stations`, { signal: controller.signal });
+    const [stationsRes, overridesRes] = await Promise.all([
+      fetch(`${API_URL}/api/external-stations`, { signal: controller.signal }),
+      fetch(`${API_URL}/api/station-overrides`, { signal: controller.signal }),
+    ]);
     clearTimeout(timeoutId);
-    const rows = (await res.json()) as Array<{
+    const rows = (await stationsRes.json()) as Array<{
       id?: string;
       name: string;
       description?: string | null;
@@ -418,6 +439,11 @@ async function loadExternalStations(): Promise<void> {
       streamUrl: string;
       logoUrl?: string | null;
     }>;
+    const overrides = (await overridesRes.json()) as Array<{ streamUrl: string; name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null }>;
+    stationOverrides = {};
+    for (const o of overrides || []) {
+      if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl };
+    }
     const userStations: ExternalStation[] = (rows || []).map((r) => ({
       id: r.id,
       name: r.name || "Station",
@@ -1076,23 +1102,27 @@ function renderUnifiedStations(): void {
   ];
 
   for (const config of EXTERNAL_STATION_CONFIGS) {
+    const configWithOverride = applyStationOverride(
+      { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl },
+      config.streamUrl
+    );
     if (config.channels && config.channels.length > 0) {
       const liveChannels = config.channels.filter((ch) => {
         const c = streamStatusCache[ch.streamUrl];
         return c && c.ok;
       });
-      if (liveChannels.length > 0) items.push({ type: "external_multi", config, liveChannels });
+      if (liveChannels.length > 0) {
+        const mergedConfig = { ...config, ...configWithOverride };
+        items.push({ type: "external_multi", config: mergedConfig, liveChannels });
+      }
     } else {
       const c = streamStatusCache[config.streamUrl];
       if (c && c.ok) {
         items.push({
           type: "external",
           station: {
-            name: config.name,
-            description: config.description,
-            websiteUrl: config.websiteUrl,
+            ...configWithOverride,
             streamUrl: config.streamUrl,
-            logoUrl: config.logoUrl,
           },
         });
       }
@@ -1105,7 +1135,8 @@ function renderUnifiedStations(): void {
     return cached && cached.ok;
   });
   for (const station of userStationsLive) {
-    items.push({ type: "external", station });
+    const stationWithOverride = applyStationOverride({ ...station }, station.streamUrl);
+    items.push({ type: "external", station: { ...station, ...stationWithOverride } });
   }
 
   let filtered = items.filter((item) => {
@@ -2698,13 +2729,14 @@ function initAdminForm() {
         return;
       }
       for (const row of allRows) {
+        const display = applyStationOverride({ ...row }, row.streamUrl);
         const div = document.createElement("div");
         div.className = "admin-station-row";
         const info = document.createElement("div");
         info.style.cssText = "min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;";
         const name = document.createElement("span");
         name.className = "name";
-        name.textContent = row.name || "Unnamed";
+        name.textContent = display.name || "Unnamed";
         const streamUrl = document.createElement("span");
         streamUrl.className = "stream-url";
         streamUrl.textContent = row.streamUrl || "";
@@ -2712,36 +2744,36 @@ function initAdminForm() {
         info.appendChild(streamUrl);
         const btnWrap = document.createElement("div");
         btnWrap.style.cssText = "display: flex; gap: 8px; flex-shrink: 0; align-items: center;";
-        if (row.id) {
-          const editBtn = document.createElement("button");
-          editBtn.type = "button";
-          editBtn.textContent = "Edit";
-          editBtn.addEventListener("click", () => {
-            if (div.querySelector(".admin-station-edit-form")) return;
-            const form = document.createElement("div");
-            form.className = "admin-station-edit-form";
-            form.innerHTML = `
-              <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(row.name || "")}" /></div>
-              <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(row.description || "")}</textarea></div>
-              <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(row.websiteUrl || "")}" /></div>
-              <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(row.logoUrl || "")}" placeholder="https://..." /></div>
-              <div style="display:flex;gap:8px;margin-top:8px;">
-                <button type="button" class="admin-edit-save">Save</button>
-                <button type="button" class="admin-edit-cancel">Cancel</button>
-              </div>
-            `;
-            form.style.cssText = "grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--border); margin-top: 8px; background: var(--bg);";
-            const saveBtn = form.querySelector(".admin-edit-save")!;
-            const cancelBtn = form.querySelector(".admin-edit-cancel")!;
-            cancelBtn.addEventListener("click", () => { form.remove(); });
-            saveBtn.addEventListener("click", async () => {
-              const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
-              const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
-              const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
-              const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
-              if (!nameVal) { alert("Name is required"); return; }
-              (saveBtn as HTMLButtonElement).setAttribute("disabled", "true");
-              try {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", () => {
+          if (div.querySelector(".admin-station-edit-form")) return;
+          const form = document.createElement("div");
+          form.className = "admin-station-edit-form";
+          form.innerHTML = `
+            <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(display.name || "")}" /></div>
+            <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(display.description || "")}</textarea></div>
+            <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(display.websiteUrl || "")}" /></div>
+            <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(display.logoUrl || "")}" placeholder="https://..." /></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="button" class="admin-edit-save">Save</button>
+              <button type="button" class="admin-edit-cancel">Cancel</button>
+            </div>
+          `;
+          form.style.cssText = "grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--border); margin-top: 8px; background: var(--bg);";
+          const saveBtn = form.querySelector(".admin-edit-save")!;
+          const cancelBtn = form.querySelector(".admin-edit-cancel")!;
+          cancelBtn.addEventListener("click", () => { form.remove(); });
+          saveBtn.addEventListener("click", async () => {
+            const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
+            const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
+            const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
+            const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
+            if (!nameVal) { alert("Name is required"); return; }
+            (saveBtn as HTMLButtonElement).setAttribute("disabled", "true");
+            try {
+              if (row.id) {
                 const patchRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -2755,18 +2787,35 @@ function initAdminForm() {
                   const data = (await patchRes.json().catch(() => ({}))) as { error?: string };
                   alert(data.error || "Failed to update");
                 }
-              } finally {
-                (saveBtn as HTMLButtonElement).removeAttribute("disabled");
+              } else {
+                const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ streamUrl: row.streamUrl, name: nameVal, description: descVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+                });
+                if (overrideRes.ok) {
+                  form.remove();
+                  await loadAdminStationsList();
+                  await loadExternalStations();
+                } else {
+                  const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
+                  alert(data.error || "Failed to save");
+                }
               }
-            });
-            div.appendChild(form);
+            } finally {
+              (saveBtn as HTMLButtonElement).removeAttribute("disabled");
+            }
           });
+          div.appendChild(form);
+        });
+        btnWrap.appendChild(editBtn);
+        if (row.id) {
           const delBtn = document.createElement("button");
           delBtn.type = "button";
           delBtn.textContent = "Delete";
           delBtn.addEventListener("click", async () => {
             if (!token) return;
-            if (!confirm(`Remove "${row.name || "this station"}" from the list?`)) return;
+            if (!confirm(`Remove "${display.name || "this station"}" from the list?`)) return;
             delBtn.setAttribute("disabled", "true");
             try {
               const delRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
@@ -2784,14 +2833,7 @@ function initAdminForm() {
               delBtn.removeAttribute("disabled");
             }
           });
-          btnWrap.appendChild(editBtn);
           btnWrap.appendChild(delBtn);
-        } else {
-          const badge = document.createElement("span");
-          badge.className = "admin-builtin-badge";
-          badge.textContent = "Built-in";
-          badge.style.cssText = "font-size: 11px; color: var(--text-muted);";
-          btnWrap.appendChild(badge);
         }
         div.appendChild(info);
         div.appendChild(btnWrap);

@@ -74,6 +74,17 @@ export async function initDb() {
   `).catch(() => {});
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS station_overrides (
+      stream_url TEXT PRIMARY KEY,
+      name VARCHAR(255),
+      description TEXT,
+      website_url TEXT,
+      logo_url TEXT,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS user_favorites (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
