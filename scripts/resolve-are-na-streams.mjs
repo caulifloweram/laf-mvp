@@ -186,8 +186,13 @@ async function main() {
     if (!streamUrl) {
       const stations = await radioBrowserSearch(meta.title || domain);
       const match = stations.find((s) => {
-        const h = (s.homepage || "").toLowerCase();
-        return h.includes(domain) || domain.includes(new URL(h).hostname.replace(/^www\./, ""));
+        const h = (s.homepage || "").trim().toLowerCase();
+        if (!h || !h.startsWith("http")) return false;
+        try {
+          return h.includes(domain) || domain.includes(new URL(h).hostname.replace(/^www\./, ""));
+        } catch {
+          return false;
+        }
       }) || stations[0];
       if (match && (match.url_resolved || match.url)) {
         streamUrl = (match.url_resolved || match.url).trim();
