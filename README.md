@@ -2,6 +2,8 @@
 
 A live audio broadcast platform with adaptive bitrate streaming.
 
+> **For contributors / AI:** After making changes, remember to **commit and push to GitHub** so work is saved on the remote.
+
 ## Quick Start
 
 1. **Set up Postgres database:**

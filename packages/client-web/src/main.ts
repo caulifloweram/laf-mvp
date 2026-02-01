@@ -887,6 +887,38 @@ function getAllStreamUrls(): string[] {
   return Array.from(set);
 }
 
+function restoreStreamStatusCacheFromStorage(): void {
+  try {
+    const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(STREAM_CACHE_STORAGE_KEY) : null;
+    if (!raw) return;
+    const data = JSON.parse(raw) as { t: number; cache: Record<string, { ok: boolean; status: string }> };
+    if (Date.now() - data.t > STREAM_CACHE_TTL_MS) return;
+    const urls = new Set(getAllStreamUrls());
+    for (const [url, entry] of Object.entries(data.cache || {})) {
+      if (urls.has(url)) streamStatusCache[url] = entry;
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+function scheduleSaveStreamStatusCache(): void {
+  if (streamCacheSaveTimeoutId != null) return;
+  streamCacheSaveTimeoutId = setTimeout(() => {
+    streamCacheSaveTimeoutId = null;
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(
+          STREAM_CACHE_STORAGE_KEY,
+          JSON.stringify({ t: Date.now(), cache: { ...streamStatusCache } })
+        );
+      }
+    } catch (_) {
+      // ignore
+    }
+  }, 1500);
+}
+
 const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 5000;
 
 async function loadExternalStations(): Promise<void> {
@@ -932,6 +964,7 @@ async function loadExternalStations(): Promise<void> {
   } catch (e) {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
+  restoreStreamStatusCacheFromStorage();
   renderExternalStations();
 }
 
@@ -1530,8 +1563,11 @@ let liveChannelsList: LiveChannel[] = [];
 let favoriteRefs = new Set<string>();
 /** Cache stream status so we don't re-show "Checking…" on every re-render. */
 const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
-/** When true, show "Looking for live radios…" and do not show stations until all stream checks are done. */
+/** When true, stream checks are running in background (list is already visible). */
 let streamCheckInProgress = false;
+const STREAM_CACHE_STORAGE_KEY = "laf_stream_status_cache";
+const STREAM_CACHE_TTL_MS = 30 * 60 * 1000; // 30 min
+let streamCacheSaveTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 /** Return URL to use for Audio() playback. Use API proxy when page is HTTPS and stream is HTTP (mixed content). */
 function getExternalStreamPlaybackUrl(streamUrl: string): string {
@@ -1674,13 +1710,6 @@ function renderUnifiedStations(): void {
   stationsList.innerHTML = "";
   const activeContainer = mode === "grid" ? stationsGrid : stationsList;
 
-  if (streamCheckInProgress) {
-    const urls = getAllStreamUrls();
-    const liveCount = urls.filter((u) => streamStatusCache[u]?.ok).length;
-    const total = urls.length;
-    (activeContainer as HTMLElement).innerHTML = `<p class='stations-loading-message'><span class='stations-loading-text'>Looking for live radios…</span> <span class='stations-loading-count'>(${liveCount} of ${total} live so far)</span></p>`;
-    return;
-  }
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
   const onlyFavorites = favoritesFilter?.checked ?? false;
 
@@ -1699,26 +1728,19 @@ function renderUnifiedStations(): void {
       config.streamUrl
     );
     if (config.channels && config.channels.length > 0) {
-      const liveChannels = config.channels.filter((ch) => {
-        if (stationOverrides[ch.streamUrl]?.hidden) return false;
-        const c = streamStatusCache[ch.streamUrl];
-        return c && (c.ok || c.status === "verifying");
-      });
+      const liveChannels = config.channels.filter((ch) => !stationOverrides[ch.streamUrl]?.hidden);
       if (liveChannels.length > 0) {
         const mergedConfig = { ...config, ...configWithOverride };
         items.push({ type: "external_multi", config: mergedConfig, liveChannels });
       }
     } else {
-      const c = streamStatusCache[config.streamUrl];
-      if (c && (c.ok || c.status === "verifying")) {
-        items.push({
-          type: "external",
-          station: {
-            ...configWithOverride,
-            streamUrl: config.streamUrl,
-          },
-        });
-      }
+      items.push({
+        type: "external",
+        station: {
+          ...configWithOverride,
+          streamUrl: config.streamUrl,
+        },
+      });
     }
   }
 
@@ -1727,17 +1749,10 @@ function renderUnifiedStations(): void {
     if (item.type === "external") builtInStreamUrls.add(item.station.streamUrl);
     if (item.type === "external_multi") for (const ch of item.liveChannels) builtInStreamUrls.add(ch.streamUrl);
   }
-  const userStationsLive = allExternalStations.filter((s) => {
-    if (stationOverrides[s.streamUrl]?.hidden) return false;
-    if (!s.id) return false;
-    if (builtInStreamUrls.has(s.streamUrl)) return false;
-    const cached = streamStatusCache[s.streamUrl];
-    return cached && (cached.ok || cached.status === "verifying");
-  });
-  const addedUserUrls = new Set<string>();
-  for (const station of userStationsLive) {
-    if (addedUserUrls.has(station.streamUrl)) continue;
-    addedUserUrls.add(station.streamUrl);
+  for (const station of allExternalStations) {
+    if (stationOverrides[station.streamUrl]?.hidden) continue;
+    if (!station.id) continue;
+    if (builtInStreamUrls.has(station.streamUrl)) continue;
     const stationWithOverride = applyStationOverride({ ...station }, station.streamUrl);
     items.push({ type: "external", station: { ...station, ...stationWithOverride } });
   }
@@ -2027,7 +2042,7 @@ function getStatusLabel(
   if (streamUrl && currentExternalStation?.streamUrl === streamUrl) {
     return { text: "LIVE", statusClass: "status-live" };
   }
-  if (!cached) return { text: "—", statusClass: "status-unknown" };
+  if (!cached) return { text: "Checking…", statusClass: "status-unknown" };
   if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
   if (cached.status === "verifying") return { text: "Checking…", statusClass: "status-unknown" };
   const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
@@ -2037,10 +2052,13 @@ function getStatusLabel(
 
 const STREAM_CHECK_TIMEOUT_MS = 3500;
 const STREAM_CHECK_BATCH_SIZE = 6;
+/** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
+const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
 function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
+  scheduleSaveStreamStatusCache();
   document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
     const el = card.querySelector(".ext-stream-status");
     if (!el) return;
@@ -2064,6 +2082,7 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
 /** Mark a stream as unavailable (e.g. playback failed) so it is no longer shown as LIVE. */
 function markStreamUnavailable(streamUrl: string): void {
   streamStatusCache[streamUrl] = { ok: false, status: "error" };
+  scheduleSaveStreamStatusCache();
   updateCardStatus(streamUrl, false, "error");
   renderUnifiedStations();
 }
@@ -2131,20 +2150,19 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
     });
 }
 
-/** Run stream checks for all URLs in batches; show "Looking for live radios" until all are done, then render once. */
+/** Run stream checks for all URLs in batches in the background. List is already visible; cards update via updateCardStatus. */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
-  renderUnifiedStations();
   let index = 0;
   function runNextBatch() {
-    const batch = toCheck.slice(index, index + STREAM_CHECK_BATCH_SIZE);
-    index += STREAM_CHECK_BATCH_SIZE;
+    const batchSize = index === 0 ? STREAM_CHECK_FIRST_BATCH_SIZE : STREAM_CHECK_BATCH_SIZE;
+    const batch = toCheck.slice(index, index + batchSize);
+    index += batchSize;
     if (batch.length === 0) return;
     Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
-      renderUnifiedStations();
       if (index >= toCheck.length) {
         streamCheckInProgress = false;
         renderUnifiedStations();
