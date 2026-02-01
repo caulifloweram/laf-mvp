@@ -3920,6 +3920,9 @@ const PRESET_BG_COLORS = [
   "#2c3e50", "#c0392b", "#27ae60", "#2980b9",
 ];
 
+/** Dark theme colors: dark grey, black, dark blue. When selected, station cards use dark surface; otherwise only background changes and cards stay light. */
+const DARK_THEME_HEX = new Set(["#000000", "#111111", "#2c3e50", "#34495e", "#2980b9"]);
+
 function hexToRgb(hex: string): [number, number, number] | null {
   const m = hex.replace(/^#/, "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
   if (!m) return null;
@@ -3934,6 +3937,12 @@ function getLuminance(hex: string): number {
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   });
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function isDarkThemeColor(hex: string): boolean {
+  const normalized = hex.replace(/^\s+|\s+$/g, "").toLowerCase();
+  if (DARK_THEME_HEX.has(normalized)) return true;
+  return getLuminance(normalized) <= 0.25;
 }
 
 function getContrastColors(bgHex: string): {
@@ -3973,28 +3982,45 @@ function getContrastColors(bgHex: string): {
 
 function applyBgColor(hex: string) {
   const root = document.documentElement.style;
-  root.setProperty("--bg", hex);
-  const c = getContrastColors(hex);
-  root.setProperty("--text", c.text);
-  root.setProperty("--text-muted", c.textMuted);
-  root.setProperty("--border", c.border);
-  root.setProperty("--surface", c.surface);
-  root.setProperty("--card-hover", c.cardHover);
-  root.setProperty("--topbar-bg", c.topbarBg);
-  root.setProperty("--topbar-text", c.topbarText);
-  root.setProperty("--accent", c.accent);
-  root.setProperty("--accent-text", c.accentText);
-  root.setProperty("--footer-bg", c.topbarBg);
-  root.setProperty("--footer-text", c.topbarText);
+  const normalized = hex.replace(/^\s+|\s+$/g, "").toLowerCase();
+  root.setProperty("--bg", normalized);
+
+  if (isDarkThemeColor(normalized)) {
+    const c = getContrastColors(normalized);
+    root.setProperty("--text", c.text);
+    root.setProperty("--text-muted", c.textMuted);
+    root.setProperty("--border", c.border);
+    root.setProperty("--surface", c.surface);
+    root.setProperty("--card-hover", c.cardHover);
+    root.setProperty("--topbar-bg", c.topbarBg);
+    root.setProperty("--topbar-text", c.topbarText);
+    root.setProperty("--accent", c.accent);
+    root.setProperty("--accent-text", c.accentText);
+    root.setProperty("--footer-bg", c.topbarBg);
+    root.setProperty("--footer-text", c.topbarText);
+  } else {
+    root.setProperty("--text", "#111");
+    root.setProperty("--text-muted", "#444");
+    root.setProperty("--border", "#111");
+    root.setProperty("--surface", "#fff");
+    root.setProperty("--card-hover", "#eee");
+    root.setProperty("--topbar-bg", "#111");
+    root.setProperty("--topbar-text", "#fff");
+    root.setProperty("--accent", "#111");
+    root.setProperty("--accent-text", "#fff");
+    root.setProperty("--footer-bg", "#111");
+    root.setProperty("--footer-text", "#fff");
+  }
+
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", hex);
+  if (meta) meta.setAttribute("content", normalized);
   document.querySelectorAll(".color-picker-preview").forEach((el) => {
-    (el as HTMLElement).style.background = hex;
+    (el as HTMLElement).style.background = normalized;
   });
   const customInput = document.getElementById("color-picker-custom-input") as HTMLInputElement | null;
-  if (customInput) customInput.value = hex;
+  if (customInput) customInput.value = normalized;
   const drawerCustomInput = document.getElementById("drawer-color-custom-input") as HTMLInputElement | null;
-  if (drawerCustomInput) drawerCustomInput.value = hex;
+  if (drawerCustomInput) drawerCustomInput.value = normalized;
 }
 
 function initColorPicker() {
