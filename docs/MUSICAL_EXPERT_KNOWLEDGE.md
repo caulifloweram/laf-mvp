@@ -260,6 +260,9 @@ Below is a **curated subset** of the current built-in list with location, short 
 5. **Resolved-stations.json**  
    - `scripts/resolved-stations.json` is output from Are.na + resolution scripts. It can be used as a **source for research** and for bulk-adding stations; before upload, enrich each entry with `tags` and `group` from this taxonomy.
 
+6. **Candidate stations feed (external list)**  
+   - `docs/candidate-stations-feed.json` is a curated subset of an external list of 250 community/underground radios. It contains stations deemed relevant to LAF (community, college, eclectic, world, etc.) with no duplicates of the built-in list. **Project owner / continuation agent:** see `docs/CANDIDATE_STATIONS_INGEST.md` for how to push these to the website (append to `EXTERNAL_STATION_CONFIGS` or add via API).
+
 ---
 
 ## 5. Summary
