@@ -100,7 +100,8 @@ app.get("/", (req, res) => {
   });
 });
 
-const STREAM_CHECK_TIMEOUT_MS = 2000;
+const STREAM_CHECK_TIMEOUT_MS = 5000;
+const STREAM_CHECK_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0";
 
 /** Check if a stream URL is reachable (fast; does not read full body). */
 async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: string }> {
@@ -113,7 +114,7 @@ async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: strin
     const response = await fetch(url, {
       method: "GET",
       signal: controller.signal,
-      headers: { "Icy-MetaData": "1" },
+      headers: { "Icy-MetaData": "1", "User-Agent": STREAM_CHECK_USER_AGENT },
     });
     clearTimeout(t);
     const ok = response.ok || response.status === 200 || response.status === 206;

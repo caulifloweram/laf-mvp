@@ -2038,15 +2038,15 @@ function renderUnifiedStations(): void {
         if (!anyFav) return false;
       }
     }
-    // Always hide offline/error stations from the user
+    // Hide offline/error; show unknown and timeout (timeout = slow response, may still work)
     if (item.type === "laf") return true;
     if (item.type === "external") {
       const c = streamStatusCache[item.station.streamUrl];
-      return !c || c.ok;
+      return !c || c.ok || (c && c.status === "timeout");
     }
     const allBad = item.liveChannels.every((ch) => {
       const c = streamStatusCache[ch.streamUrl];
-      return c && !c.ok;
+      return c && !c.ok && c.status !== "timeout";
     });
     return !allBad;
   });
