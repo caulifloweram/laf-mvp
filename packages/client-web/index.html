@@ -184,6 +184,7 @@
       .stations-dial-view { padding: 24px; background: linear-gradient(180deg, #2a2520 0%, #1a1612 100%); border: 3px solid #4a4035; border-radius: 8px; font-family: Georgia, serif; }
       .stations-dial-view.hidden { display: none !important; }
       .dial-face { position: relative; height: 120px; background: linear-gradient(90deg, #3a3530 0%, #4a4540 50%, #3a3530 100%); border-radius: 4px; margin-bottom: 16px; }
+      .dial-tune-label { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 10px; letter-spacing: 0.3em; color: rgba(255,255,255,0.5); }
       .dial-needle { position: absolute; top: 0; bottom: 0; width: 3px; background: #c00; left: 50%; transform: translateX(-50%); pointer-events: none; transition: left 0.15s ease-out; }
       .dial-stations { display: flex; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
       .dial-station-btn { padding: 8px 12px; background: #3a3530; border: 1px solid #5a5045; color: #e0d8d0; font-size: 12px; cursor: pointer; border-radius: 0; font-family: inherit; }
@@ -192,6 +193,7 @@
       .stations-map-view { position: relative; height: 400px; background: #1a3a2a; border: 1px solid var(--border); }
       .stations-map-view.hidden { display: none !important; }
       .stations-map-view svg { width: 100%; height: 100%; display: block; }
+      .map-world-land { fill: #0d2818; stroke: #1a3a2a; stroke-width: 0.5; }
       .map-marker { cursor: pointer; fill: var(--status-live); stroke: var(--surface); stroke-width: 1; }
       .map-marker:hover { fill: var(--accent); }
       .map-marker.playing { fill: var(--accent); }
@@ -753,7 +755,7 @@
         <span id="client-user-email" class="topbar-nav-item hidden"></span>
         <button type="button" id="client-logout-btn" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
         <div id="topbar-search-wrap" class="topbar-search-wrap">
-          <button type="button" class="topbar-search-toggle" id="topbar-search-toggle" aria-label="Search stations" title="Search"><svg class="search-icon-retro" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 10 L14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg></button>
+          <button type="button" class="topbar-search-toggle" id="topbar-search-toggle" aria-label="Search stations" title="Search"><svg class="search-icon-retro" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/><path d="M9.5 9.5 L14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg></button>
           <div class="topbar-search-field">
             <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
             <button type="button" class="topbar-search-close" id="topbar-search-close" aria-label="Close search">&#215;</button>

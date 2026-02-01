@@ -1396,7 +1396,7 @@ function renderUnifiedStations(): void {
   if (mode === "list") {
     filtered.forEach((item) => {
       const name = item.type === "laf" ? item.channel.title : item.type === "external" ? item.station.name : item.config.name;
-      const loc = item.type === "laf" ? "" : item.type === "external" ? (item.station.location || "") : (item.config.location || "");
+      const loc = item.type === "laf" ? "—" : item.type === "external" ? (item.station.location || "—") : (item.config.location || "—");
       let statusText = "—";
       let statusClass = "status-unknown";
       if (item.type === "laf") {
@@ -1419,9 +1419,11 @@ function renderUnifiedStations(): void {
       const bar = document.createElement("button");
       bar.type = "button";
       bar.className = "station-list-bar";
+      if (item.type === "laf" && currentChannel?.id === item.channel.id && ws && ws.readyState === WebSocket.OPEN) bar.classList.add("now-playing");
       if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) bar.classList.add("now-playing");
       if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) bar.classList.add("now-playing");
-      bar.innerHTML = `<span class="list-bar-name">${escapeHtml(name)}</span><span class="list-bar-location">${escapeHtml(loc)}</span><span class="list-bar-status ${statusClass}">${escapeHtml(statusText)}</span>`;
+      const locDisplay = loc || "—";
+      bar.innerHTML = `<span class="list-bar-name">${escapeHtml(name)}</span><span class="list-bar-location">${escapeHtml(locDisplay)}</span><span class="list-bar-status ${statusClass}">${escapeHtml(statusText)}</span>`;
       bar.onclick = () => {
         if (item.type === "laf") selectChannel(item.channel);
         else if (item.type === "external") selectExternalStation(item.station);
@@ -1435,6 +1437,11 @@ function renderUnifiedStations(): void {
   } else if (mode === "dial") {
     const dialFace = document.createElement("div");
     dialFace.className = "dial-face";
+    const tuneLabel = document.createElement("span");
+    tuneLabel.className = "dial-tune-label";
+    tuneLabel.setAttribute("aria-hidden", "true");
+    tuneLabel.textContent = "TUNE";
+    dialFace.appendChild(tuneLabel);
     const needle = document.createElement("div");
     needle.className = "dial-needle";
     needle.style.left = "50%";
@@ -1487,6 +1494,11 @@ function renderUnifiedStations(): void {
     svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
+    // Simplified world land outline (equirectangular 0 0 800 400) so map reads as globe
+    const worldLand = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    worldLand.setAttribute("class", "map-world-land");
+    worldLand.setAttribute("d", "M88,56 L252,52 L268,196 L176,316 L72,272 Z M244,216 L316,212 L324,372 L252,380 L236,316 Z M376,96 L516,92 L528,196 L404,200 L380,136 Z M400,196 L520,196 L532,356 L444,376 L396,324 Z M524,52 L756,48 L768,276 L596,280 L520,196 Z M596,276 L756,272 L764,356 L636,360 Z");
+    svg.appendChild(worldLand);
     const lngToX = (lng: number) => ((lng + 180) / 360) * w;
     const latToY = (lat: number) => ((90 - lat) / 180) * h;
     withCoords.forEach((item) => {
