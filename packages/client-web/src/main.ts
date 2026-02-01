@@ -426,9 +426,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   {
     name: "Radio AlHara",
     description: "Radio AlHara راديو الحارة. Palestinian community radio from Bethlehem. Solidarity, sonic liberation.",
-    websiteUrl: "https://yamakan.place/palestine/",
-    streamUrl: "http://n02.radiojar.com/78cxy6wkxtzuv",
-    logoUrl: "https://yamakan.place/palestine/favicon.ico",
+    websiteUrl: "https://www.radioalhara.net/",
+    streamUrl: "https://n02.radiojar.com/78cxy6wkxtzuv",
+    logoUrl: "https://www.radioalhara.net/img/radio-alhara-logo.svg",
     location: "Bethlehem, Palestine",
     lat: 31.7054,
     lng: 35.2022,
@@ -1635,7 +1635,7 @@ function renderUnifiedStations(): void {
     const suggestCard = document.createElement("button");
     suggestCard.type = "button";
     suggestCard.className = "suggest-card";
-    suggestCard.innerHTML = "<span class=\"suggest-card-title\">Are we missing any other radios?</span> Share with us?";
+    suggestCard.innerHTML = "<span class=\"suggest-card-title\">Are we missing any other radios you like?</span> Share with us.";
     suggestCard.onclick = () => {
       const overlay = document.getElementById("suggest-overlay");
       const urlInput = document.getElementById("suggest-url") as HTMLInputElement;
@@ -3081,27 +3081,150 @@ function setActiveView(route: RouteId) {
   if (route === "admin") onAdminViewShow?.();
 }
 
-function updateThemeButtonText() {
-  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "Light" : "Dark";
-  const btn = document.getElementById("theme-toggle");
-  const btnDrawer = document.getElementById("theme-toggle-drawer");
-  if (btn) btn.textContent = next;
-  if (btnDrawer) btnDrawer.textContent = next;
+const PRESET_BG_COLORS = [
+  "#f5f5f5", "#111111", "#ffffff", "#000000",
+  "#e74c3c", "#2ecc71", "#3498db", "#f1c40f",
+  "#9b59b6", "#1abc9c", "#e67e22", "#ecf0f1",
+  "#2c3e50", "#c0392b", "#27ae60", "#2980b9",
+];
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = hex.replace(/^#/, "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return null;
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
 }
-function initTheme() {
-  const stored = localStorage.getItem("laf_theme") as "light" | "dark" | null;
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const theme = stored || (prefersDark ? "dark" : "light");
-  document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
-  updateThemeButtonText();
-  const toggle = () => {
-    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("laf_theme", next);
-    updateThemeButtonText();
+
+function getLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0.5;
+  const [r, g, b] = rgb.map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function getContrastColors(bgHex: string): {
+  text: string; textMuted: string; border: string; surface: string; cardHover: string;
+  topbarBg: string; topbarText: string; accent: string; accentText: string;
+} {
+  const L = getLuminance(bgHex);
+  const isLight = L > 0.4;
+  if (isLight) {
+    return {
+      text: "#111",
+      textMuted: "#444",
+      border: "#111",
+      surface: "#fff",
+      cardHover: "#eee",
+      topbarBg: "#111",
+      topbarText: "#fff",
+      accent: "#111",
+      accentText: "#fff",
+    };
+  }
+  const rgb = hexToRgb(bgHex);
+  const blend = (k: number) =>
+    rgb ? `rgb(${Math.round(rgb[0] * (1 - k) + 255 * k)},${Math.round(rgb[1] * (1 - k) + 255 * k)},${Math.round(rgb[2] * (1 - k) + 255 * k)})` : "#1a1a1a";
+  return {
+    text: "#eee",
+    textMuted: "#aaa",
+    border: "#eee",
+    surface: blend(0.06),
+    cardHover: blend(0.12),
+    topbarBg: "#000",
+    topbarText: "#eee",
+    accent: "#eee",
+    accentText: "#111",
   };
-  document.getElementById("theme-toggle")?.addEventListener("click", toggle);
-  document.getElementById("theme-toggle-drawer")?.addEventListener("click", toggle);
+}
+
+function applyBgColor(hex: string) {
+  const root = document.documentElement.style;
+  root.setProperty("--bg", hex);
+  const c = getContrastColors(hex);
+  root.setProperty("--text", c.text);
+  root.setProperty("--text-muted", c.textMuted);
+  root.setProperty("--border", c.border);
+  root.setProperty("--surface", c.surface);
+  root.setProperty("--card-hover", c.cardHover);
+  root.setProperty("--topbar-bg", c.topbarBg);
+  root.setProperty("--topbar-text", c.topbarText);
+  root.setProperty("--accent", c.accent);
+  root.setProperty("--accent-text", c.accentText);
+  root.setProperty("--footer-bg", c.topbarBg);
+  root.setProperty("--footer-text", c.topbarText);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", hex);
+  document.querySelectorAll(".color-picker-preview").forEach((el) => {
+    (el as HTMLElement).style.background = hex;
+  });
+  const customInput = document.getElementById("color-picker-custom-input") as HTMLInputElement | null;
+  if (customInput) customInput.value = hex;
+}
+
+function initColorPicker() {
+  const swatchesEl = document.getElementById("color-picker-swatches");
+  if (swatchesEl) {
+    swatchesEl.innerHTML = PRESET_BG_COLORS.map(
+      (hex) => `<button type="button" class="color-swatch" data-color="${hex}" style="background:${hex};" aria-label="Background ${hex}" role="menuitem"></button>`
+    ).join("");
+  }
+
+  const stored = localStorage.getItem("laf_bg_color");
+  if (stored) applyBgColor(stored);
+
+  const pickerDropdown = document.getElementById("color-picker-dropdown");
+  const btn = document.getElementById("color-picker-btn");
+  const btnDrawer = document.getElementById("color-picker-btn-drawer");
+  const customInput = document.getElementById("color-picker-custom-input") as HTMLInputElement | null;
+
+  const closePicker = () => {
+    pickerDropdown?.classList.remove("open");
+    btn?.setAttribute("aria-expanded", "false");
+  };
+
+  const chooseColor = (hex: string) => {
+    applyBgColor(hex);
+    localStorage.setItem("laf_bg_color", hex);
+    closePicker();
+  };
+
+  btn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = pickerDropdown?.classList.toggle("open");
+    btn?.setAttribute("aria-expanded", String(!!open));
+  });
+  btnDrawer?.addEventListener("click", () => {
+    pickerDropdown?.classList.add("open");
+    btn?.setAttribute("aria-expanded", "true");
+    closeMobileNav();
+  });
+
+  document.addEventListener("click", (e) => {
+    const t = e.target as Node;
+    if (
+      pickerDropdown?.classList.contains("open") &&
+      !pickerDropdown.contains(t) &&
+      t !== btn &&
+      !btn?.contains(t) &&
+      t !== btnDrawer &&
+      !btnDrawer?.contains(t)
+    )
+      closePicker();
+  });
+
+  pickerDropdown?.querySelectorAll("[data-color]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const hex = (el as HTMLElement).getAttribute("data-color");
+      if (hex) chooseColor(hex);
+    });
+  });
+
+  customInput?.addEventListener("input", () => {
+    const hex = customInput.value;
+    if (hex) chooseColor(hex);
+  });
 }
 function closeMobileNav() {
   document.body.classList.remove("nav-open");
@@ -3383,7 +3506,7 @@ loadRuntimeConfig().then(() => {
   updateTopBarAuth();
   updateFooterPlayerVisibility();
   setPlayPauseIcons(true, "Start");
-  initTheme();
+  initColorPicker();
   initTopbarClock();
   initSearchToggle();
   initMobileNav();

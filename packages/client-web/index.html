@@ -10,7 +10,7 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
-      /* Light (default) and dark theme */
+      /* Default theme; overridden by user color choice via JS */
       :root {
         --bg: #f5f5f5;
         --surface: #fff;
@@ -27,22 +27,6 @@
         --card-hover: #eee;
         --status-live: #0a7c0a;
         --status-offline: #c00;
-      }
-      [data-theme="dark"] {
-        --bg: #111;
-        --surface: #1a1a1a;
-        --border: #eee;
-        --text: #eee;
-        --text-muted: #aaa;
-        --accent: #eee;
-        --accent-text: #111;
-        --topbar-bg: #000;
-        --topbar-text: #eee;
-        --footer-bg: #000;
-        --footer-text: #eee;
-        --card-hover: #252525;
-        --status-live: #2ecc2e;
-        --status-offline: #e74c3c;
       }
 
       body {
@@ -279,7 +263,8 @@
         min-width: 0;
         flex-shrink: 0;
       }
-      .theme-toggle {
+      .color-picker-wrap { position: relative; }
+      .color-picker-btn {
         background: transparent;
         border: 1px solid rgba(255,255,255,0.5);
         color: var(--topbar-text);
@@ -289,8 +274,44 @@
         font-weight: bold;
         font-family: inherit;
         border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
-      .theme-toggle:hover { background: rgba(255,255,255,0.15); }
+      .color-picker-btn:hover { background: rgba(255,255,255,0.15); }
+      .color-picker-btn .color-picker-preview { width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.5); flex-shrink: 0; }
+      .color-picker-dropdown {
+        display: none;
+        position: fixed;
+        top: calc(var(--topbar-height, 48px) + 8px);
+        right: max(16px, env(safe-area-inset-right));
+        background: var(--topbar-bg);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 6px;
+        padding: 10px;
+        z-index: 30;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        min-width: 160px;
+      }
+      .color-picker-dropdown.open { display: block; }
+      .color-picker-swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .color-swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        border: 2px solid rgba(255,255,255,0.4);
+        cursor: pointer;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .color-swatch:hover { border-color: #fff; transform: scale(1.05); }
+      .color-picker-custom { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
+      .color-picker-custom label { font-size: 11px; color: var(--topbar-text); opacity: 0.9; display: block; margin-bottom: 6px; }
+      .color-picker-custom input[type="color"] { width: 100%; height: 32px; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; cursor: pointer; background: transparent; }
 
       /* Hamburger: visible only on mobile */
       .menu-toggle {
@@ -341,7 +362,7 @@
         overflow-y: auto;
       }
       .nav-drawer .topbar-nav-item { display: block; padding: 12px 14px; min-height: 44px; box-sizing: border-box; }
-      .nav-drawer .theme-toggle { width: 100%; justify-content: center; min-height: 44px; border-radius: 4px; }
+      .nav-drawer .color-picker-btn { width: 100%; justify-content: center; min-height: 44px; border-radius: 4px; }
       body.nav-open .nav-backdrop { display: block; opacity: 1; }
       body.nav-open .nav-drawer { transform: translateX(0); }
 
@@ -907,7 +928,7 @@
         :root { --topbar-height: 44px; }
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
         .topbar-right .topbar-nav-item,
-        .topbar-right .theme-toggle,
+        .topbar-right .color-picker-wrap,
         .topbar-right #client-logout-btn { padding: 5px 6px; font-size: 10px; }
         .topbar-search { width: 72px; min-width: 60px; padding: 4px 6px; font-size: 11px; }
         .player-expanded.fullscreen-mobile { top: 44px; height: calc(100dvh - 44px); }
@@ -942,7 +963,12 @@
       </div>
       <div class="topbar-right" id="client-topbar-right">
         <button type="button" class="topbar-chat-toggle hidden" id="topbar-chat-toggle" aria-label="Open chat" title="Chat"><svg class="chat-icon-retro" viewBox="0 0 16 14" width="16" height="14" aria-hidden="true"><path d="M1 1 L15 1 L15 9 L9 9 L5 13 L5 9 L1 9 Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg></button>
-        <button type="button" class="theme-toggle topbar-desktop-only" id="theme-toggle" aria-label="Toggle dark mode">Dark</button>
+        <div class="color-picker-wrap topbar-desktop-only" id="color-picker-wrap">
+          <button type="button" class="color-picker-btn" id="color-picker-btn" aria-label="Choose background color" aria-expanded="false" aria-haspopup="true">
+            <span class="color-picker-preview" id="color-picker-preview" style="background: var(--bg);"></span>
+            Color
+          </button>
+        </div>
         <a href="#" id="client-signin-link" class="topbar-nav-item topbar-desktop-only">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item topbar-desktop-only hidden"></span>
         <button type="button" id="client-logout-btn" class="topbar-desktop-only hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
@@ -956,12 +982,22 @@
         <span id="topbar-clock" class="topbar-clock topbar-desktop-only" aria-live="polite"></span>
       </div>
     </nav>
+    <div class="color-picker-dropdown" id="color-picker-dropdown" role="menu" aria-label="Background color">
+      <div class="color-picker-swatches" id="color-picker-swatches"></div>
+      <div class="color-picker-custom">
+        <label for="color-picker-custom-input">Custom</label>
+        <input type="color" id="color-picker-custom-input" value="#f5f5f5" aria-label="Custom color" />
+      </div>
+    </div>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
       <a href="#live" class="topbar-nav-item" data-nav="live">LAF</a>
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item" id="drawer-broadcast">Broadcast</a>
       <a href="#admin" class="topbar-nav-item hidden" id="drawer-admin">Admin</a>
-      <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
+      <button type="button" class="color-picker-btn" id="color-picker-btn-drawer" aria-label="Choose background color">
+        <span class="color-picker-preview" style="background: var(--bg);"></span>
+        Color
+      </button>
       <a href="#" id="client-signin-link-drawer" class="topbar-nav-item">Sign in</a>
       <span id="client-user-email-drawer" class="topbar-nav-item hidden"></span>
       <button type="button" id="client-logout-btn-drawer" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:10px 14px;width:100%;text-align:left;font-weight:bold;cursor:pointer;">Logout</button>
