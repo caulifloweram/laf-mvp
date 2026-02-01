@@ -1089,6 +1089,7 @@ async function loadExternalStations(): Promise<void> {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
   restoreStreamStatusCacheFromStorage();
+  saveStationsSnapshot();
   renderExternalStations();
   };
   const timeoutPromise = new Promise<void>((_, reject) =>
@@ -1097,6 +1098,7 @@ async function loadExternalStations(): Promise<void> {
   await Promise.race([doLoad(), timeoutPromise]).catch(() => {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     restoreStreamStatusCacheFromStorage();
+    saveStationsSnapshot();
     renderExternalStations();
   });
 }
@@ -1711,6 +1713,43 @@ let streamCheckInProgress = false;
 const STREAM_CACHE_STORAGE_KEY = "laf_stream_status_cache";
 const STREAM_CACHE_TTL_MS = 30 * 60 * 1000; // 30 min
 let streamCacheSaveTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+const STATIONS_SNAPSHOT_KEY = "laf_stations_snapshot";
+const STATIONS_SNAPSHOT_TTL_MS = 10 * 60 * 1000; // 10 min – show cached list immediately on repeat visit (desktop + mobile)
+
+function saveStationsSnapshot(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(
+      STATIONS_SNAPSHOT_KEY,
+      JSON.stringify({
+        t: Date.now(),
+        stations: allExternalStations,
+        streamStatus: { ...streamStatusCache },
+      })
+    );
+  } catch (_) {
+    // ignore quota / private
+  }
+}
+
+function restoreStationsSnapshot(): boolean {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(STATIONS_SNAPSHOT_KEY) : null;
+    if (!raw) return false;
+    const data = JSON.parse(raw) as { t: number; stations?: ExternalStation[]; streamStatus?: Record<string, { ok: boolean; status: string }> };
+    if (!data?.stations?.length || Date.now() - (data.t || 0) > STATIONS_SNAPSHOT_TTL_MS) return false;
+    allExternalStations = data.stations;
+    if (data.streamStatus && typeof data.streamStatus === "object") {
+      for (const [url, entry] of Object.entries(data.streamStatus)) {
+        if (url && entry && typeof entry.ok === "boolean") streamStatusCache[url] = { ok: entry.ok, status: entry.status || "error" };
+      }
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 /** Return URL to use for Audio() playback. Use API proxy when page is HTTPS and stream is HTTP (mixed content). */
 function getExternalStreamPlaybackUrl(streamUrl: string): string {
@@ -4329,8 +4368,21 @@ loadRuntimeConfig().then(() => {
   initAdminForm();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
-  if (getRoute() === "live") startInitialLoadScreen();
-  loadExternalStations();
+  if (getRoute() === "live") {
+    if (restoreStationsSnapshot()) {
+      renderExternalStations();
+      loadExternalStations().then(() => {
+        saveStationsSnapshot();
+        renderExternalStations();
+        setTimeout(runFullStreamCheck, 100);
+      });
+    } else {
+      startInitialLoadScreen();
+      loadExternalStations();
+    }
+  } else {
+    loadExternalStations();
+  }
   if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();
   setInterval(loadChannels, 15000);
