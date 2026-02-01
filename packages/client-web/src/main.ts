@@ -2130,7 +2130,7 @@ function getStatusLabel(
   return { text: label, statusClass };
 }
 
-const STREAM_CHECK_TIMEOUT_MS = 3500;
+const STREAM_CHECK_TIMEOUT_MS = 5500;
 const STREAM_CHECK_BATCH_SIZE = 6;
 /** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
@@ -2198,12 +2198,14 @@ function markStreamUnavailable(streamUrl: string): void {
   renderUnifiedStations();
 }
 
-/** Verify in the browser that the stream can actually be played (same URL as user would get). Returns true if canplay/playing, false on error or timeout. */
-function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
+const VERIFY_TIMEOUT_MS = 12000;
+const VERIFY_RETRY_TIMEOUT_MS = 18000;
+
+/** Single attempt to verify a stream in the browser. Returns true if canplay/playing, false on error or timeout. */
+function verifyStreamInBrowserOnce(streamUrl: string, timeoutMs: number): Promise<boolean> {
   return new Promise((resolve) => {
     const playbackUrl = getExternalStreamPlaybackUrl(streamUrl);
     const audio = new Audio();
-    const VERIFY_TIMEOUT_MS = 12000;
     let settled = false;
     const cleanup = () => {
       if (settled) return;
@@ -2217,7 +2219,7 @@ function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
     const timer = setTimeout(() => {
       cleanup();
       resolve(false);
-    }, VERIFY_TIMEOUT_MS);
+    }, timeoutMs);
     audio.oncanplay = () => {
       cleanup();
       resolve(true);
@@ -2234,29 +2236,54 @@ function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
   });
 }
 
-/** Check a single stream (used on demand when user selects, or in full check). Skips if already cached unless force. When API says ok, we verify in browser before showing LIVE. */
-function checkOneStream(streamUrl: string, force = false): Promise<void> {
-  if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
+/** Verify stream in browser; retries once with longer timeout if first attempt fails (handles slow/buffering streams). */
+function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
+  return verifyStreamInBrowserOnce(streamUrl, VERIFY_TIMEOUT_MS).then((ok) => {
+    if (ok) return true;
+    return verifyStreamInBrowserOnce(streamUrl, VERIFY_RETRY_TIMEOUT_MS);
+  });
+}
+
+/** Run one API stream-check attempt with given timeout. Returns { ok, status } or throws on network error. */
+function checkOneStreamApi(streamUrl: string, timeoutMs: number): Promise<{ ok: boolean; status: string }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(streamUrl)}`, { signal: controller.signal })
     .then((res) => res.json() as Promise<{ ok?: boolean; status?: string }>)
     .then((data) => {
       clearTimeout(timeoutId);
-      if (data.ok) {
+      return { ok: !!data.ok, status: data.status || "error" };
+    })
+    .catch(() => {
+      clearTimeout(timeoutId);
+      throw new Error("check_failed");
+    });
+}
+
+const STREAM_CHECK_RETRY_TIMEOUT_MS = Math.round(STREAM_CHECK_TIMEOUT_MS * 1.5);
+
+/** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. */
+function checkOneStream(streamUrl: string, force = false): Promise<void> {
+  if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
+
+  const doCheck = (timeoutMs: number): Promise<void> =>
+    checkOneStreamApi(streamUrl, timeoutMs).then(({ ok, status }) => {
+      if (ok) {
         streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
         updateCardStatus(streamUrl, false, "verifying");
         verifyStreamInBrowser(streamUrl).then((verified) => {
           updateCardStatus(streamUrl, verified, verified ? "live" : "error");
         });
       } else {
-        updateCardStatus(streamUrl, false, data.status || "error");
+        updateCardStatus(streamUrl, false, status);
       }
-    })
-    .catch(() => {
-      clearTimeout(timeoutId);
-      updateCardStatus(streamUrl, false, "error");
     });
+
+  return doCheck(STREAM_CHECK_TIMEOUT_MS).catch(() =>
+    doCheck(STREAM_CHECK_RETRY_TIMEOUT_MS).catch(() => {
+      updateCardStatus(streamUrl, false, "error");
+    })
+  );
 }
 
 /** Show initial loading screen for INITIAL_LOAD_MS, animate progress bar, then hide and reveal the stations grid. */

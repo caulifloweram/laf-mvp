@@ -192,12 +192,12 @@
       .stations-checking-banner { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; padding: 8px 0; }
       .stations-checking-banner.hidden { display: none !important; }
 
-      /* Initial loading screen (first 10s on live view) */
-      .view-live-wrap { position: relative; min-height: 40vh; }
+      /* Initial loading screen (first 10s on live view) – fixed so visible without scroll */
+      .view-live-wrap { position: relative; }
       .initial-loading-screen {
-        position: absolute;
+        position: fixed;
         inset: 0;
-        z-index: 10;
+        z-index: 25;
         background: var(--bg);
         display: flex;
         align-items: center;
