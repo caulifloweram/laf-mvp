@@ -1002,11 +1002,22 @@ function restoreStreamStatusCacheFromStorage(): void {
   try {
     const raw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(STREAM_CACHE_STORAGE_KEY) : null;
     if (!raw) return;
-    const data = JSON.parse(raw) as { t: number; cache: Record<string, { ok: boolean; status: string }> };
+    const data = JSON.parse(raw) as { t: number; cache: Record<string, { ok: boolean; status: string }>; urlCount?: number };
     if (Date.now() - data.t > STREAM_CACHE_TTL_MS) return;
-    const urls = new Set(getAllStreamUrls());
+    const currentUrls = getAllStreamUrls();
+    if (data.urlCount != null && data.urlCount !== currentUrls.length) return;
+    const urlSet = new Set(currentUrls);
+    let restored = 0;
+    let okCount = 0;
     for (const [url, entry] of Object.entries(data.cache || {})) {
-      if (urls.has(url)) streamStatusCache[url] = entry;
+      if (urlSet.has(url)) {
+        streamStatusCache[url] = entry;
+        restored++;
+        if (entry.ok) okCount++;
+      }
+    }
+    if (restored > 0 && okCount / restored < 0.15) {
+      currentUrls.forEach((u) => delete streamStatusCache[u]);
     }
   } catch (_) {
     // ignore
@@ -1021,7 +1032,7 @@ function scheduleSaveStreamStatusCache(): void {
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.setItem(
           STREAM_CACHE_STORAGE_KEY,
-          JSON.stringify({ t: Date.now(), cache: { ...streamStatusCache } })
+          JSON.stringify({ t: Date.now(), cache: { ...streamStatusCache }, urlCount: getAllStreamUrls().length })
         );
       }
     } catch (_) {
