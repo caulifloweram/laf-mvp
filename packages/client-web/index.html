@@ -367,7 +367,6 @@
         width: 48px;
         height: 48px;
         object-fit: contain;
-        border: 1px solid var(--border);
       }
       .external-station-card .ext-station-initial {
         position: absolute;
@@ -379,7 +378,6 @@
         font-weight: bold;
         color: var(--text);
         background: var(--card-hover);
-        border: 1px solid var(--border);
       }
       .external-station-card .ext-station-initial.hidden { display: none; }
       .external-station-card .ext-station-name-only {
@@ -400,7 +398,28 @@
       .external-station-card .ext-stream-status.status-error,
       .external-station-card .ext-stream-status.status-timeout { color: var(--status-offline); }
       .external-station-card.stream-offline { opacity: 0.85; }
-      .external-station-card-multi .ext-channels-list { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+      .external-station-card-multi .ext-channels-toggle {
+        margin-top: 8px;
+        padding: 6px 10px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        font-family: inherit;
+        text-align: left;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        cursor: pointer;
+        box-sizing: border-box;
+      }
+      .external-station-card-multi .ext-channels-toggle:hover { background: var(--card-hover); }
+      .external-station-card-multi .ext-channels-toggle .ext-channels-chevron { transition: transform 0.2s; }
+      .external-station-card-multi.ext-channels-open .ext-channels-toggle .ext-channels-chevron { transform: rotate(180deg); }
+      .external-station-card-multi .ext-channels-list { margin-top: 0; border-top: 1px solid var(--border); padding-top: 8px; display: none; flex-direction: column; gap: 4px; }
+      .external-station-card-multi.ext-channels-open .ext-channels-list { display: flex; }
       .ext-channel-row {
         display: flex; align-items: center; justify-content: space-between; gap: 8px;
         padding: 6px 10px; text-align: left; font-size: 12px; font-family: inherit;

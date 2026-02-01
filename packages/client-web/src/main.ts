@@ -345,7 +345,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     name: "The Lake Radio",
     description: "Independent online community radio from Copenhagen. Experimental, alternative, avant-garde music and sound art 24/7.",
     websiteUrl: "https://thelakeradio.com/",
-    streamUrl: "http://hyades.shoutca.st:8627/",
+    streamUrl: "https://thelakeradio.out.airtime.pro/thelakeradio_a",
     logoUrl: "https://thelakeradio.com/favicon.ico",
   },
 ];
@@ -1227,27 +1227,23 @@ function renderUnifiedStations(): void {
       const hasLogo = !!station.logoUrl;
       const initial = (station.name.trim().charAt(0) || "?").toUpperCase();
       const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
-      const logoHtml = hasLogo
-        ? logoFailed
-          ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
-          : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
+      const showLogoArea = hasLogo && !logoFailed;
+      const logoHtml = showLogoArea
+        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
       card.innerHTML = `
         ${logoHtml}
-        ${hasLogo ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
+        ${showLogoArea ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
         <div class="ext-desc">${escapeHtml(station.description)}</div>
         <a class="ext-link" href="${escapeAttr(station.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
         <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
         ${token ? `<button type="button" class="station-card-fav ${favoriteRefs.has("external:" + station.streamUrl) ? "favorited" : ""}" data-kind="external" data-ref="${escapeAttr(station.streamUrl)}" aria-label="Favorite">${favoriteRefs.has("external:" + station.streamUrl) ? "♥" : "♡"}</button>` : ""}
       `;
-      if (hasLogo && !logoFailed) {
+      if (showLogoArea) {
         const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
-        const fallback = card.querySelector(".ext-station-initial");
-        if (img && fallback) {
+        if (img) {
           img.onerror = () => {
             logoLoadFailed.add(station.streamUrl);
-            img.style.display = "none";
-            fallback.classList.remove("hidden");
             renderUnifiedStations();
           };
         }
@@ -1270,12 +1266,10 @@ function renderUnifiedStations(): void {
       const config = item.config;
       const liveChannels = item.liveChannels;
       const hasLogo = !!config.logoUrl;
-      const initial = (config.name.trim().charAt(0) || "?").toUpperCase();
       const logoFailed = hasLogo && logoLoadFailed.has(config.logoUrl);
-      const logoHtml = hasLogo
-        ? logoFailed
-          ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
-          : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
+      const showLogoArea = hasLogo && !logoFailed;
+      const logoHtml = showLogoArea
+        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(config.name)}</div>`;
       const channelRows = liveChannels
         .map((ch) => {
@@ -1293,23 +1287,40 @@ function renderUnifiedStations(): void {
       card.style.position = "relative";
       card.innerHTML = `
         ${logoHtml}
-        ${hasLogo ? `<div class="ext-name">${escapeHtml(config.name)}</div>` : ""}
+        ${showLogoArea ? `<div class="ext-name">${escapeHtml(config.name)}</div>` : ""}
         <div class="ext-desc">${escapeHtml(config.description)}</div>
         <a class="ext-link" href="${escapeAttr(config.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
+        <button type="button" class="ext-channels-toggle" aria-expanded="false">
+          <span>${liveChannels.length} channel${liveChannels.length !== 1 ? "s" : ""}</span>
+          <span class="ext-channels-chevron">▾</span>
+        </button>
         <div class="ext-channels-list">${channelRows}</div>
       `;
-      if (hasLogo && !logoFailed) {
+      if (showLogoArea) {
         const img = card.querySelector<HTMLImageElement>(".ext-station-logo");
-        const fallback = card.querySelector(".ext-station-initial");
-        if (img && fallback) {
+        if (img) {
           img.onerror = () => {
             logoLoadFailed.add(config.logoUrl);
             renderUnifiedStations();
           };
         }
       }
-      card.onclick = (e) => {
-        if ((e.target as HTMLElement).closest("a.ext-link")) return;
+      const toggleBtn = card.querySelector<HTMLButtonElement>(".ext-channels-toggle");
+      if (toggleBtn) {
+        const isPlayingOneOfChannels = currentExternalStation && liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl);
+        if (isPlayingOneOfChannels) {
+          card.classList.add("ext-channels-open");
+          toggleBtn.setAttribute("aria-expanded", "true");
+        }
+        toggleBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          card.classList.toggle("ext-channels-open");
+          toggleBtn.setAttribute("aria-expanded", card.classList.contains("ext-channels-open") ? "true" : "false");
+        });
+      }
+      card.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).closest("a.ext-link") || (e.target as HTMLElement).closest(".ext-channels-toggle")) return;
         const row = (e.target as HTMLElement).closest(".ext-channel-row");
         if (row) {
           e.preventDefault();
@@ -1327,7 +1338,7 @@ function renderUnifiedStations(): void {
             }
           }
         }
-      };
+      });
       stationsGrid.appendChild(card);
     }
   });
@@ -1463,11 +1474,11 @@ function selectExternalStation(station: ExternalStation) {
       logoLoadFailed.add(station.streamUrl);
       playerCover.style.display = "none";
       playerCover.removeAttribute("src");
-      playerCoverInitial.textContent = initial;
-      playerCoverInitial.classList.remove("hidden");
+      playerCoverInitial.classList.add("hidden");
+      playerCoverWrap.classList.remove("placeholder");
     };
   } else {
-    playerCoverWrap.classList.add("placeholder");
+    playerCoverWrap.classList.remove("placeholder");
     playerCover.removeAttribute("src");
     playerCoverInitial.classList.add("hidden");
   }
