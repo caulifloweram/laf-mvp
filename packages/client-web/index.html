@@ -529,13 +529,16 @@
       .external-station-card.stream-offline { opacity: 0.85; }
       .ext-card-loading-overlay {
         position: absolute; inset: 0;
-        background: rgba(255,255,255,0.9);
+        background: rgba(255,255,255,0.92);
         display: flex; align-items: center; justify-content: center;
         font-size: 12px; font-weight: bold; color: var(--text-muted);
-        pointer-events: none; opacity: 0; transition: opacity 0.12s ease;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
         border-radius: inherit;
       }
-      .external-station-card.card-loading:hover .ext-card-loading-overlay { opacity: 1; }
+      .external-station-card.card-loading .ext-card-loading-overlay { opacity: 1; }
+      .external-station-card.ext-card-hidden-by-filter { display: none !important; }
       .external-station-card-multi .ext-channels-toggle {
         margin-top: 8px;
         padding: 6px 10px;

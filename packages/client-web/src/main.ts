@@ -2122,9 +2122,14 @@ const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
+const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
+
 function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
   scheduleSaveStreamStatusCache();
+  const hideWhenOffline = !showOfflineFilter?.checked;
+  const isBad = !ok && BAD_STATUSES.has(status);
+
   document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
     const el = card.querySelector(".ext-stream-status");
     if (!el) return;
@@ -2135,6 +2140,7 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
     if (ok) card.classList.remove("stream-offline");
     else card.classList.add("stream-offline");
     card.classList.toggle("card-loading", status === "verifying");
+    card.classList.toggle("ext-card-hidden-by-filter", hideWhenOffline && isBad);
   });
   document.querySelectorAll<HTMLElement>(`.ext-channel-row[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((row) => {
     const el = row.querySelector(".ext-stream-status");
@@ -2153,6 +2159,13 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
         return !c || c.status === "verifying";
       });
       multiCard.classList.toggle("card-loading", anyLoading);
+      const allBad = rows.length > 0 && Array.from(rows).every((r) => {
+        const u = r.getAttribute("data-stream-url");
+        if (!u) return true;
+        const c = streamStatusCache[u];
+        return c && !c.ok && BAD_STATUSES.has(c.status);
+      });
+      multiCard.classList.toggle("ext-card-hidden-by-filter", hideWhenOffline && allBad);
     }
   });
 }
@@ -2213,10 +2226,8 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
       if (data.ok) {
         streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
         updateCardStatus(streamUrl, false, "verifying");
-        renderUnifiedStations();
         verifyStreamInBrowser(streamUrl).then((verified) => {
           updateCardStatus(streamUrl, verified, verified ? "live" : "error");
-          renderUnifiedStations();
         });
       } else {
         updateCardStatus(streamUrl, false, data.status || "error");
@@ -2228,7 +2239,20 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
     });
 }
 
-/** Run stream checks for all URLs in batches in the background. List is already visible; cards update via updateCardStatus. */
+/** Update only the "Checking stream availability…" banner. Called when stream checks complete so we don't re-render the whole grid. */
+function updateCheckingBanner(): void {
+  if (!stationsCheckingBanner) return;
+  const allUrls = getAllStreamUrls();
+  const uncachedCount = allUrls.filter((u) => streamStatusCache[u] === undefined).length;
+  if (uncachedCount > 0) {
+    stationsCheckingBanner.classList.remove("hidden");
+    stationsCheckingBanner.textContent = "Checking stream availability…";
+  } else {
+    stationsCheckingBanner.classList.add("hidden");
+  }
+}
+
+/** Run stream checks for all URLs in batches in the background. List is already visible; cards update in place via updateCardStatus (no full re-render). */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
@@ -2243,7 +2267,7 @@ function runFullStreamCheck() {
     Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
       if (index >= toCheck.length) {
         streamCheckInProgress = false;
-        renderUnifiedStations();
+        updateCheckingBanner();
       } else {
         setTimeout(runNextBatch, 800);
       }
