@@ -87,10 +87,6 @@ interface ExternalStation {
   lat?: number;
   /** Longitude for world map mode (e.g. 13.405). */
   lng?: number;
-  /** Music/style tags for filtering (e.g. electronic, community, freeform). See docs/MUSICAL_EXPERT_KNOWLEDGE.md. */
-  tags?: string[];
-  /** Group for sorting (e.g. community, eclectic, electronic). */
-  group?: string;
 }
 
 /** Station config: single stream or multiple channels (e.g. SomaFM). */
@@ -108,10 +104,6 @@ interface ExternalStationConfig {
   lng?: number;
   /** If set, one card per channel; otherwise one card using streamUrl. */
   channels?: Array<{ name: string; streamUrl: string }>;
-  /** Music/style tags for filtering. See docs/MUSICAL_EXPERT_KNOWLEDGE.md. */
-  tags?: string[];
-  /** Group for sorting (community, eclectic, electronic, etc.). */
-  group?: string;
 }
 
 const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
@@ -827,64 +819,64 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "WMMT", description: "Freeform. Kentucky.", websiteUrl: "https://www.wmmt.org/", streamUrl: "https://aurora.shoutca.st/radio/8200/radio.mp3?", logoUrl: "https://www.wmmt.org/apple-touch-icon.png", location: "USA" },
   { name: "WCWM", description: "College, freeform. Virginia.", websiteUrl: "https://wcwm.wm.edu/", streamUrl: "https://wcwm.broadcasttool.stream/wcwm-onair", logoUrl: "https://wcwm.wm.edu/wp-content/uploads/2023/12/wcwm_website_headerlogo-1.svg", location: "USA" },
   // Musical Expert candidate stations (docs/candidate-stations-feed.json)
-  { name: "KPFA 94.1 FM", description: "Community-supported radio from Berkeley, California. Pacifica network.", websiteUrl: "https://kpfa.org/", streamUrl: "https://streams.kpfa.org:8443/kpfa", logoUrl: "", location: "Berkeley, California, USA", tags: ["community", "eclectic", "talk"], group: "community" },
-  { name: "Radio Ngāti Porou", description: "Community radio from Ngāti Porou, Aotearoa. Iwi, kapa haka, Māori culture.", websiteUrl: "https://radiongatiporou.com/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:NgatiPorou.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Porou, New Zealand", tags: ["community", "world", "folk"], group: "world" },
-  { name: "Fresh 92.7", description: "Community radio from South Australia. Music, pop, local.", websiteUrl: "https://fresh927.com.au/", streamUrl: "https://live.fresh927.com.au/freshaac", logoUrl: "", location: "South Australia, Australia", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "WRTU 89.7 Radio Universidad de Puerto Rico", description: "University radio from San Juan, Puerto Rico. Public radio.", websiteUrl: "http://www.wrtu.pr/", streamUrl: "http://streaming.radiouniversidad.pr:8062/;", logoUrl: "", location: "San Juan, Puerto Rico", tags: ["college", "community", "world"], group: "college" },
-  { name: "Radio Casa Pueblo", description: "Community radio from Puerto Rico. Environment, Spanish talk, variety.", websiteUrl: "http://casapueblo.org/", streamUrl: "http://s1.voscast.com:9906/;stream1523840050300/1", logoUrl: "", location: "San Juan, Puerto Rico", tags: ["community", "world", "talk"], group: "community" },
-  { name: "Radio Bolivariana FM", description: "Universidad Pontificia Bolivariana, Medellín. College radio, jazz, classical.", websiteUrl: "http://www.radiobolivarianavirtual.com/medellin-colombia", streamUrl: "http://streaming.radiobolivarianavirtual.com:7630/", logoUrl: "", location: "Medellín, Colombia", tags: ["college", "jazz", "classical"], group: "college" },
-  { name: "Radio Študent", description: "Cultural public student radio from Slovenia.", websiteUrl: "http://radiostudent.si/", streamUrl: "http://kruljo.radiostudent.si:8000/hiq", logoUrl: "", location: "Ljubljana, Slovenia", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "Radio SAR", description: "Studencka Agencja Radiowa, Gdańsk. Blues, jazz, metal.", websiteUrl: "https://radiosar.pl/", streamUrl: "https://stream.radiosar.pl/hdmain.mp3", logoUrl: "", location: "Gdańsk, Poland", tags: ["college", "jazz", "rock", "metal"], group: "college" },
-  { name: "WUVT 90.7 Virginia Tech", description: "College radio from Blacksburg, VA.", websiteUrl: "https://www.wuvt.vt.edu/", streamUrl: "http://engine.wuvt.vt.edu:8000/wuvt.ogg", logoUrl: "", location: "Blacksburg, Virginia, USA", tags: ["college", "eclectic"], group: "college" },
-  { name: "Radio Blau", description: "Community free radio from Leipzig. Independent music.", websiteUrl: "http://www.radioblau.de/", streamUrl: "http://stream.radioblau.de/", logoUrl: "", location: "Leipzig, Germany", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "2FBI FBi Radio 94.5", description: "Community radio from Sydney. Eclectic, indie.", websiteUrl: "http://fbiradio.com/", streamUrl: "https://streamer.fbiradio.com/stream", logoUrl: "", location: "Sydney, Australia", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "Fréquence Mutine", description: "Community radio from Bretagne. Electro, hip-hop, punk.", websiteUrl: "http://www.frequencemutine.fr/", streamUrl: "http://icecast.infini.fr:8000/mutine", logoUrl: "", location: "Bretagne, France", tags: ["electronic", "hiphop", "punk", "community"], group: "electronic" },
-  { name: "WNCU 90.7 Jazz", description: "Jazz from NC Central University, Durham.", websiteUrl: "http://www.wncu.org/", streamUrl: "http://wncu.streamguys1.com/live", logoUrl: "", location: "Durham, North Carolina, USA", tags: ["jazz", "college"], group: "college" },
-  { name: "Radio UNAM FM 96.1", description: "UNAM university radio, Mexico City. Culture, college.", websiteUrl: "https://www.radio.unam.mx/", streamUrl: "https://tv.radiohosting.online:9484/stream", logoUrl: "", location: "Mexico City, Mexico", tags: ["college", "community", "world"], group: "college" },
-  { name: "WHRB 95.3 Harvard Radio", description: "Harvard Radio Broadcasting, Cambridge. University, variety.", websiteUrl: "https://www.whrb.org/", streamUrl: "http://stream.whrb.org:8000/whrb-mp3", logoUrl: "", location: "Cambridge, Massachusetts, USA", tags: ["college", "eclectic"], group: "college" },
-  { name: "Radio Free Brooklyn", description: "Community radio from Brooklyn, NY. Culture, New York City.", websiteUrl: "http://radiofreebrooklyn.com/", streamUrl: "http://us1.internet-radio.com:8155/live", logoUrl: "", location: "Brooklyn, New York, USA", tags: ["community", "eclectic"], group: "community" },
-  { name: "3RRR Triple R 102.7 FM", description: "Community radio from Melbourne. Independent, eclectic.", websiteUrl: "http://www.rrr.org.au/", streamUrl: "http://realtime.rrr.org.au/p1l", logoUrl: "", location: "Melbourne, Australia", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "Radio Almaina", description: "Community free radio from Granada, Spain.", websiteUrl: "https://radioalmaina.org/", streamUrl: "http://s.streampunk.cc/almaina.ogg", logoUrl: "", location: "Granada, Spain", tags: ["community", "eclectic"], group: "community" },
-  { name: "Radio Cavolo", description: "Community radio from Italy. Eclectic, electronic, pop, rock.", websiteUrl: "https://www.radiocavolo.org/", streamUrl: "https://radiocavolo.org/stream", logoUrl: "", location: "Italy", tags: ["electronic", "rock", "eclectic", "community"], group: "eclectic" },
-  { name: "Izwi LoMzansi", description: "Community radio from KwaZulu-Natal. African music, folk, kwaito.", websiteUrl: "https://izwi98fm.co.za/", streamUrl: "https://streaming.fabrik.fm/izwi/echocast/audio/index.m3u8", logoUrl: "", location: "KwaZulu-Natal, South Africa", tags: ["world", "folk", "community"], group: "world" },
-  { name: "KXRY 91.1 X Ray FM", description: "Community radio from Portland, Oregon.", websiteUrl: "https://xray.fm/", streamUrl: "http://listen.xray.fm:8000/stream", logoUrl: "", location: "Portland, Oregon, USA", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "Subtle Radio", description: "Community radio from London. Music, variety.", websiteUrl: "https://www.subtleradio.com/", streamUrl: "https://subtle.out.airtime.pro/subtle_a", logoUrl: "", location: "London, UK", tags: ["community", "eclectic"], group: "community" },
-  { name: "Compass FM", description: "Community radio from New Zealand. Local news, variety.", websiteUrl: "http://compassfm.org.nz/", streamUrl: "http://stream.compassfm.org.nz:8000/Compass_FM_104.9", logoUrl: "", location: "New Zealand", tags: ["community", "eclectic"], group: "community" },
-  { name: "Raidió na Life", description: "Community radio from Ireland.", websiteUrl: "http://www.raidionalife.ie/", streamUrl: "http://beryl.streamguys.com:5010/live", logoUrl: "", location: "Ireland", tags: ["community", "world"], group: "community" },
-  { name: "Oroko Radio", description: "Alternative community radio from Accra. Music, variety.", websiteUrl: "https://oroko.live/", streamUrl: "https://oroko-radio.radiocult.fm/stream", logoUrl: "", location: "Accra, Ghana", tags: ["community", "world", "eclectic"], group: "world" },
-  { name: "WBEZ-HD2 Vocalo", description: "Community radio from Chicago. Variety, world music.", websiteUrl: "http://vocalo.org/", streamUrl: "http://stream.vocalo.org/vocalo128", logoUrl: "", location: "Chicago, Illinois, USA", tags: ["community", "world", "eclectic"], group: "community" },
-  { name: "CHYZ 94.3 Université Laval", description: "University radio from Quebec City.", websiteUrl: "http://chyz.ca/", streamUrl: "http://ecoutez.chyz.ca:8000/;", logoUrl: "", location: "Quebec City, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "coloRadio", description: "Community free radio from Dresden.", websiteUrl: "https://coloradio.org/", streamUrl: "http://streaming.fueralle.org:8000/coloradio_160.mp3", logoUrl: "", location: "Dresden, Germany", tags: ["community", "eclectic"], group: "community" },
-  { name: "CITR 101.9 UBC", description: "University of British Columbia radio, Vancouver.", websiteUrl: "http://www.citr.ca/", streamUrl: "http://live.citr.ca:8000/live.mp3", logoUrl: "", location: "Vancouver, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "Three D Radio", description: "Community radio from South Australia.", websiteUrl: "http://www.threedradio.com/", streamUrl: "http://sounds.threedradio.com:8000/stream", logoUrl: "", location: "South Australia, Australia", tags: ["community", "eclectic"], group: "community" },
-  { name: "WWNO Jazz Stream", description: "Jazz stream from University of New Orleans.", websiteUrl: "http://wwno.org/", streamUrl: "http://tektite.streamguys1.com:5140/wwnojazz-mp3", logoUrl: "", location: "New Orleans, Louisiana, USA", tags: ["jazz", "college"], group: "college" },
-  { name: "Cause Commune", description: "Radio libre from Île-de-France. Alternative, information, opinion.", websiteUrl: "https://cause-commune.fm/", streamUrl: "http://vdl.stream-lat.org:8000/voixdulat_mp3", logoUrl: "", location: "Paris, France", tags: ["community", "talk", "eclectic"], group: "community" },
-  { name: "95bFM", description: "University of Auckland student radio. Alternative, eclectic.", websiteUrl: "https://95bfm.com/", streamUrl: "https://streams.95bfm.com/stream95", logoUrl: "", location: "Auckland, New Zealand", tags: ["college", "eclectic", "rock"], group: "college" },
-  { name: "Sub FM", description: "Dub, dubstep, drum 'n' bass, deep house from New Zealand.", websiteUrl: "https://www.sub.fm/", streamUrl: "https://fmsub.radioca.st/stream?type=http&nocache=140", logoUrl: "", location: "Tauranga, New Zealand", tags: ["dub", "electronic", "dance"], group: "electronic" },
-  { name: "Foundation FM", description: "Community radio from London. Electronic, hip-hop, indie.", websiteUrl: "https://foundation.fm/", streamUrl: "https://streamer.radio.co/s0628bdd53/listen", logoUrl: "", location: "London, UK", tags: ["electronic", "hiphop", "rock", "community"], group: "electronic" },
-  { name: "CJSR 88.5 University of Alberta", description: "Community radio from Edmonton. University, eclectic.", websiteUrl: "http://cjsr.com/", streamUrl: "http://cjsr.streamon.fm:8000/CJSR-24k.aac", logoUrl: "", location: "Edmonton, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "WEAA 88.9 Morgan State University", description: "Baltimore. Hip-hop, jazz, NPR affiliate.", websiteUrl: "http://weaa.org/", streamUrl: "http://amber.streamguys.com:4020/live", logoUrl: "", location: "Baltimore, Maryland, USA", tags: ["hiphop", "jazz", "college"], group: "college" },
-  { name: "CKWR 98.5 Real Community Radio", description: "Community radio from Kitchener, Ontario. Multilingual.", websiteUrl: "https://ckwr.com/", streamUrl: "https://stream2.statsradio.com:8150/stream", logoUrl: "", location: "Kitchener, Canada", tags: ["community", "world", "eclectic"], group: "community" },
-  { name: "KAZI 88.7", description: "Community radio from Austin, Texas. Urban contemporary.", websiteUrl: "http://www.kazifm.org/", streamUrl: "http://ice8.securenetsystems.net/KAZI", logoUrl: "", location: "Austin, Texas, USA", tags: ["community", "hiphop", "soul"], group: "community" },
-  { name: "Freies Sender Kombinat Hamburg", description: "Community free radio from Hamburg. FSK.", websiteUrl: "https://www.fsk-hh.org/", streamUrl: "http://stream1.datenkollektiv.net/fsk.mp3", logoUrl: "", location: "Hamburg, Germany", tags: ["community", "eclectic"], group: "community" },
-  { name: "FPP Fréquence Paris Plurielle", description: "Radio associative, radio libre from Paris. Political talk, plural.", websiteUrl: "https://rfpp.net/", streamUrl: "https://direct.rfpp.net/fpp.mp3", logoUrl: "", location: "Paris, France", tags: ["community", "talk", "eclectic"], group: "community" },
-  { name: "WEVL 89.9 Memphis", description: "Community radio from Memphis. Alternative, eclectic.", websiteUrl: "http://www.wevl.org/", streamUrl: "http://peace.str3am.com:6030/;.mp3", logoUrl: "", location: "Memphis, Tennessee, USA", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "WKDU 91.7 Drexel University", description: "College radio from Philadelphia.", websiteUrl: "http://wkdu.org/", streamUrl: "http://streams.wkdu.org/listen.mp3", logoUrl: "", location: "Philadelphia, Pennsylvania, USA", tags: ["college", "eclectic"], group: "college" },
-  { name: "KEPW Eugene PeaceWorks", description: "Community-supported radio from Eugene, Oregon. Local news, community.", websiteUrl: "https://kepw.org/", streamUrl: "http://pacificaservice.org:8000/kepw_128", logoUrl: "", location: "Eugene, Oregon, USA", tags: ["community", "talk", "eclectic"], group: "community" },
-  { name: "4zzz", description: "Independent community radio from Brisbane.", websiteUrl: "https://4zzz.org.au/", streamUrl: "https://iheart.4zzz.org.au/4zzz", logoUrl: "", location: "Brisbane, Australia", tags: ["community", "eclectic", "rock"], group: "community" },
-  { name: "KOOP", description: "Community radio from Austin, Texas.", websiteUrl: "https://koop.org/", streamUrl: "http://streaming.koop.org/stream.mp3", logoUrl: "", location: "Austin, Texas, USA", tags: ["community", "eclectic"], group: "community" },
-  { name: "Radio UNiCC", description: "College radio from Dresden. Alternative, indie, mixed.", websiteUrl: "http://www.radio-unicc.de/", streamUrl: "http://stream.radio-unicc.de:8000/unicc_hq.mp3", logoUrl: "", location: "Dresden, Germany", tags: ["college", "rock", "eclectic"], group: "college" },
-  { name: "WFPK 91.9 Independent Louisville", description: "Adult album alternative, community radio from Louisville.", websiteUrl: "http://wfpk.org/", streamUrl: "http://lpm.streamguys1.com/wfpk-web", logoUrl: "", location: "Louisville, Kentucky, USA", tags: ["community", "rock", "eclectic"], group: "community" },
-  { name: "Sheffield Live!", description: "Community radio from Sheffield.", websiteUrl: "http://web.sheffieldlive.org/", streamUrl: "http://live.sheffieldlive.org:8000/shefflive.mp3", logoUrl: "", location: "Sheffield, UK", tags: ["community", "eclectic"], group: "community" },
-  { name: "Radioactive.FM 88.6", description: "Alternative, indie student radio from New Zealand.", websiteUrl: "https://www.radioactive.fm/", streamUrl: "https://radio123-gecko.radioca.st/radioactivefm", logoUrl: "", location: "New Zealand", tags: ["college", "rock", "eclectic"], group: "college" },
-  { name: "Pi Radio Berlin", description: "Freies Radio in Berlin. Community radio.", websiteUrl: "https://piradio.de/", streamUrl: "http://ice.rosebud-media.de:8000/88vier", logoUrl: "", location: "Berlin, Germany", tags: ["community", "eclectic"], group: "community" },
-  { name: "CFFF 92.7 Trent Radio", description: "Trent University radio, Peterborough. Alternative, community.", websiteUrl: "http://www.trentu.ca/org/trentradio/", streamUrl: "http://trentradio.ca:8800/hi-fi", logoUrl: "", location: "Peterborough, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "CJLO 1690 Concordia University", description: "Community radio from Montreal. University, eclectic.", websiteUrl: "http://www.cjlo.com/", streamUrl: "http://rosetta.shoutca.st:8883/stream", logoUrl: "", location: "Montreal, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "KAOS 89.3 Olympia", description: "Community radio from Olympia, WA. Evergreen State College.", websiteUrl: "http://kaosradio.org/", streamUrl: "http://205.134.192.90:8930/;.mp3", logoUrl: "", location: "Olympia, Washington, USA", tags: ["community", "college", "eclectic"], group: "community" },
-  { name: "CFUV 101.9 University of Victoria", description: "Community radio from Victoria, BC.", websiteUrl: "http://cfuv.uvic.ca/cms/", streamUrl: "http://cfuv.streamon.fm:8000/CFUV-64k.aac", logoUrl: "", location: "Victoria, Canada", tags: ["college", "community", "eclectic"], group: "college" },
-  { name: "PBS FM 106.7 Melbourne", description: "Community radio from Melbourne. Australian music, independent.", websiteUrl: "https://www.pbsfm.org.au/", streamUrl: "http://playerservices.streamtheworld.com/api/livestream-redirect/3PBS_FMAAC.aac", logoUrl: "", location: "Melbourne, Australia", tags: ["community", "eclectic", "world"], group: "community" },
-  { name: "RTRFM", description: "Community radio from Western Australia.", websiteUrl: "https://rtrfm.com.au/", streamUrl: "https://live.rtrfm.com.au/stream1", logoUrl: "", location: "Western Australia, Australia", tags: ["community", "eclectic"], group: "community" },
-  { name: "Te Reo Irirangi O Ngāti Kahungunu", description: "Iwi radio from Ngāti Kahungunu, Aotearoa. Māori culture, community.", websiteUrl: "https://www.radiokahungunu.nz/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:Kahungunu.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Kahungunu, New Zealand", tags: ["community", "world", "folk"], group: "world" }
+  { name: "KPFA 94.1 FM", description: "Community-supported radio from Berkeley, California. Pacifica network.", websiteUrl: "https://kpfa.org/", streamUrl: "https://streams.kpfa.org:8443/kpfa", logoUrl: "", location: "Berkeley, California, USA" },
+  { name: "Radio Ngāti Porou", description: "Community radio from Ngāti Porou, Aotearoa. Iwi, kapa haka, Māori culture.", websiteUrl: "https://radiongatiporou.com/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:NgatiPorou.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Porou, New Zealand" },
+  { name: "Fresh 92.7", description: "Community radio from South Australia. Music, pop, local.", websiteUrl: "https://fresh927.com.au/", streamUrl: "https://live.fresh927.com.au/freshaac", logoUrl: "", location: "South Australia, Australia" },
+  { name: "WRTU 89.7 Radio Universidad de Puerto Rico", description: "University radio from San Juan, Puerto Rico. Public radio.", websiteUrl: "http://www.wrtu.pr/", streamUrl: "http://streaming.radiouniversidad.pr:8062/;", logoUrl: "", location: "San Juan, Puerto Rico" },
+  { name: "Radio Casa Pueblo", description: "Community radio from Puerto Rico. Environment, Spanish talk, variety.", websiteUrl: "http://casapueblo.org/", streamUrl: "http://s1.voscast.com:9906/;stream1523840050300/1", logoUrl: "", location: "San Juan, Puerto Rico" },
+  { name: "Radio Bolivariana FM", description: "Universidad Pontificia Bolivariana, Medellín. College radio, jazz, classical.", websiteUrl: "http://www.radiobolivarianavirtual.com/medellin-colombia", streamUrl: "http://streaming.radiobolivarianavirtual.com:7630/", logoUrl: "", location: "Medellín, Colombia" },
+  { name: "Radio Študent", description: "Cultural public student radio from Slovenia.", websiteUrl: "http://radiostudent.si/", streamUrl: "http://kruljo.radiostudent.si:8000/hiq", logoUrl: "", location: "Ljubljana, Slovenia" },
+  { name: "Radio SAR", description: "Studencka Agencja Radiowa, Gdańsk. Blues, jazz, metal.", websiteUrl: "https://radiosar.pl/", streamUrl: "https://stream.radiosar.pl/hdmain.mp3", logoUrl: "", location: "Gdańsk, Poland" },
+  { name: "WUVT 90.7 Virginia Tech", description: "College radio from Blacksburg, VA.", websiteUrl: "https://www.wuvt.vt.edu/", streamUrl: "http://engine.wuvt.vt.edu:8000/wuvt.ogg", logoUrl: "", location: "Blacksburg, Virginia, USA" },
+  { name: "Radio Blau", description: "Community free radio from Leipzig. Independent music.", websiteUrl: "http://www.radioblau.de/", streamUrl: "http://stream.radioblau.de/", logoUrl: "", location: "Leipzig, Germany" },
+  { name: "2FBI FBi Radio 94.5", description: "Community radio from Sydney. Eclectic, indie.", websiteUrl: "http://fbiradio.com/", streamUrl: "https://streamer.fbiradio.com/stream", logoUrl: "", location: "Sydney, Australia" },
+  { name: "Fréquence Mutine", description: "Community radio from Bretagne. Electro, hip-hop, punk.", websiteUrl: "http://www.frequencemutine.fr/", streamUrl: "http://icecast.infini.fr:8000/mutine", logoUrl: "", location: "Bretagne, France" },
+  { name: "WNCU 90.7 Jazz", description: "Jazz from NC Central University, Durham.", websiteUrl: "http://www.wncu.org/", streamUrl: "http://wncu.streamguys1.com/live", logoUrl: "", location: "Durham, North Carolina, USA" },
+  { name: "Radio UNAM FM 96.1", description: "UNAM university radio, Mexico City. Culture, college.", websiteUrl: "https://www.radio.unam.mx/", streamUrl: "https://tv.radiohosting.online:9484/stream", logoUrl: "", location: "Mexico City, Mexico" },
+  { name: "WHRB 95.3 Harvard Radio", description: "Harvard Radio Broadcasting, Cambridge. University, variety.", websiteUrl: "https://www.whrb.org/", streamUrl: "http://stream.whrb.org:8000/whrb-mp3", logoUrl: "", location: "Cambridge, Massachusetts, USA" },
+  { name: "Radio Free Brooklyn", description: "Community radio from Brooklyn, NY. Culture, New York City.", websiteUrl: "http://radiofreebrooklyn.com/", streamUrl: "http://us1.internet-radio.com:8155/live", logoUrl: "", location: "Brooklyn, New York, USA" },
+  { name: "3RRR Triple R 102.7 FM", description: "Community radio from Melbourne. Independent, eclectic.", websiteUrl: "http://www.rrr.org.au/", streamUrl: "http://realtime.rrr.org.au/p1l", logoUrl: "", location: "Melbourne, Australia" },
+  { name: "Radio Almaina", description: "Community free radio from Granada, Spain.", websiteUrl: "https://radioalmaina.org/", streamUrl: "http://s.streampunk.cc/almaina.ogg", logoUrl: "", location: "Granada, Spain" },
+  { name: "Radio Cavolo", description: "Community radio from Italy. Eclectic, electronic, pop, rock.", websiteUrl: "https://www.radiocavolo.org/", streamUrl: "https://radiocavolo.org/stream", logoUrl: "", location: "Italy" },
+  { name: "Izwi LoMzansi", description: "Community radio from KwaZulu-Natal. African music, folk, kwaito.", websiteUrl: "https://izwi98fm.co.za/", streamUrl: "https://streaming.fabrik.fm/izwi/echocast/audio/index.m3u8", logoUrl: "", location: "KwaZulu-Natal, South Africa" },
+  { name: "KXRY 91.1 X Ray FM", description: "Community radio from Portland, Oregon.", websiteUrl: "https://xray.fm/", streamUrl: "http://listen.xray.fm:8000/stream", logoUrl: "", location: "Portland, Oregon, USA" },
+  { name: "Subtle Radio", description: "Community radio from London. Music, variety.", websiteUrl: "https://www.subtleradio.com/", streamUrl: "https://subtle.out.airtime.pro/subtle_a", logoUrl: "", location: "London, UK" },
+  { name: "Compass FM", description: "Community radio from New Zealand. Local news, variety.", websiteUrl: "http://compassfm.org.nz/", streamUrl: "http://stream.compassfm.org.nz:8000/Compass_FM_104.9", logoUrl: "", location: "New Zealand" },
+  { name: "Raidió na Life", description: "Community radio from Ireland.", websiteUrl: "http://www.raidionalife.ie/", streamUrl: "http://beryl.streamguys.com:5010/live", logoUrl: "", location: "Ireland" },
+  { name: "Oroko Radio", description: "Alternative community radio from Accra. Music, variety.", websiteUrl: "https://oroko.live/", streamUrl: "https://oroko-radio.radiocult.fm/stream", logoUrl: "", location: "Accra, Ghana" },
+  { name: "WBEZ-HD2 Vocalo", description: "Community radio from Chicago. Variety, world music.", websiteUrl: "http://vocalo.org/", streamUrl: "http://stream.vocalo.org/vocalo128", logoUrl: "", location: "Chicago, Illinois, USA" },
+  { name: "CHYZ 94.3 Université Laval", description: "University radio from Quebec City.", websiteUrl: "http://chyz.ca/", streamUrl: "http://ecoutez.chyz.ca:8000/;", logoUrl: "", location: "Quebec City, Canada" },
+  { name: "coloRadio", description: "Community free radio from Dresden.", websiteUrl: "https://coloradio.org/", streamUrl: "http://streaming.fueralle.org:8000/coloradio_160.mp3", logoUrl: "", location: "Dresden, Germany" },
+  { name: "CITR 101.9 UBC", description: "University of British Columbia radio, Vancouver.", websiteUrl: "http://www.citr.ca/", streamUrl: "http://live.citr.ca:8000/live.mp3", logoUrl: "", location: "Vancouver, Canada" },
+  { name: "Three D Radio", description: "Community radio from South Australia.", websiteUrl: "http://www.threedradio.com/", streamUrl: "http://sounds.threedradio.com:8000/stream", logoUrl: "", location: "South Australia, Australia" },
+  { name: "WWNO Jazz Stream", description: "Jazz stream from University of New Orleans.", websiteUrl: "http://wwno.org/", streamUrl: "http://tektite.streamguys1.com:5140/wwnojazz-mp3", logoUrl: "", location: "New Orleans, Louisiana, USA" },
+  { name: "Cause Commune", description: "Radio libre from Île-de-France. Alternative, information, opinion.", websiteUrl: "https://cause-commune.fm/", streamUrl: "http://vdl.stream-lat.org:8000/voixdulat_mp3", logoUrl: "", location: "Paris, France" },
+  { name: "95bFM", description: "University of Auckland student radio. Alternative, eclectic.", websiteUrl: "https://95bfm.com/", streamUrl: "https://streams.95bfm.com/stream95", logoUrl: "", location: "Auckland, New Zealand" },
+  { name: "Sub FM", description: "Dub, dubstep, drum 'n' bass, deep house from New Zealand.", websiteUrl: "https://www.sub.fm/", streamUrl: "https://fmsub.radioca.st/stream?type=http&nocache=140", logoUrl: "", location: "Tauranga, New Zealand" },
+  { name: "Foundation FM", description: "Community radio from London. Electronic, hip-hop, indie.", websiteUrl: "https://foundation.fm/", streamUrl: "https://streamer.radio.co/s0628bdd53/listen", logoUrl: "", location: "London, UK" },
+  { name: "CJSR 88.5 University of Alberta", description: "Community radio from Edmonton. University, eclectic.", websiteUrl: "http://cjsr.com/", streamUrl: "http://cjsr.streamon.fm:8000/CJSR-24k.aac", logoUrl: "", location: "Edmonton, Canada" },
+  { name: "WEAA 88.9 Morgan State University", description: "Baltimore. Hip-hop, jazz, NPR affiliate.", websiteUrl: "http://weaa.org/", streamUrl: "http://amber.streamguys.com:4020/live", logoUrl: "", location: "Baltimore, Maryland, USA" },
+  { name: "CKWR 98.5 Real Community Radio", description: "Community radio from Kitchener, Ontario. Multilingual.", websiteUrl: "https://ckwr.com/", streamUrl: "https://stream2.statsradio.com:8150/stream", logoUrl: "", location: "Kitchener, Canada" },
+  { name: "KAZI 88.7", description: "Community radio from Austin, Texas. Urban contemporary.", websiteUrl: "http://www.kazifm.org/", streamUrl: "http://ice8.securenetsystems.net/KAZI", logoUrl: "", location: "Austin, Texas, USA" },
+  { name: "Freies Sender Kombinat Hamburg", description: "Community free radio from Hamburg. FSK.", websiteUrl: "https://www.fsk-hh.org/", streamUrl: "http://stream1.datenkollektiv.net/fsk.mp3", logoUrl: "", location: "Hamburg, Germany" },
+  { name: "FPP Fréquence Paris Plurielle", description: "Radio associative, radio libre from Paris. Political talk, plural.", websiteUrl: "https://rfpp.net/", streamUrl: "https://direct.rfpp.net/fpp.mp3", logoUrl: "", location: "Paris, France" },
+  { name: "WEVL 89.9 Memphis", description: "Community radio from Memphis. Alternative, eclectic.", websiteUrl: "http://www.wevl.org/", streamUrl: "http://peace.str3am.com:6030/;.mp3", logoUrl: "", location: "Memphis, Tennessee, USA" },
+  { name: "WKDU 91.7 Drexel University", description: "College radio from Philadelphia.", websiteUrl: "http://wkdu.org/", streamUrl: "http://streams.wkdu.org/listen.mp3", logoUrl: "", location: "Philadelphia, Pennsylvania, USA" },
+  { name: "KEPW Eugene PeaceWorks", description: "Community-supported radio from Eugene, Oregon. Local news, community.", websiteUrl: "https://kepw.org/", streamUrl: "http://pacificaservice.org:8000/kepw_128", logoUrl: "", location: "Eugene, Oregon, USA" },
+  { name: "4zzz", description: "Independent community radio from Brisbane.", websiteUrl: "https://4zzz.org.au/", streamUrl: "https://iheart.4zzz.org.au/4zzz", logoUrl: "", location: "Brisbane, Australia" },
+  { name: "KOOP", description: "Community radio from Austin, Texas.", websiteUrl: "https://koop.org/", streamUrl: "http://streaming.koop.org/stream.mp3", logoUrl: "", location: "Austin, Texas, USA" },
+  { name: "Radio UNiCC", description: "College radio from Dresden. Alternative, indie, mixed.", websiteUrl: "http://www.radio-unicc.de/", streamUrl: "http://stream.radio-unicc.de:8000/unicc_hq.mp3", logoUrl: "", location: "Dresden, Germany" },
+  { name: "WFPK 91.9 Independent Louisville", description: "Adult album alternative, community radio from Louisville.", websiteUrl: "http://wfpk.org/", streamUrl: "http://lpm.streamguys1.com/wfpk-web", logoUrl: "", location: "Louisville, Kentucky, USA" },
+  { name: "Sheffield Live!", description: "Community radio from Sheffield.", websiteUrl: "http://web.sheffieldlive.org/", streamUrl: "http://live.sheffieldlive.org:8000/shefflive.mp3", logoUrl: "", location: "Sheffield, UK" },
+  { name: "Radioactive.FM 88.6", description: "Alternative, indie student radio from New Zealand.", websiteUrl: "https://www.radioactive.fm/", streamUrl: "https://radio123-gecko.radioca.st/radioactivefm", logoUrl: "", location: "New Zealand" },
+  { name: "Pi Radio Berlin", description: "Freies Radio in Berlin. Community radio.", websiteUrl: "https://piradio.de/", streamUrl: "http://ice.rosebud-media.de:8000/88vier", logoUrl: "", location: "Berlin, Germany" },
+  { name: "CFFF 92.7 Trent Radio", description: "Trent University radio, Peterborough. Alternative, community.", websiteUrl: "http://www.trentu.ca/org/trentradio/", streamUrl: "http://trentradio.ca:8800/hi-fi", logoUrl: "", location: "Peterborough, Canada" },
+  { name: "CJLO 1690 Concordia University", description: "Community radio from Montreal. University, eclectic.", websiteUrl: "http://www.cjlo.com/", streamUrl: "http://rosetta.shoutca.st:8883/stream", logoUrl: "", location: "Montreal, Canada" },
+  { name: "KAOS 89.3 Olympia", description: "Community radio from Olympia, WA. Evergreen State College.", websiteUrl: "http://kaosradio.org/", streamUrl: "http://205.134.192.90:8930/;.mp3", logoUrl: "", location: "Olympia, Washington, USA" },
+  { name: "CFUV 101.9 University of Victoria", description: "Community radio from Victoria, BC.", websiteUrl: "http://cfuv.uvic.ca/cms/", streamUrl: "http://cfuv.streamon.fm:8000/CFUV-64k.aac", logoUrl: "", location: "Victoria, Canada" },
+  { name: "PBS FM 106.7 Melbourne", description: "Community radio from Melbourne. Australian music, independent.", websiteUrl: "https://www.pbsfm.org.au/", streamUrl: "http://playerservices.streamtheworld.com/api/livestream-redirect/3PBS_FMAAC.aac", logoUrl: "", location: "Melbourne, Australia" },
+  { name: "RTRFM", description: "Community radio from Western Australia.", websiteUrl: "https://rtrfm.com.au/", streamUrl: "https://live.rtrfm.com.au/stream1", logoUrl: "", location: "Western Australia, Australia" },
+  { name: "Te Reo Irirangi O Ngāti Kahungunu", description: "Iwi radio from Ngāti Kahungunu, Aotearoa. Māori culture, community.", websiteUrl: "https://www.radiokahungunu.nz/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:Kahungunu.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Kahungunu, New Zealand" }
 ];
 
 /** Built-in configs flattened to one entry per playable stream. */
@@ -902,8 +894,6 @@ function getBuiltInStationsFlat(): ExternalStation[] {
           location: s.location,
           lat: s.lat,
           lng: s.lng,
-          tags: s.tags,
-          group: s.group,
         });
       }
     } else {
@@ -916,8 +906,6 @@ function getBuiltInStationsFlat(): ExternalStation[] {
         location: s.location,
         lat: s.lat,
         lng: s.lng,
-        tags: s.tags,
-        group: s.group,
       });
     }
   }
@@ -936,24 +924,6 @@ let stationsViewMode: "grid" | "list" = "grid";
 
 /** Admin overrides for any station (built-in or added) keyed by streamUrl. hidden = true means station is removed from the site. */
 let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; location?: string | null; lat?: number | null; lng?: number | null; hidden?: boolean }> = {};
-
-/** Tags and group per streamUrl from Musical Expert (docs/station-tags.json, served from public/). Used for group filter. */
-let stationTagsByUrl: Record<string, { tags: string[]; group: string }> = {};
-
-async function fetchStationTags(): Promise<void> {
-  try {
-    const res = await fetch("/station-tags.json", { cache: "no-store" });
-    if (!res.ok) return;
-    const data = (await res.json()) as Record<string, { tags?: string[]; group?: string }>;
-    stationTagsByUrl = {};
-    for (const [url, entry] of Object.entries(data)) {
-      if (url.startsWith("_")) continue;
-      if (entry && (entry.tags || entry.group)) stationTagsByUrl[url] = { tags: entry.tags ?? [], group: entry.group ?? "" };
-    }
-  } catch {
-    // ignore
-  }
-}
 
 function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string; location?: string; lat?: number; lng?: number }>(
   station: T,
@@ -1419,9 +1389,6 @@ const initialLoadingCountdown = document.getElementById("initial-loading-countdo
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
-const showOfflineFilter = document.getElementById("show-offline-filter") as HTMLInputElement | null;
-const showOfflineFilterWrap = document.getElementById("show-offline-filter-wrap");
-const groupFilter = document.getElementById("group-filter") as HTMLSelectElement | null;
 const topbarSearchWrap = document.getElementById("topbar-search-wrap");
 const topbarClockEl = document.getElementById("topbar-clock");
 const topbarSearchToggle = document.getElementById("topbar-search-toggle");
@@ -1949,19 +1916,8 @@ function renderUnifiedStations(): void {
   }
 
   type ItemType = (typeof items)[number];
-  function getItemGroup(item: ItemType): string {
-    if (item.type === "laf") return "";
-    if (item.type === "external") return item.station.group ?? stationTagsByUrl[item.station.streamUrl]?.group ?? "";
-    const firstUrl = item.liveChannels[0]?.streamUrl;
-    return item.config.group ?? (firstUrl ? stationTagsByUrl[firstUrl]?.group ?? "" : "");
-  }
 
   let filtered = items.filter((item) => {
-    const groupValue = (groupFilter?.value ?? "").trim();
-    if (groupValue) {
-      if (item.type === "laf") return false;
-      if (getItemGroup(item) !== groupValue) return false;
-    }
     const name =
       item.type === "laf"
         ? item.channel.title
@@ -1991,19 +1947,17 @@ function renderUnifiedStations(): void {
         if (!anyFav) return false;
       }
     }
-    if (!showOfflineFilter?.checked) {
-      if (item.type === "laf") return true;
-      if (item.type === "external") {
-        const c = streamStatusCache[item.station.streamUrl];
-        return !c || c.ok;
-      }
-      const allBad = item.liveChannels.every((ch) => {
-        const c = streamStatusCache[ch.streamUrl];
-        return c && !c.ok;
-      });
-      return !allBad;
+    // Always hide offline/error stations from the user
+    if (item.type === "laf") return true;
+    if (item.type === "external") {
+      const c = streamStatusCache[item.station.streamUrl];
+      return !c || c.ok;
     }
-    return true;
+    const allBad = item.liveChannels.every((ch) => {
+      const c = streamStatusCache[ch.streamUrl];
+      return c && !c.ok;
+    });
+    return !allBad;
   });
   filtered.sort((a, b) => {
     const na =
@@ -2262,7 +2216,7 @@ function renderUnifiedStations(): void {
     if (uncachedCount > 0) {
       (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>Checking stream availability…</p>";
     } else {
-      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>No stations match. Try search or turn on “Show offline/error”.</p>";
+      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>No stations match. Try search.</p>";
     }
   }
 }
@@ -2305,8 +2259,8 @@ const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
 function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
   scheduleSaveStreamStatusCache();
-  const hideWhenOffline = !showOfflineFilter?.checked;
   const isBad = !ok && BAD_STATUSES.has(status);
+  const hideWhenOffline = true; // Offline/error stations are never shown to the user
 
   document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
     const el = card.querySelector(".ext-stream-status");
@@ -4418,10 +4372,7 @@ loadRuntimeConfig().then(() => {
   }, STREAM_RECHECK_INTERVAL_MS);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
-  showOfflineFilter?.addEventListener("change", () => renderUnifiedStations());
-  groupFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
-  fetchStationTags();
 
   // View mode switcher
   document.querySelectorAll(".view-mode-btn").forEach((btn) => {

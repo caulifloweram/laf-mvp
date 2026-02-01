@@ -189,8 +189,6 @@
       .station-list-bar .list-bar-status { font-size: 11px; flex-shrink: 0; }
       .favorites-filter-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
       .favorites-filter-wrap input { width: auto; margin: 0; }
-      .group-filter-wrap { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-      .group-filter-wrap select { padding: 4px 8px; font-size: 12px; font-family: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--border); }
       .stations-checking-banner { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; padding: 8px 0; }
       .stations-checking-banner.hidden { display: none !important; }
 
@@ -1107,25 +1105,6 @@
             <label class="favorites-filter-wrap" id="favorites-filter-wrap">
               <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
               <span>Favorites only</span>
-            </label>
-            <label class="favorites-filter-wrap" id="show-offline-filter-wrap">
-              <input type="checkbox" id="show-offline-filter" aria-label="Show offline and error stations" />
-              <span>Show offline/error</span>
-            </label>
-            <label class="group-filter-wrap" id="group-filter-wrap">
-              <span class="group-filter-label">Group:</span>
-              <select id="group-filter" aria-label="Filter by group">
-                <option value="">All</option>
-                <option value="community">Community</option>
-                <option value="eclectic">Eclectic</option>
-                <option value="electronic">Electronic</option>
-                <option value="experimental">Experimental</option>
-                <option value="arts">Arts</option>
-                <option value="college">College</option>
-                <option value="world">World</option>
-                <option value="talk">Talk</option>
-                <option value="other">Other</option>
-              </select>
             </label>
             <div class="view-mode-switcher" role="tablist" aria-label="View mode">
               <button type="button" class="view-mode-btn active" data-mode="grid" aria-pressed="true">Grid</button>
