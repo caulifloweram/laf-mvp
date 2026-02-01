@@ -356,11 +356,12 @@
     <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
-        <a href="/" class="topbar-logo">LAF</a>
+        <a href="/" class="topbar-logo" id="nav-logo">LAF</a>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
-          <a href="/#about" class="topbar-nav-item">About</a>
-          <a href="/broadcaster/" class="topbar-nav-item active">Broadcast</a>
+          <a href="/" class="topbar-nav-item" id="nav-live-stations">Live Stations</a>
+          <a href="/#about" class="topbar-nav-item" id="nav-about">About</a>
+          <a href="/broadcaster/" class="topbar-nav-item active" id="nav-broadcast">Broadcast</a>
         </div>
       </div>
       <div class="topbar-right hidden" id="topbar-account">
@@ -370,9 +371,10 @@
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
-      <a href="/" class="topbar-nav-item">LAF</a>
-      <a href="/#about" class="topbar-nav-item">About</a>
-      <a href="/broadcaster/" class="topbar-nav-item">Broadcast</a>
+      <a href="/" class="topbar-nav-item" id="drawer-logo">LAF</a>
+      <a href="/" class="topbar-nav-item" id="drawer-live-stations">Live Stations</a>
+      <a href="/#about" class="topbar-nav-item" id="drawer-about">About</a>
+      <a href="/broadcaster/" class="topbar-nav-item" id="drawer-broadcast">Broadcast</a>
       <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
       <button type="button" id="btn-settings-drawer">Settings</button>
       <button type="button" id="btn-logout-drawer" style="background:transparent;border:1px solid currentColor;color:inherit;padding:10px 14px;width:100%;text-align:left;font-weight:bold;cursor:pointer;">Logout</button>
@@ -618,7 +620,7 @@
         <div class="desc">You're on the Broadcast page.</div>
       </div>
       <div class="status-text">
-        <a href="/">Listen on Live Stations &rarr;</a>
+        <a href="/" id="footer-live-stations">Listen on Live Stations &rarr;</a>
       </div>
     </footer>
 

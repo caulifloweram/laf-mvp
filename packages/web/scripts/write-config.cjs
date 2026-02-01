@@ -10,10 +10,12 @@ relayWsUrl = relayWsUrl.replace(/\/$/, "");
 if (!relayWsUrl.startsWith("ws://") && !relayWsUrl.startsWith("wss://")) {
   relayWsUrl = "wss://" + relayWsUrl;
 }
+const clientAppUrl = (process.env.CLIENT_APP_URL || "").replace(/\/$/, "");
 
 const config = {
   apiUrl: apiUrl.replace(/\/$/, ""),
   relayWsUrl,
+  clientAppUrl: clientAppUrl || undefined,
 };
 
 if (!fs.existsSync(distDir)) {

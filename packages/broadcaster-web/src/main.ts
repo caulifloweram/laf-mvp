@@ -15,6 +15,8 @@ function floatToPCM16(pcm: Float32Array): Int16Array {
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+/** Base URL for the Live Stations (client) app. Empty = same origin (e.g. when broadcaster is at /broadcaster/). Set via config.json or VITE_CLIENT_APP_URL for standalone deploy. */
+let CLIENT_APP_URL = (import.meta.env.VITE_CLIENT_APP_URL as string) || "";
 function ensureRelayWsUrl(url: string): string {
   const trimmed = url.replace(/\/$/, "");
   if (/^wss?:/i.test(trimmed)) return trimmed;
@@ -26,7 +28,7 @@ async function loadRuntimeConfig(): Promise<void> {
     const base = window.location.origin;
     const res = await fetch(`${base}/config.json`);
     if (!res.ok) return;
-    const config = await res.json() as { apiUrl?: string; relayWsUrl?: string };
+    const config = await res.json() as { apiUrl?: string; relayWsUrl?: string; clientAppUrl?: string };
     if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
     if (config.relayWsUrl) {
       RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
@@ -34,10 +36,37 @@ async function loadRuntimeConfig(): Promise<void> {
         RELAY_BASE = (window.location.protocol === "https:" ? "wss:" : "ws:") + "//" + RELAY_BASE;
       }
     }
-    console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE);
+    if (config.clientAppUrl != null && config.clientAppUrl !== "") CLIENT_APP_URL = config.clientAppUrl.replace(/\/$/, "");
+    console.log("[config] Using API:", API_URL, "Relay:", RELAY_BASE, "Client:", CLIENT_APP_URL || "(same origin)");
   } catch (_) {
     console.log("[config] Using build-time defaults");
   }
+}
+
+/** Resolve link to client app (Live Stations). Same-origin when CLIENT_APP_URL is empty. */
+function clientAppHref(path = "") {
+  const base = CLIENT_APP_URL || "/";
+  if (path.startsWith("#")) return base.replace(/#.*$/, "") + path;
+  return base + (path ? (path.startsWith("/") ? path : "/" + path) : "");
+}
+
+function applyClientAppUrls() {
+  const home = clientAppHref();
+  const about = clientAppHref("#about");
+  const broadcastHref = CLIENT_APP_URL ? "/" : "/broadcaster/";
+  const set = (id: string, href: string) => {
+    const el = document.getElementById(id);
+    if (el && "href" in el) (el as HTMLAnchorElement).href = href;
+  };
+  set("nav-logo", home);
+  set("nav-live-stations", home);
+  set("nav-about", about);
+  set("nav-broadcast", broadcastHref);
+  set("drawer-logo", home);
+  set("drawer-live-stations", home);
+  set("drawer-about", about);
+  set("drawer-broadcast", broadcastHref);
+  set("footer-live-stations", home);
 }
 
 const SAMPLE_RATE = 48000;
@@ -1473,6 +1502,7 @@ btnAddRadio?.addEventListener("click", async () => {
 });
 
 loadRuntimeConfig().then(() => {
+  applyClientAppUrls();
   initTheme();
   initMobileNav();
   if (token) {
