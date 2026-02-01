@@ -2491,6 +2491,13 @@ function markStreamUnavailable(streamUrl: string): void {
   renderUnifiedStations();
 }
 
+/** Mark a stream as live after successful playback (upgrades "Timeout" / unknown to LIVE). */
+function markStreamLive(streamUrl: string): void {
+  streamStatusCache[streamUrl] = { ok: true, status: "live" };
+  scheduleSaveStreamStatusCache();
+  updateCardStatus(streamUrl, true, "live");
+}
+
 const VERIFY_TIMEOUT_MS = 12000;
 const VERIFY_RETRY_TIMEOUT_MS = 18000;
 
@@ -2829,6 +2836,7 @@ function attachExternalStreamAudio(station: ExternalStation): void {
       externalStreamConnectTimeoutId = null;
     }
     externalStreamReconnectCount = 0;
+    markStreamLive(station.streamUrl);
     updatePlayerStatus("playing", "Listening to stream");
   };
   externalAudio.onwaiting = () => {
