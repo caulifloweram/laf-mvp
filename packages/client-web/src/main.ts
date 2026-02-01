@@ -941,22 +941,33 @@ const nowPlayingProgramWrap = document.getElementById("now-playing-program-wrap"
 const btnPrevStation = document.getElementById("btn-prev-station")!;
 const btnNextStation = document.getElementById("btn-next-station")!;
 
+const PLAY_ICON_SVG = '<svg viewBox="0 0 12 14" fill="currentColor" stroke="none"><path d="M0 0 L12 7 L0 14 Z"/></svg>';
+const PAUSE_ICON_SVG = '<svg viewBox="0 0 12 14" fill="currentColor" stroke="none"><rect x="0" y="0" width="4" height="14"/><rect x="8" y="0" width="4" height="14"/></svg>';
+
+function setPlayPauseIcons(paused: boolean, label: string) {
+  const iconSvg = paused ? PLAY_ICON_SVG : PAUSE_ICON_SVG;
+  playPauseIcon.innerHTML = iconSvg;
+  playPauseText.textContent = label;
+  if (playPauseIconExpanded) playPauseIconExpanded.innerHTML = iconSvg;
+  if (playPauseTextExpanded) playPauseTextExpanded.textContent = label;
+}
+
 function showPauseButton() {
   btnPlayPause.disabled = false;
   btnPlayPause.classList.remove("hidden");
-  playPauseIcon.textContent = "\u23F8"; // ⏸ Pause
-  playPauseText.textContent = "Pause";
-  if (playPauseIconExpanded) playPauseIconExpanded.textContent = "\u23F8";
-  if (playPauseTextExpanded) playPauseTextExpanded.textContent = "Pause";
+  setPlayPauseIcons(false, "Pause");
 }
 
 function showPlayButton(label: "Start" | "Play" = "Play") {
   btnPlayPause.disabled = false;
   btnPlayPause.classList.remove("hidden");
-  playPauseIcon.textContent = "\u25B6"; // ▶
-  playPauseText.textContent = label;
-  if (playPauseIconExpanded) playPauseIconExpanded.textContent = "\u25B6";
-  if (playPauseTextExpanded) playPauseTextExpanded.textContent = label;
+  setPlayPauseIcons(true, label);
+}
+
+function updateFooterPlayerVisibility(): void {
+  const playing = !!(currentChannel || currentExternalStation);
+  footerPlayer.classList.toggle("hidden", !playing);
+  document.body.classList.toggle("footer-player-hidden", !playing);
 }
 
 /** Sync expanded player panel with current station/channel and play state. */
@@ -1028,12 +1039,14 @@ function updateTopBarAuth() {
   const logoutBtnDrawer = document.getElementById("client-logout-btn-drawer");
   const navAdmin = document.getElementById("nav-admin");
   const drawerAdmin = document.getElementById("drawer-admin");
+  const chatToggle = document.getElementById("topbar-chat-toggle");
   const showAdmin = isAllowedAdmin();
   if (token && userEmail) {
     signinLink.classList.add("hidden");
     userEmailEl.textContent = userEmail;
     userEmailEl.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
+    if (chatToggle) chatToggle.classList.remove("hidden");
     if (signinLinkDrawer) signinLinkDrawer.classList.add("hidden");
     if (userEmailDrawer) { userEmailDrawer.textContent = userEmail; userEmailDrawer.classList.remove("hidden"); }
     if (logoutBtnDrawer) logoutBtnDrawer.classList.remove("hidden");
@@ -1047,6 +1060,7 @@ function updateTopBarAuth() {
     signinLink.classList.remove("hidden");
     userEmailEl.classList.add("hidden");
     logoutBtn.classList.add("hidden");
+    if (chatToggle) chatToggle.classList.add("hidden");
     if (signinLinkDrawer) signinLinkDrawer.classList.remove("hidden");
     if (userEmailDrawer) { userEmailDrawer.classList.add("hidden"); }
     if (logoutBtnDrawer) logoutBtnDrawer.classList.add("hidden");
@@ -1060,12 +1074,29 @@ function updateTopBarAuth() {
 }
 
 function appendChatMessage(email: string, text: string, ts?: number) {
+  const time = ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
+  const html = `<span class="chat-author">${escapeHtml(email)}${time ? ` <small>${time}</small>` : ""}</span> ${escapeHtml(text)}`;
   const div = document.createElement("div");
   div.className = "chat-message";
-  const time = ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "";
-  div.innerHTML = `<span class="chat-author">${escapeHtml(email)}${time ? ` <small>${time}</small>` : ""}</span> ${escapeHtml(text)}`;
+  div.innerHTML = html;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  const globalMessages = document.getElementById("chat-global-messages");
+  const fullscreenMessages = document.getElementById("chat-global-fullscreen-messages");
+  if (globalMessages) {
+    const d = document.createElement("div");
+    d.className = "chat-message";
+    d.innerHTML = html;
+    globalMessages.appendChild(d);
+    globalMessages.scrollTop = globalMessages.scrollHeight;
+  }
+  if (fullscreenMessages) {
+    const d = document.createElement("div");
+    d.className = "chat-message";
+    d.innerHTML = html;
+    fullscreenMessages.appendChild(d);
+    fullscreenMessages.scrollTop = fullscreenMessages.scrollHeight;
+  }
 }
 
 function showConfirm(options: {
@@ -1600,6 +1631,27 @@ function renderUnifiedStations(): void {
       stationsGrid.appendChild(card);
     }
   });
+  if (mode === "grid") {
+    const suggestCard = document.createElement("button");
+    suggestCard.type = "button";
+    suggestCard.className = "suggest-card";
+    suggestCard.innerHTML = "<span class=\"suggest-card-title\">Any other radio you wanted to see here?</span> Send us";
+    suggestCard.onclick = () => {
+      const overlay = document.getElementById("suggest-overlay");
+      const urlInput = document.getElementById("suggest-url") as HTMLInputElement;
+      const msgInput = document.getElementById("suggest-message") as HTMLInputElement;
+      const statusEl = document.getElementById("suggest-status");
+      if (overlay && urlInput) {
+        urlInput.value = "";
+        if (msgInput) msgInput.value = "";
+        if (statusEl) { statusEl.classList.add("hidden"); statusEl.textContent = ""; }
+        overlay.setAttribute("aria-hidden", "false");
+        overlay.classList.add("visible");
+        urlInput.focus();
+      }
+    };
+    stationsGrid.appendChild(suggestCard);
+  }
   const allUrls = getAllStreamUrls();
   const uncachedCount = allUrls.filter((u) => streamStatusCache[u] === undefined).length;
   if (filtered.length === 0) {
@@ -1798,6 +1850,7 @@ function selectExternalStation(station: ExternalStation) {
   btnPrevStation.classList.remove("hidden");
   btnNextStation.classList.remove("hidden");
   updateExpandedPlayerUI();
+  updateFooterPlayerVisibility();
   attachExternalStreamAudio(station);
 }
 
@@ -1965,6 +2018,7 @@ function stopExternalStream() {
   showPlayButton("Start");
   playerLiveBadge.classList.add("hidden");
   updateExpandedPlayerUI();
+  updateFooterPlayerVisibility();
 }
 
 function escapeHtml(text: string): string {
@@ -2017,6 +2071,7 @@ function selectChannel(channel: LiveChannel) {
     showPlayButton("Start");
   }
   updateExpandedPlayerUI();
+  updateFooterPlayerVisibility();
 }
 
 async function startListening() {
@@ -3316,9 +3371,15 @@ function initAdminForm() {
   onAdminViewShow = loadAdminStationsList;
 }
 
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
+}
+
 loadRuntimeConfig().then(() => {
   applyBroadcastLink();
   updateTopBarAuth();
+  updateFooterPlayerVisibility();
+  setPlayPauseIcons(true, "Start");
   initTheme();
   initTopbarClock();
   initSearchToggle();
@@ -3353,14 +3414,165 @@ loadRuntimeConfig().then(() => {
   });
 
   // Expandable player
-  playerExpandBtn.addEventListener("click", () => {
-    const open = playerExpanded.classList.toggle("open");
-    playerExpandBtn.setAttribute("aria-expanded", String(open));
-    playerExpanded.setAttribute("aria-hidden", String(!open));
-    if (open) updateExpandedPlayerUI();
+  function openExpandedPlayer() {
+    const open = true;
+    playerExpanded.classList.add("open");
+    if (isMobileViewport()) {
+      playerExpanded.classList.add("fullscreen-mobile");
+      const minBar = playerExpanded.querySelector(".player-expanded-minimize");
+      if (minBar) (minBar as HTMLElement).style.display = "flex";
+    }
+    playerExpandBtn.setAttribute("aria-expanded", "true");
+    playerExpanded.setAttribute("aria-hidden", "false");
+    updateExpandedPlayerUI();
+  }
+  function closeExpandedPlayer() {
+    playerExpanded.classList.remove("open", "fullscreen-mobile");
+    const minBar = playerExpanded.querySelector(".player-expanded-minimize");
+    if (minBar) (minBar as HTMLElement).style.display = "none";
+    playerExpandBtn.setAttribute("aria-expanded", "false");
+    playerExpanded.setAttribute("aria-hidden", "true");
+  }
+  playerExpandBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (playerExpanded.classList.contains("open")) {
+      closeExpandedPlayer();
+    } else {
+      openExpandedPlayer();
+    }
   });
-
+  const playerBarTapArea = document.getElementById("player-bar-tap-area");
+  if (playerBarTapArea) {
+    playerBarTapArea.addEventListener("click", (e) => {
+      if (!isMobileViewport()) return;
+      e.preventDefault();
+      if (!playerExpanded.classList.contains("open")) openExpandedPlayer();
+    });
+  }
+  const playerExpandedMinimizeBtn = document.getElementById("player-expanded-minimize-btn");
+  if (playerExpandedMinimizeBtn) {
+    playerExpandedMinimizeBtn.addEventListener("click", () => closeExpandedPlayer());
+  }
   btnPrevExpanded?.addEventListener("click", () => btnPrevStation.click());
   btnPlayPauseExpanded?.addEventListener("click", () => btnPlayPause.click());
   btnNextExpanded?.addEventListener("click", () => btnNextStation.click());
+
+  // Suggest overlay
+  const suggestOverlay = document.getElementById("suggest-overlay");
+  const suggestCancel = document.getElementById("suggest-cancel");
+  const suggestSubmit = document.getElementById("suggest-submit");
+  const suggestUrlInput = document.getElementById("suggest-url") as HTMLInputElement;
+  const suggestMessageInput = document.getElementById("suggest-message") as HTMLInputElement;
+  const suggestStatus = document.getElementById("suggest-status");
+  suggestCancel?.addEventListener("click", () => {
+    suggestOverlay?.classList.remove("visible");
+    suggestOverlay?.setAttribute("aria-hidden", "true");
+  });
+  suggestOverlay?.addEventListener("click", (e) => {
+    if (e.target === suggestOverlay) {
+      suggestOverlay.classList.remove("visible");
+      suggestOverlay.setAttribute("aria-hidden", "true");
+    }
+  });
+  suggestSubmit?.addEventListener("click", async () => {
+    const url = suggestUrlInput?.value?.trim();
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      if (suggestStatus) { suggestStatus.textContent = "Please enter a valid URL."; suggestStatus.classList.remove("hidden"); }
+      return;
+    }
+    const message = suggestMessageInput?.value?.trim() || undefined;
+    try {
+      const res = await fetch(`${API_URL}/api/suggest-station`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        suggestOverlay?.classList.remove("visible");
+        suggestOverlay?.setAttribute("aria-hidden", "true");
+        if (suggestStatus) { suggestStatus.textContent = "Thanks! We’ll take a look."; suggestStatus.classList.remove("hidden"); suggestStatus.classList.remove("status-offline"); }
+      } else {
+        if (suggestStatus) { suggestStatus.textContent = data.error || "Failed to send."; suggestStatus.classList.remove("hidden"); }
+      }
+    } catch {
+      if (suggestStatus) { suggestStatus.textContent = "Network error."; suggestStatus.classList.remove("hidden"); }
+    }
+  });
+
+  // Global chat overlay (desktop) / fullscreen (mobile)
+  const topbarChatToggle = document.getElementById("topbar-chat-toggle");
+  const chatGlobalOverlay = document.getElementById("chat-global-overlay");
+  const chatGlobalFullscreen = document.getElementById("chat-global-fullscreen");
+  const chatGlobalClose = document.getElementById("chat-global-close");
+  const chatGlobalFullscreenClose = document.getElementById("chat-global-fullscreen-close");
+  const chatGlobalMessages = document.getElementById("chat-global-messages");
+  const chatGlobalFullscreenMessages = document.getElementById("chat-global-fullscreen-messages");
+  const chatGlobalSignin = document.getElementById("chat-global-signin");
+  const chatGlobalFullscreenSignin = document.getElementById("chat-global-fullscreen-signin");
+  const chatGlobalInputRow = document.getElementById("chat-global-input-row");
+  const chatGlobalFullscreenInputRow = document.getElementById("chat-global-fullscreen-input-row");
+  const chatGlobalInput = document.getElementById("chat-global-input") as HTMLInputElement;
+  const chatGlobalFullscreenInput = document.getElementById("chat-global-fullscreen-input") as HTMLInputElement;
+  const chatGlobalSend = document.getElementById("chat-global-send");
+  const chatGlobalFullscreenSend = document.getElementById("chat-global-fullscreen-send");
+  function openChat() {
+    if (isMobileViewport()) {
+      chatGlobalFullscreen?.classList.add("open");
+      chatGlobalFullscreen?.setAttribute("aria-hidden", "false");
+      if (token) {
+        chatGlobalFullscreenSignin?.classList.add("hidden");
+        chatGlobalFullscreenInputRow?.classList.remove("hidden");
+      } else {
+        chatGlobalFullscreenSignin?.classList.remove("hidden");
+        chatGlobalFullscreenInputRow?.classList.add("hidden");
+      }
+      if (chatGlobalFullscreenMessages && chatMessages) chatGlobalFullscreenMessages.innerHTML = chatMessages.innerHTML;
+    } else {
+      chatGlobalOverlay?.classList.add("open");
+      chatGlobalOverlay?.setAttribute("aria-hidden", "false");
+      if (token) {
+        chatGlobalSignin?.classList.add("hidden");
+        chatGlobalInputRow?.classList.remove("hidden");
+      } else {
+        chatGlobalSignin?.classList.remove("hidden");
+        chatGlobalInputRow?.classList.add("hidden");
+      }
+      if (chatGlobalMessages && chatMessages) chatGlobalMessages.innerHTML = chatMessages.innerHTML;
+    }
+  }
+  function closeChat() {
+    chatGlobalOverlay?.classList.remove("open");
+    chatGlobalOverlay?.setAttribute("aria-hidden", "true");
+    chatGlobalFullscreen?.classList.remove("open");
+    chatGlobalFullscreen?.setAttribute("aria-hidden", "true");
+  }
+  topbarChatToggle?.addEventListener("click", () => openChat());
+  chatGlobalClose?.addEventListener("click", () => { chatGlobalOverlay?.classList.remove("open"); chatGlobalOverlay?.setAttribute("aria-hidden", "true"); });
+  chatGlobalFullscreenClose?.addEventListener("click", () => closeChat());
+  function sendGlobalChat() {
+    const input = isMobileViewport() ? chatGlobalFullscreenInput : chatGlobalInput;
+    const text = input?.value?.trim();
+    if (!text || !token) return;
+    if (!currentChannel || !ws || ws.readyState !== WebSocket.OPEN) {
+      if (chatGlobalMessages) {
+        const el = document.createElement("div");
+        el.className = "chat-message";
+        el.style.opacity = "0.8";
+        el.textContent = "Join a live LAF channel to participate in chat.";
+        (isMobileViewport() ? chatGlobalFullscreenMessages : chatGlobalMessages)?.appendChild(el);
+      }
+      return;
+    }
+    try {
+      ws.send(JSON.stringify({ type: "chat", text }));
+      input!.value = "";
+    } catch (err) {
+      console.error("Failed to send chat:", err);
+    }
+  }
+  chatGlobalSend?.addEventListener("click", sendGlobalChat);
+  chatGlobalFullscreenSend?.addEventListener("click", sendGlobalChat);
+  chatGlobalInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendGlobalChat(); } });
+  chatGlobalFullscreenInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendGlobalChat(); } });
 });

@@ -106,5 +106,14 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id);
   `).catch(() => {});
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS station_suggestions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      url TEXT NOT NULL,
+      message TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
   console.log("✅ Database tables initialized");
 }

@@ -740,6 +740,26 @@ app.patch("/api/station-overrides", authMiddleware, async (req, res) => {
   }
 });
 
+// Public: Suggest a radio station (no auth)
+app.post("/api/suggest-station", async (req, res) => {
+  const { url, message } = req.body;
+  const urlStr = typeof url === "string" && url.trim() ? url.trim() : null;
+  if (!urlStr || (!urlStr.startsWith("http://") && !urlStr.startsWith("https://"))) {
+    return res.status(400).json({ error: "A valid URL is required" });
+  }
+  const messageStr = typeof message === "string" && message.trim() ? message.trim().slice(0, 2000) : null;
+  try {
+    await pool.query(
+      `INSERT INTO station_suggestions (url, message) VALUES ($1, $2)`,
+      [urlStr, messageStr]
+    );
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error("Error saving station suggestion:", err);
+    res.status(500).json({ error: "Failed to send suggestion", details: err.message });
+  }
+});
+
 // Protected: Favorites (requires login)
 app.get("/api/me/favorites", authMiddleware, async (req, res) => {
   const user = (req as any).user;
