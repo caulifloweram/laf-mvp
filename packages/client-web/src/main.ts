@@ -2098,7 +2098,7 @@ function renderUnifiedStations(): void {
       card.className = "channel-card";
       card.style.position = "relative";
       if (currentChannel?.id === c.id && ws && ws.readyState === WebSocket.OPEN) card.classList.add("now-playing");
-      const coverHtml = c.coverUrl ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" />` : "";
+      const coverHtml = c.coverUrl ? `<img src="${escapeAttr(c.coverUrl)}" alt="" class="channel-card-cover" loading="lazy" />` : "";
       card.innerHTML = `
         <div class="card-title">${escapeHtml(c.title || "Untitled")}</div>
         <div class="card-body">
@@ -2135,7 +2135,7 @@ function renderUnifiedStations(): void {
       const logoFailed = hasLogo && logoLoadFailed.has(station.streamUrl);
       const showLogoArea = hasLogo && !logoFailed;
       const logoHtml = showLogoArea
-        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /></div>`
+        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" loading="lazy" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
       const cardLoading = !cached || cached.status === "verifying";
       if (cardLoading) card.classList.add("card-loading");
@@ -2179,7 +2179,7 @@ function renderUnifiedStations(): void {
       const logoFailed = hasLogo && logoLoadFailed.has(config.logoUrl);
       const showLogoArea = hasLogo && !logoFailed;
       const logoHtml = showLogoArea
-        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" /></div>`
+        ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" loading="lazy" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(config.name)}</div>`;
       const channelRows = liveChannels
         .map((ch) => {
