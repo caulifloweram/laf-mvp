@@ -2171,9 +2171,11 @@ const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
 const INITIAL_LOAD_MS = 10000;
 const INITIAL_LOAD_PROGRESS_INTERVAL_MS = 80;
+const INITIAL_LOAD_COUNTDOWN_START = 10;
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
 let initialLoadProgressIntervalId: ReturnType<typeof setInterval> | null = null;
+let initialLoadCountdownIntervalId: ReturnType<typeof setInterval> | null = null;
 
 const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
 
@@ -2326,27 +2328,40 @@ function startInitialLoadScreen(): void {
   initialLoadStartTime = Date.now();
   initialLoadingScreen.classList.remove("hidden");
   initialLoadingBar.style.width = "0%";
-  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "10";
+  if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(INITIAL_LOAD_COUNTDOWN_START);
 
+  // Progress bar: update every 80ms (can drift under load, but looks smooth)
   if (initialLoadProgressIntervalId) clearInterval(initialLoadProgressIntervalId);
   initialLoadProgressIntervalId = setInterval(() => {
     const elapsed = Date.now() - initialLoadStartTime;
     const pct = Math.min(100, (elapsed / INITIAL_LOAD_MS) * 100);
     initialLoadingBar.style.width = `${pct}%`;
-    const secsLeft = Math.max(0, Math.ceil((INITIAL_LOAD_MS - elapsed) / 1000));
-    if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(secsLeft);
-    if (pct >= 100) {
-      if (initialLoadProgressIntervalId) {
-        clearInterval(initialLoadProgressIntervalId);
-        initialLoadProgressIntervalId = null;
-      }
+    if (pct >= 100 && initialLoadProgressIntervalId) {
+      clearInterval(initialLoadProgressIntervalId);
+      initialLoadProgressIntervalId = null;
     }
   }, INITIAL_LOAD_PROGRESS_INTERVAL_MS);
+
+  // Countdown: dedicated 1s interval so it always ticks 10, 9, 8 … 1, 0 every second
+  if (initialLoadCountdownIntervalId) clearInterval(initialLoadCountdownIntervalId);
+  let secondsLeft = INITIAL_LOAD_COUNTDOWN_START;
+  initialLoadCountdownIntervalId = setInterval(() => {
+    secondsLeft -= 1;
+    if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(Math.max(0, secondsLeft));
+    if (secondsLeft <= 0 && initialLoadCountdownIntervalId) {
+      clearInterval(initialLoadCountdownIntervalId);
+      initialLoadCountdownIntervalId = null;
+    }
+  }, 1000);
 
   setTimeout(() => {
     if (initialLoadProgressIntervalId) {
       clearInterval(initialLoadProgressIntervalId);
       initialLoadProgressIntervalId = null;
+    }
+    if (initialLoadCountdownIntervalId) {
+      clearInterval(initialLoadCountdownIntervalId);
+      initialLoadCountdownIntervalId = null;
     }
     initialLoadPhase = false;
     initialLoadingBar.style.width = "100%";
