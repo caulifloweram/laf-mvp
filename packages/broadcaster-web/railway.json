@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd packages/broadcaster-web && npx serve dist -p $PORT",
+    "startCommand": "cd packages/broadcaster-web && node scripts/write-config.cjs && npx --yes serve dist -p $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

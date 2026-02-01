@@ -8,4 +8,4 @@ cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
 cmds = ["cd packages/broadcaster-web && pnpm build"]
 
 [start]
-cmd = "cd packages/broadcaster-web && npx --yes serve dist -p $PORT"
+cmd = "cd packages/broadcaster-web && node scripts/write-config.cjs && npx --yes serve dist -p $PORT"
