@@ -299,6 +299,41 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     streamUrl: "https://stream4.rcast.net/72355/",
     logoUrl: "https://radioaparat.rs/favicon.ico",
   },
+  {
+    name: "dublab",
+    description: "Non-profit listener-powered radio. Los Angeles. Experimental electronica, jazz funk, indie, hip-hop, dub.",
+    websiteUrl: "https://www.dublab.com/",
+    streamUrl: "https://dublab.out.airtime.pro/dublab_a",
+    logoUrl: "https://www.dublab.com/favicon.ico",
+  },
+  {
+    name: "RUKH",
+    description: "Non-commercial DIY community radio from Odesa, Ukraine. Alternative and experimental music, subcultures.",
+    websiteUrl: "https://rukh.live/",
+    streamUrl: "https://rukh.out.airtime.pro/rukh_a",
+    logoUrl: "https://rukh.live/favicon.ico",
+  },
+  {
+    name: "Radio Helsinki",
+    description: "Community radio. Graz, Austria 92.6 MHz. Independent, non-commercial.",
+    websiteUrl: "https://helsinki.at/",
+    streamUrl: "https://live.helsinki.at:8088/live160.mp3",
+    logoUrl: "https://helsinki.at/favicon.ico",
+  },
+  {
+    name: "HKCR",
+    description: "Hong Kong Community Radio. Community platform and independent station. Creators, musicians, artists.",
+    websiteUrl: "https://hkcr.live/",
+    streamUrl: "https://stream.hkcr.live/stream",
+    logoUrl: "https://hkcr.live/favicon.ico",
+  },
+  {
+    name: "Radio AlHara",
+    description: "Radio AlHara راديو الحارة. Palestinian community radio from Bethlehem. Solidarity, sonic liberation.",
+    websiteUrl: "https://yamakan.place/palestine/",
+    streamUrl: "http://n02.radiojar.com/78cxy6wkxtzuv",
+    logoUrl: "https://yamakan.place/palestine/favicon.ico",
+  },
 ];
 
 /** Built-in configs flattened to one entry per playable stream. */
