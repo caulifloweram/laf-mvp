@@ -24,4 +24,19 @@ function copyDir(src, dest) {
 
 copyDir(clientWebDist, webDist);
 copyDir(broadcasterWebDist, path.join(webDist, "broadcaster"));
+
+// So that /broadcaster (no trailing slash) redirects to /broadcaster/ and serves index.html
+const serveJson = path.join(webDist, "serve.json");
+fs.writeFileSync(
+  serveJson,
+  JSON.stringify(
+    {
+      trailingSlash: true,
+      redirects: [{ source: "/broadcaster", destination: "/broadcaster/", type: 301 }],
+    },
+    null,
+    2
+  )
+);
+
 console.log("copy-apps: client at root, broadcaster at dist/broadcaster/");
