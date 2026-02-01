@@ -4187,6 +4187,7 @@ function applyBgColor(hex: string) {
     root.setProperty("--footer-text", "#fff");
   }
 
+  applyMobilePlayerBarStyle();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", normalized);
   document.querySelectorAll(".color-picker-preview").forEach((el) => {
@@ -4689,12 +4690,70 @@ function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
 }
 
+/** On mobile: force player bar and expanded player to black with white text (override theme). On desktop: restore theme footer vars and remove inline overrides. */
+function applyMobilePlayerBarStyle() {
+  const footerEl = document.getElementById("footer-player");
+  const expandedEl = document.getElementById("player-expanded");
+  const isMobile = isMobileViewport();
+  const root = document.documentElement.style;
+
+  if (isMobile) {
+    root.setProperty("--footer-bg", "#000");
+    root.setProperty("--footer-text", "#fff");
+    if (footerEl) {
+      footerEl.style.setProperty("background", "#000");
+      footerEl.style.setProperty("background-color", "#000");
+      footerEl.style.setProperty("color", "#fff");
+    }
+    if (expandedEl) {
+      expandedEl.style.setProperty("background", "#000");
+      expandedEl.style.setProperty("background-color", "#000");
+      expandedEl.style.setProperty("color", "#fff");
+    }
+    const minimizeBar = expandedEl?.querySelector(".player-expanded-minimize");
+    if (minimizeBar && minimizeBar instanceof HTMLElement) {
+      minimizeBar.style.setProperty("background", "#000");
+      minimizeBar.style.setProperty("background-color", "#000");
+    }
+  } else {
+    root.removeProperty("--footer-bg");
+    root.removeProperty("--footer-text");
+    if (footerEl) {
+      footerEl.style.removeProperty("background");
+      footerEl.style.removeProperty("background-color");
+      footerEl.style.removeProperty("color");
+    }
+    if (expandedEl) {
+      expandedEl.style.removeProperty("background");
+      expandedEl.style.removeProperty("background-color");
+      expandedEl.style.removeProperty("color");
+    }
+    expandedEl?.querySelectorAll(".player-expanded-minimize").forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.style.removeProperty("background");
+        el.style.removeProperty("background-color");
+      }
+    });
+    const hex = (localStorage.getItem("laf_bg_color") || getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#f1c40f").replace(/^\s+|\s+$/g, "").toLowerCase();
+    if (isDarkThemeColor(hex)) {
+      const c = getContrastColors(hex);
+      root.setProperty("--footer-bg", c.topbarBg);
+      root.setProperty("--footer-text", c.topbarText);
+    } else {
+      root.setProperty("--footer-bg", "#111");
+      root.setProperty("--footer-text", "#fff");
+    }
+  }
+}
+
 loadRuntimeConfig().then(() => {
   applyBroadcastLink();
   updateTopBarAuth();
   updateFooterPlayerVisibility();
   setPlayPauseIcons(true, "Start");
   initColorPicker();
+  applyMobilePlayerBarStyle();
+  window.addEventListener("resize", () => applyMobilePlayerBarStyle());
   initTopbarClock();
   initSearchToggle();
   initMobileNav();
