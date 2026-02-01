@@ -1,4 +1,6 @@
 # LAF MVP – project rules
 
-## Git / GitHub
-- **After making changes that should be saved:** remind the user to commit and push, or run: `git add -A && git commit -m "<message>" && git push origin main` (with an appropriate message and with git_write + network permissions). Do not forget to push to GitHub when the user or the task implies the work should be persisted remotely.
+## ⚠️ Git / GitHub – MANDATORY
+- **Always push to GitHub when you finish making code changes.** The user has asked repeatedly not to forget this.
+- **Before ending your turn:** If you modified any tracked files, run: `git add -A && git commit -m "<clear message>" && git push origin main` (use git_write + network permissions). Do not skip this step.
+- If the user explicitly says "don't push" or "don't commit", then skip; otherwise **assume push is required**.

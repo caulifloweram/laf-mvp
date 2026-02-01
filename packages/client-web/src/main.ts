@@ -138,13 +138,17 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   // From Are.na channel online-radios-zlvblzsstly; stream URLs from Radio Browser API / official sites
   {
     name: "KEXP 90.3 FM",
-    description: "Where the Music Matters. Seattle-based listener-supported radio.",
+    description: "Where the Music Matters. Seattle-based listener-supported radio. Two stream qualities.",
     websiteUrl: "https://www.kexp.org/",
     streamUrl: "https://kexp.streamguys1.com/kexp160.aac",
     logoUrl: "https://www.kexp.org/favicon.ico",
     location: "Seattle, USA",
     lat: 47.6062,
     lng: -122.3321,
+    channels: [
+      { name: "160K AAC", streamUrl: "https://kexp.streamguys1.com/kexp160.aac" },
+      { name: "64K AAC", streamUrl: "https://kexp.streamguys1.com/kexp64.aac" },
+    ],
   },
   {
     name: "SomaFM",
@@ -168,13 +172,19 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   },
   {
     name: "WFMU",
-    description: "Independent freeform radio. Jersey City 91.1 FM, Hudson Valley 90.1 FM.",
+    description: "Independent freeform radio. Jersey City 91.1 FM, Hudson Valley 90.1 FM. Multiple streams.",
     websiteUrl: "https://www.wfmu.org/",
     streamUrl: "http://stream0.wfmu.org/freeform-128k",
     logoUrl: "https://www.wfmu.org/favicon.ico",
     location: "Jersey City, USA",
     lat: 40.7178,
     lng: -74.0431,
+    channels: [
+      { name: "Freeform", streamUrl: "http://stream0.wfmu.org/freeform-128k" },
+      { name: "Rock'n'Soul Radio", streamUrl: "http://stream0.wfmu.org/rock-128k" },
+      { name: "Give the Drummer Radio", streamUrl: "http://stream0.wfmu.org/drummer-128k" },
+      { name: "Sheena's Jungle Room", streamUrl: "http://stream0.wfmu.org/sheena-128k" },
+    ],
   },
   {
     name: "NTS Radio",
@@ -668,13 +678,17 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   },
   {
     name: "Resonance FM",
-    description: "London's arts radio. 104.4 FM. Non-commercial, experimental, artist-run.",
+    description: "London's arts radio. 104.4 FM. Non-commercial, experimental, artist-run. Main and Extra streams.",
     websiteUrl: "https://www.resonancefm.com/",
-    streamUrl: "http://stream.resonance.fm:8000/resonance.m3u",
+    streamUrl: "http://stream.resonance.fm:8000/resonance",
     logoUrl: "https://www.resonancefm.com/favicon.ico",
     location: "London, UK",
     lat: 51.5074,
     lng: -0.1278,
+    channels: [
+      { name: "Resonance 104.4 FM", streamUrl: "http://stream.resonance.fm:8000/resonance" },
+      { name: "Resonance Extra", streamUrl: "http://stream.resonance.fm:8000/resonance-extra" },
+    ],
   },
   {
     name: "Diffusion FM",
@@ -701,9 +715,19 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     location: "Germany",
   },
   // 100 underground/community/experimental/freeform stations from Radio Browser API
-  { name: "WeRave Music Radio 01", description: "Dark and underground electronic. New York.", websiteUrl: "https://werave.com.br/en", streamUrl: "https://stream.zeno.fm/pjktyby8dn5tv", logoUrl: "https://werave.com.br/wp-content/uploads/cropped-weravemusic-180x180.png", location: "New York, USA" },
+  {
+    name: "WeRave Music Radio",
+    description: "Electronic radio from New York. Dark/underground and melodic house channels.",
+    websiteUrl: "https://werave.com.br/en",
+    streamUrl: "https://stream.zeno.fm/pjktyby8dn5tv",
+    logoUrl: "https://werave.com.br/wp-content/uploads/cropped-weravemusic-180x180.png",
+    location: "New York, USA",
+    channels: [
+      { name: "01 – Dark & Underground", streamUrl: "https://stream.zeno.fm/pjktyby8dn5tv" },
+      { name: "02 – Study & Chillout", streamUrl: "https://stream.zeno.fm/cpnv07rjvp0vv" },
+    ],
+  },
   { name: "Ultra Dark Radio", description: "Darkwave, EBM, gothic, industrial, new wave.", websiteUrl: "http://www.ultradarkradio.com/", streamUrl: "http://stream.laut.fm/ultradarkradio", logoUrl: "", location: "Germany" },
-  { name: "WeRave Music Radio 02", description: "Study and chillout. Melodic house, organic house.", websiteUrl: "https://werave.com.br/en", streamUrl: "https://stream.zeno.fm/cpnv07rjvp0vv", logoUrl: "https://werave.com.br/wp-content/uploads/2020/09/vinyl.png", location: "New York, USA" },
   { name: "Radio Free Phoenix", description: "60s–90s, alternative, commercial-free freeform rock.", websiteUrl: "http://radiofreephoenix.com/", streamUrl: "http://69.162.73.34:8124/;stream.nsv", logoUrl: "", location: "USA" },
   { name: "UnderGRAND Radio", description: "Alternative, blues, funk, jazz, metal, post rock, punk. Serbia.", websiteUrl: "https://undergrandradio.dotkomsite.com/", streamUrl: "http://stream.zeno.fm/rp1swb5pgzzuv", logoUrl: "https://img.sedoparking.com/templates/logos/sedo_logo.png", location: "Serbia" },
   { name: "Radio Underground Poland", description: "Independent punk, post-punk, reggae, ska. Poland.", websiteUrl: "http://www.radiounderground.org/", streamUrl: "http://s1.slotex.pl:7604/", logoUrl: "http://www.radiounderground.org/favicon.png", location: "Poland" },
@@ -729,7 +753,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "Fluid Radio", description: "Abstract, acoustic, ambient, experimental, modern classical. UK.", websiteUrl: "http://www.fluid-radio.co.uk/", streamUrl: "http://uk4-vn.webcast-server.net:9270/", logoUrl: "", location: "UK" },
   { name: "EBM", description: "Dark wave, EBM, electronic, industrial, new wave. Germany.", websiteUrl: "https://flatlinesradio.de/", streamUrl: "https://stream.laut.fm/ebm", logoUrl: "https://i0.wp.com/flatlinesradio.de/storage/2021/11/244611397_1194785584320990_6265045071816304131_n-1.jpg?fit=180%2c180&#038;ssl=1", location: "Germany" },
   { name: "Polushon", description: "Experimental, jazz, world music. Sweden.", websiteUrl: "http://polushon.com/", streamUrl: "https://whsh4u-clients.com:18323/proxy/ndhfnbqx?mp=/stream", logoUrl: "https://thumbnailer.mixcloud.com/unsafe/300x300/profile/5/d/0/1/aa1b-e4e6-48e8-9128-75506e38dd92.jpg", location: "Sweden" },
-  { name: "Resonance Extra", description: "Experimental, global, sound art. UK.", websiteUrl: "https://extra.resonance.fm/", streamUrl: "http://stream.resonance.fm:8000/resonance-extra", logoUrl: "https://extra.resonance.fm/favicon.ico", location: "UK" },
   { name: "Radio Wombat", description: "Experimental, punk, soul. Toscana.", websiteUrl: "https://wombat.noblogs.org/", streamUrl: "http://s.streampunk.cc/wombat.ogg", logoUrl: "", location: "Italy" },
   { name: "Radio Caprice – Experimental", description: "Avant-garde, experimental music.", websiteUrl: "http://radcap.ru/playback-history/4/experimental-ph.php", streamUrl: "http://79.111.119.111:8004/experimentalmusic", logoUrl: "http://radcap.ru/apple-touch-icon.png", location: "" },
   { name: "Radio NABA", description: "Alternative, avant-garde, experimental. Latvia.", websiteUrl: "http://www.naba.lv/", streamUrl: "http://nabamp0.latvijasradio.lv:8016/;", logoUrl: "", location: "Latvia" },
