@@ -2085,8 +2085,14 @@ function renderUnifiedStations(): void {
     });
   }
 
-  if (mode === "grid") filtered.forEach((item) => {
-    if (item.type === "laf") {
+  if (mode === "grid" && filtered.length > 0) {
+    const GRID_CHUNK_SIZE = 60;
+    let chunkStart = 0;
+    function appendChunk(): void {
+      const end = Math.min(chunkStart + GRID_CHUNK_SIZE, filtered.length);
+      for (let i = chunkStart; i < end; i++) {
+        const item = filtered[i];
+        if (item.type === "laf") {
       const c = item.channel;
       const card = document.createElement("div");
       card.className = "channel-card";
@@ -2255,8 +2261,34 @@ function renderUnifiedStations(): void {
       });
       stationsGrid.appendChild(card);
     }
-  });
-  if (mode === "grid") {
+      }
+      chunkStart = end;
+      if (chunkStart < filtered.length) {
+        requestAnimationFrame(appendChunk);
+      } else {
+        const suggestCard = document.createElement("button");
+        suggestCard.type = "button";
+        suggestCard.className = "suggest-card";
+        suggestCard.innerHTML = "<span class=\"suggest-card-title\">Are we missing any other radios you like?</span> Share with us.";
+        suggestCard.onclick = () => {
+          const overlay = document.getElementById("suggest-overlay");
+          const urlInput = document.getElementById("suggest-url") as HTMLInputElement;
+          const msgInput = document.getElementById("suggest-message") as HTMLInputElement;
+          const statusEl = document.getElementById("suggest-status");
+          if (overlay && urlInput) {
+            urlInput.value = "";
+            if (msgInput) msgInput.value = "";
+            if (statusEl) { statusEl.classList.add("hidden"); statusEl.textContent = ""; }
+            overlay.setAttribute("aria-hidden", "false");
+            overlay.classList.add("visible");
+            urlInput.focus();
+          }
+        };
+        stationsGrid.appendChild(suggestCard);
+      }
+    }
+    appendChunk();
+  } else if (mode === "grid" && filtered.length === 0) {
     const suggestCard = document.createElement("button");
     suggestCard.type = "button";
     suggestCard.className = "suggest-card";
@@ -2571,28 +2603,33 @@ function runFullStreamCheck(urlList?: string[]) {
       updateCheckingBanner();
       return;
     }
-    Promise.all(wave.map((chunk) => checkStreamBatchApi(chunk, batchTimeout))).then((resultMaps) => {
-      resultMaps.forEach((results) => {
-        for (const [streamUrl, { ok, status }] of Object.entries(results)) {
-          if (ok && initialLoadPhase) {
-            streamStatusCache[streamUrl] = { ok: true, status: "live" };
-            updateCardStatus(streamUrl, true, "live");
-          } else if (ok && !initialLoadPhase) {
-            streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
-            updateCardStatus(streamUrl, false, "verifying");
-            verifyStreamInBrowser(streamUrl).then((verified) => {
-              updateCardStatus(streamUrl, verified, verified ? "live" : "error");
-            });
-          } else {
-            streamStatusCache[streamUrl] = { ok, status };
-            updateCardStatus(streamUrl, ok, status);
+    Promise.all(wave.map((chunk) => checkStreamBatchApi(chunk, batchTimeout)))
+      .then((resultMaps) => {
+        resultMaps.forEach((results) => {
+          for (const [streamUrl, { ok, status }] of Object.entries(results)) {
+            if (ok && initialLoadPhase) {
+              streamStatusCache[streamUrl] = { ok: true, status: "live" };
+              updateCardStatus(streamUrl, true, "live");
+            } else if (ok && !initialLoadPhase) {
+              streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
+              updateCardStatus(streamUrl, false, "verifying");
+              verifyStreamInBrowser(streamUrl).then((verified) => {
+                updateCardStatus(streamUrl, verified, verified ? "live" : "error");
+              });
+            } else {
+              streamStatusCache[streamUrl] = { ok, status };
+              updateCardStatus(streamUrl, ok, status);
+            }
           }
-        }
+        });
+        scheduleSaveStreamStatusCache();
+        updateCheckingBanner();
+        runNextWave();
+      })
+      .catch(() => {
+        updateCheckingBanner();
+        runNextWave();
       });
-      scheduleSaveStreamStatusCache();
-      updateCheckingBanner();
-      runNextWave();
-    });
   }
   runNextWave();
 }
