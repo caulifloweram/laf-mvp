@@ -1019,12 +1019,18 @@ function scheduleSaveStreamStatusCache(): void {
 
 const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 4000;
 const EXTERNAL_STATIONS_MAX_WAIT_MS = 6000;
+/** Mobile: longer timeouts so slow/high-latency networks can complete before fallback. */
+const EXTERNAL_STATIONS_MOBILE_FETCH_TIMEOUT_MS = 6000;
+const EXTERNAL_STATIONS_MOBILE_MAX_WAIT_MS = 10000;
 
 async function loadExternalStations(): Promise<void> {
+  const isMobile = isMobileViewport();
+  const fetchTimeout = isMobile ? EXTERNAL_STATIONS_MOBILE_FETCH_TIMEOUT_MS : EXTERNAL_STATIONS_FETCH_TIMEOUT_MS;
+  const maxWait = isMobile ? EXTERNAL_STATIONS_MOBILE_MAX_WAIT_MS : EXTERNAL_STATIONS_MAX_WAIT_MS;
   const doLoad = async (): Promise<void> => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_STATIONS_FETCH_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), fetchTimeout);
     const [stationsRes, overridesRes] = await Promise.all([
       fetch(`${API_URL}/api/external-stations`, { signal: controller.signal }),
       fetch(`${API_URL}/api/station-overrides`, { signal: controller.signal }),
@@ -1069,7 +1075,7 @@ async function loadExternalStations(): Promise<void> {
   renderExternalStations();
   };
   const timeoutPromise = new Promise<void>((_, reject) =>
-    setTimeout(() => reject(new Error("load timeout")), EXTERNAL_STATIONS_MAX_WAIT_MS)
+    setTimeout(() => reject(new Error("load timeout")), maxWait)
   );
   await Promise.race([doLoad(), timeoutPromise]).catch(() => {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
@@ -2248,6 +2254,10 @@ const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_BATCH_CHUNK = 25;
 const STREAM_CHECK_BATCH_CONCURRENT = 4;
 const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 6000;
+/** Mobile: lower concurrency and smaller chunks to avoid connection saturation and timeouts on slow/high-latency networks. */
+const STREAM_CHECK_MOBILE_CHUNK = 15;
+const STREAM_CHECK_MOBILE_CONCURRENT = 2;
+const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 9000;
 /** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
@@ -2375,11 +2385,12 @@ function checkOneStreamApi(streamUrl: string, timeoutMs: number): Promise<{ ok: 
     });
 }
 
-/** Check a batch of stream URLs in one API call. Returns results map or empty on failure. */
-function checkStreamBatchApi(urls: string[]): Promise<Record<string, { ok: boolean; status: string }>> {
+/** Check a batch of stream URLs in one API call. Returns results map or empty on failure. timeoutMs overrides default (used on mobile). */
+function checkStreamBatchApi(urls: string[], timeoutMs?: number): Promise<Record<string, { ok: boolean; status: string }>> {
   if (urls.length === 0) return Promise.resolve({});
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS);
+  const t = timeoutMs ?? STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS;
+  const timeoutId = setTimeout(() => controller.abort(), t);
   return fetch(`${API_URL}/api/stream-check-batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2474,26 +2485,30 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). */
+/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). Mobile uses lower concurrency and smaller chunks. */
 function runFullStreamCheck(urlList?: string[]) {
   const urls = urlList ?? getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
+  const isMobile = isMobileViewport();
+  const chunkSize = isMobile ? STREAM_CHECK_MOBILE_CHUNK : STREAM_CHECK_BATCH_CHUNK;
+  const concurrent = isMobile ? STREAM_CHECK_MOBILE_CONCURRENT : STREAM_CHECK_BATCH_CONCURRENT;
+  const batchTimeout = isMobile ? STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS : undefined;
   const chunks: string[][] = [];
-  for (let i = 0; i < toCheck.length; i += STREAM_CHECK_BATCH_CHUNK) {
-    chunks.push(toCheck.slice(i, i + STREAM_CHECK_BATCH_CHUNK));
+  for (let i = 0; i < toCheck.length; i += chunkSize) {
+    chunks.push(toCheck.slice(i, i + chunkSize));
   }
   let chunkIndex = 0;
   function runNextWave(): void {
-    const wave = chunks.slice(chunkIndex, chunkIndex + STREAM_CHECK_BATCH_CONCURRENT);
-    chunkIndex += STREAM_CHECK_BATCH_CONCURRENT;
+    const wave = chunks.slice(chunkIndex, chunkIndex + concurrent);
+    chunkIndex += concurrent;
     if (wave.length === 0) {
       streamCheckInProgress = false;
       updateCheckingBanner();
       return;
     }
-    Promise.all(wave.map((chunk) => checkStreamBatchApi(chunk))).then((resultMaps) => {
+    Promise.all(wave.map((chunk) => checkStreamBatchApi(chunk, batchTimeout))).then((resultMaps) => {
       resultMaps.forEach((results) => {
         for (const [streamUrl, { ok, status }] of Object.entries(results)) {
           if (ok && initialLoadPhase) {
