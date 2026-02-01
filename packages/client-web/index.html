@@ -270,6 +270,9 @@
       }
       .stations-search::placeholder { color: var(--text-muted); }
       .stations-loading-message { text-align: center; padding: 48px 24px; font-size: 16px; color: var(--text-muted); }
+      .stations-loading-message .stations-loading-text { animation: loading-pulse 1.2s ease-in-out infinite; }
+      .stations-loading-count { display: block; margin-top: 8px; font-size: 14px; opacity: 0.9; }
+      @keyframes loading-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
       .external-stations-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -504,7 +507,8 @@
       .auth-tab { padding: 6px 12px; border: 1px solid var(--border); background: var(--card-hover); cursor: pointer; font-weight: bold; }
       .auth-tab.active { background: var(--surface); }
       .admin-stations-list { display: flex; flex-direction: column; gap: 8px; }
-      .admin-station-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+      .admin-station-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+      .admin-station-row .admin-station-edit-form { grid-column: 1 / -1; }
       .admin-station-row .name { font-weight: bold; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .admin-station-row .stream-url { font-size: 11px; color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .admin-station-row button { flex-shrink: 0; }
@@ -587,7 +591,7 @@
     <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
     <nav class="site-topbar" id="site-topbar">
       <div class="topbar-left">
-        <a href="/" class="topbar-logo" id="nav-logo">LAF</a>
+        <a href="#live" class="topbar-logo" id="nav-logo">LAF</a>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
         <div class="topbar-nav">
           <a href="#about" class="topbar-nav-item" id="nav-about">About</a>
@@ -606,7 +610,7 @@
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
-      <a href="/" class="topbar-nav-item" data-nav="live">LAF</a>
+      <a href="#live" class="topbar-nav-item" data-nav="live">LAF</a>
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item" id="drawer-broadcast">Broadcast</a>
       <a href="#admin" class="topbar-nav-item hidden" id="drawer-admin">Admin</a>

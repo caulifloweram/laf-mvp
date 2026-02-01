@@ -589,6 +589,54 @@ app.post("/api/external-stations", authMiddleware, async (req, res) => {
   }
 });
 
+// Protected: Update an external station (admin only; name, description, websiteUrl, logoUrl)
+app.patch("/api/external-stations/:id", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const email = (user?.email ?? "").toString().toLowerCase();
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "Only authorized admins can edit stations" });
+  }
+  const id = req.params.id;
+  if (!id) return res.status(400).json({ error: "Station id is required" });
+  const { name, description, websiteUrl, logoUrl } = req.body;
+  const updates: string[] = [];
+  const values: unknown[] = [];
+  let pos = 1;
+  if (name !== undefined && typeof name === "string") {
+    updates.push(`name = $${pos++}`);
+    values.push(name.trim() || "Station");
+  }
+  if (description !== undefined) {
+    updates.push(`description = $${pos++}`);
+    values.push(typeof description === "string" ? description.trim() || null : null);
+  }
+  if (websiteUrl !== undefined && typeof websiteUrl === "string" && websiteUrl.trim()) {
+    updates.push(`website_url = $${pos++}`);
+    values.push(websiteUrl.trim());
+  }
+  if (logoUrl !== undefined) {
+    updates.push(`logo_url = $${pos++}`);
+    values.push(typeof logoUrl === "string" && logoUrl.trim() ? logoUrl.trim() : null);
+  }
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+  values.push(id);
+  try {
+    const result = await pool.query(
+      `UPDATE external_stations SET ${updates.join(", ")} WHERE id = $${pos} RETURNING id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl"`,
+      values
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Station not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err: any) {
+    console.error("Error updating external station:", err);
+    res.status(500).json({ error: "Failed to update station", details: err.message });
+  }
+});
+
 // Protected: Delete an external station (submitter can delete; admins can delete any)
 app.delete("/api/external-stations/:id", authMiddleware, async (req, res) => {
   const user = (req as any).user;

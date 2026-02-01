@@ -268,7 +268,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     name: "Radio Centraal",
     description: "Independent non-commercial FM radio. Antwerp 106.7 FM. Music, poetry, film, culture.",
     websiteUrl: "https://www.radiocentraal.be/",
-    streamUrl: "http://streams.movemedia.eu:8530/",
+    streamUrl: "https://streaming.radiocentraal.be/",
     logoUrl: "https://www.radiocentraal.be/favicon.ico",
   },
   {
@@ -1058,7 +1058,10 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
 function renderUnifiedStations(): void {
   stationsGrid.innerHTML = "";
   if (streamCheckInProgress) {
-    stationsGrid.innerHTML = "<p class='stations-loading-message'>Looking for live radios…</p>";
+    const urls = getAllStreamUrls();
+    const liveCount = urls.filter((u) => streamStatusCache[u]?.ok).length;
+    const total = urls.length;
+    stationsGrid.innerHTML = `<p class='stations-loading-message'><span class='stations-loading-text'>Looking for live radios…</span> <span class='stations-loading-count'>(${liveCount} of ${total} live so far)</span></p>`;
     return;
   }
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
@@ -1366,6 +1369,7 @@ function runFullStreamCheck() {
     index += STREAM_CHECK_BATCH_SIZE;
     if (batch.length === 0) return;
     Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
+      renderUnifiedStations();
       if (index >= toCheck.length) {
         streamCheckInProgress = false;
         renderUnifiedStations();
@@ -2665,11 +2669,12 @@ function initAdminForm() {
     statusEl.classList.toggle("status-info", !isError);
   }
 
+  type AdminStationRow = { id: string; name: string; description?: string | null; streamUrl: string; websiteUrl?: string; logoUrl?: string | null };
   async function loadAdminStationsList() {
     if (!listEl) return;
     try {
       const res = await fetch(`${API_URL}/api/external-stations`);
-      const rows = (await res.json()) as Array<{ id: string; name: string; streamUrl: string; websiteUrl?: string }>;
+      const rows = (await res.json()) as AdminStationRow[];
       listEl.innerHTML = "";
       if (!rows?.length) {
         listEl.innerHTML = "<p style='color: var(--text-muted); font-size: 13px;'>No added stations yet.</p>";
@@ -2688,6 +2693,56 @@ function initAdminForm() {
         streamUrl.textContent = row.streamUrl || "";
         info.appendChild(name);
         info.appendChild(streamUrl);
+        const btnWrap = document.createElement("div");
+        btnWrap.style.cssText = "display: flex; gap: 8px; flex-shrink: 0;";
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", () => {
+          if (div.querySelector(".admin-station-edit-form")) return;
+          const form = document.createElement("div");
+          form.className = "admin-station-edit-form";
+          form.innerHTML = `
+            <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(row.name || "")}" /></div>
+            <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(row.description || "")}</textarea></div>
+            <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(row.websiteUrl || "")}" /></div>
+            <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(row.logoUrl || "")}" placeholder="https://..." /></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="button" class="admin-edit-save">Save</button>
+              <button type="button" class="admin-edit-cancel">Cancel</button>
+            </div>
+          `;
+          form.style.cssText = "grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--border); margin-top: 8px; background: var(--bg);";
+          const saveBtn = form.querySelector(".admin-edit-save")!;
+          const cancelBtn = form.querySelector(".admin-edit-cancel")!;
+          cancelBtn.addEventListener("click", () => { form.remove(); });
+          saveBtn.addEventListener("click", async () => {
+            const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
+            const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
+            const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
+            const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
+            if (!nameVal) { alert("Name is required"); return; }
+            (saveBtn as HTMLButtonElement).setAttribute("disabled", "true");
+            try {
+              const patchRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ name: nameVal, description: descVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+              });
+              if (patchRes.ok) {
+                form.remove();
+                await loadAdminStationsList();
+                await loadExternalStations();
+              } else {
+                const data = (await patchRes.json().catch(() => ({}))) as { error?: string };
+                alert(data.error || "Failed to update");
+              }
+            } finally {
+              (saveBtn as HTMLButtonElement).removeAttribute("disabled");
+            }
+          });
+          div.appendChild(form);
+        });
         const delBtn = document.createElement("button");
         delBtn.type = "button";
         delBtn.textContent = "Delete";
@@ -2711,8 +2766,10 @@ function initAdminForm() {
             delBtn.removeAttribute("disabled");
           }
         });
+        btnWrap.appendChild(editBtn);
+        btnWrap.appendChild(delBtn);
         div.appendChild(info);
-        div.appendChild(delBtn);
+        div.appendChild(btnWrap);
         listEl.appendChild(div);
       }
     } catch (_) {
