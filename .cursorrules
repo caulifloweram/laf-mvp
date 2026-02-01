@@ -2,5 +2,5 @@
 
 ## ⚠️ Git / GitHub – MANDATORY
 - **Always push to GitHub when you finish making code changes.** The user has asked repeatedly not to forget this.
-- **Before ending your turn:** If you modified any tracked files, run: `git add -A && git commit -m "<clear message>" && git push origin main` (use git_write + network permissions). Do not skip this step.
+- **Before ending your turn:** If you modified any tracked files, run: `git add -A && git commit -m "<clear message>" && git push origin main` (use git_write + network permissions). Do not skip this step. Do this *before* sending your final reply to the user.
 - If the user explicitly says "don't push" or "don't commit", then skip; otherwise **assume push is required**.
