@@ -979,6 +979,41 @@ function getBuiltInStationsFlat(): ExternalStation[] {
   return flat;
 }
 
+/** Built-in stations with bundle name for admin panel (one entry per stream; bundleName = config name). */
+function getBuiltInStationsForAdmin(): Array<ExternalStation & { bundleName: string }> {
+  const flat: Array<ExternalStation & { bundleName: string }> = [];
+  for (const s of EXTERNAL_STATION_CONFIGS) {
+    if (s.channels && s.channels.length > 0) {
+      for (const ch of s.channels) {
+        flat.push({
+          name: `${s.name}: ${ch.name}`,
+          description: s.description,
+          websiteUrl: s.websiteUrl,
+          streamUrl: ch.streamUrl,
+          logoUrl: s.logoUrl,
+          location: s.location,
+          lat: s.lat,
+          lng: s.lng,
+          bundleName: s.name,
+        });
+      }
+    } else {
+      flat.push({
+        name: s.name,
+        description: s.description,
+        websiteUrl: s.websiteUrl,
+        streamUrl: s.streamUrl,
+        logoUrl: s.logoUrl,
+        location: s.location,
+        lat: s.lat,
+        lng: s.lng,
+        bundleName: s.name,
+      });
+    }
+  }
+  return flat;
+}
+
 /** All stations (built-in + user-submitted from API), sorted A–Z. Filtered by search in render. */
 let allExternalStations: ExternalStation[] = (() => {
   const b = getBuiltInStationsFlat();
@@ -4300,16 +4335,245 @@ function initAdminForm() {
     statusEl.classList.toggle("status-info", !isError);
   }
 
-  type AdminStationRow = { id?: string; name: string; description?: string | null; streamUrl: string; websiteUrl?: string; logoUrl?: string | null; location?: string | null };
+  type AdminStationRow = {
+    id?: string;
+    name: string;
+    description?: string | null;
+    streamUrl: string;
+    websiteUrl?: string;
+    logoUrl?: string | null;
+    location?: string | null;
+    source: "builtin" | "api";
+    bundleName: string;
+  };
+
+  let adminAllRows: AdminStationRow[] = [];
+
+  function rowToExternalStation(row: AdminStationRow): ExternalStation {
+    return {
+      name: row.name,
+      description: row.description ?? "",
+      websiteUrl: row.websiteUrl ?? row.streamUrl,
+      streamUrl: row.streamUrl,
+      logoUrl: row.logoUrl ?? "",
+      location: row.location ?? undefined,
+    };
+  }
+
+  async function deleteAdminRow(row: AdminStationRow): Promise<boolean> {
+    if (!token) return false;
+    if (row.id) {
+      const delRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (delRes.ok) return true;
+      const data = (await delRes.json().catch(() => ({}))) as { error?: string };
+      alert(data.error || "Failed to delete");
+      return false;
+    }
+    const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ streamUrl: row.streamUrl, hidden: true }),
+    });
+    if (overrideRes.ok) return true;
+    const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
+    alert(data.error || "Failed to remove");
+    return false;
+  }
+
+  function updateDeleteSelectedVisibility() {
+    const btn = document.getElementById("admin-delete-selected");
+    if (!btn) return;
+    const checked = listEl?.querySelectorAll?.(".admin-row-checkbox:checked");
+    btn.classList.toggle("hidden", (checked?.length ?? 0) === 0);
+  }
+
+  function renderAdminList() {
+    if (!listEl) return;
+    const searchInput = document.getElementById("admin-search") as HTMLInputElement | null;
+    const filterSource = document.getElementById("admin-filter-source") as HTMLSelectElement | null;
+    const filterBundle = document.getElementById("admin-filter-bundle") as HTMLSelectElement | null;
+    const searchQ = (searchInput?.value ?? "").trim().toLowerCase();
+    const sourceVal = (filterSource?.value ?? "").trim();
+    const bundleVal = (filterBundle?.value ?? "").trim();
+    let filtered = adminAllRows;
+    if (searchQ) {
+      filtered = filtered.filter(
+        (r) =>
+          (r.name && r.name.toLowerCase().includes(searchQ)) ||
+          (r.streamUrl && r.streamUrl.toLowerCase().includes(searchQ)) ||
+          (r.description && r.description.toLowerCase().includes(searchQ)) ||
+          (r.bundleName && r.bundleName.toLowerCase().includes(searchQ))
+      );
+    }
+    if (sourceVal === "builtin") filtered = filtered.filter((r) => r.source === "builtin");
+    else if (sourceVal === "api") filtered = filtered.filter((r) => r.source === "api");
+    if (bundleVal) filtered = filtered.filter((r) => r.bundleName === bundleVal);
+    const uniqueBundles = [...new Set(adminAllRows.map((r) => r.bundleName))].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+    if (filterBundle) {
+      const current = filterBundle.value;
+      filterBundle.innerHTML = "<option value=\"\">All bundles</option>";
+      for (const b of uniqueBundles) {
+        const opt = document.createElement("option");
+        opt.value = b;
+        opt.textContent = b;
+        if (b === current) opt.selected = true;
+        filterBundle.appendChild(opt);
+      }
+    }
+    listEl.innerHTML = "";
+    if (!filtered.length) {
+      listEl.innerHTML = "<p style='color: var(--text-muted); font-size: 13px;'>No stations match the filters.</p>";
+      updateDeleteSelectedVisibility();
+      return;
+    }
+    for (const row of filtered) {
+      const display = applyStationOverride({ ...row }, row.streamUrl);
+      const div = document.createElement("div");
+      div.className = "admin-station-row";
+      div.dataset.streamUrl = row.streamUrl;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "admin-row-checkbox";
+      checkbox.dataset.streamUrl = row.streamUrl;
+      checkbox.addEventListener("change", updateDeleteSelectedVisibility);
+      const info = document.createElement("div");
+      info.className = "admin-station-info";
+      const nameEl = document.createElement("span");
+      nameEl.className = "name";
+      nameEl.textContent = display.name || "Unnamed";
+      const streamUrlEl = document.createElement("span");
+      streamUrlEl.className = "stream-url";
+      streamUrlEl.textContent = row.streamUrl || "";
+      const badge = document.createElement("span");
+      badge.className = "admin-station-badge";
+      badge.textContent = `${row.source === "api" ? "API" : "Built-in"} · ${row.bundleName}`;
+      info.appendChild(nameEl);
+      info.appendChild(streamUrlEl);
+      info.appendChild(badge);
+      const playBtn = document.createElement("button");
+      playBtn.type = "button";
+      playBtn.className = "admin-btn-play";
+      playBtn.textContent = "Play";
+      playBtn.addEventListener("click", () => selectExternalStation(rowToExternalStation(row)));
+      const actions = document.createElement("div");
+      actions.className = "admin-station-actions";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        if (div.querySelector(".admin-station-edit-form")) return;
+        const form = document.createElement("div");
+        form.className = "admin-station-edit-form";
+        form.innerHTML = `
+          <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(display.name || "")}" /></div>
+          <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(display.description || "")}</textarea></div>
+          <div class="form-group"><label>Location</label><input type="text" data-field="location" value="${escapeAttr(display.location || "")}" placeholder="e.g. Berlin, Germany" /></div>
+          <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(display.websiteUrl || "")}" /></div>
+          <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(display.logoUrl || "")}" placeholder="https://..." /></div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button type="button" class="admin-edit-save">Save</button>
+            <button type="button" class="admin-edit-cancel">Cancel</button>
+          </div>
+        `;
+        form.style.cssText = "grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--border); margin-top: 8px; background: var(--bg);";
+        const saveBtn = form.querySelector(".admin-edit-save")!;
+        const cancelBtn = form.querySelector(".admin-edit-cancel")!;
+        cancelBtn.addEventListener("click", () => { form.remove(); });
+        saveBtn.addEventListener("click", async () => {
+          const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
+          const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
+          const locVal = (form.querySelector("[data-field=location]") as HTMLInputElement)?.value?.trim() || "";
+          const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
+          const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
+          if (!nameVal) { alert("Name is required"); return; }
+          (saveBtn as HTMLButtonElement).setAttribute("disabled", "true");
+          try {
+            if (row.id) {
+              const patchRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+              });
+              if (patchRes.ok) {
+                form.remove();
+                await loadAdminStationsList();
+                await loadExternalStations();
+              } else {
+                const data = (await patchRes.json().catch(() => ({}))) as { error?: string };
+                alert(data.error || "Failed to update");
+              }
+            } else {
+              const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ streamUrl: row.streamUrl, name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+              });
+              if (overrideRes.ok) {
+                form.remove();
+                await loadAdminStationsList();
+                await loadExternalStations();
+              } else {
+                const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
+                alert(data.error || "Failed to save");
+              }
+            }
+          } finally {
+            (saveBtn as HTMLButtonElement).removeAttribute("disabled");
+          }
+        });
+        div.appendChild(form);
+      });
+      actions.appendChild(editBtn);
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(`Remove "${display.name || "this station"}" from the site?`)) return;
+        delBtn.setAttribute("disabled", "true");
+        try {
+          const ok = await deleteAdminRow(row);
+          if (ok) {
+            await loadAdminStationsList();
+            await loadExternalStations();
+          }
+        } finally {
+          delBtn.removeAttribute("disabled");
+        }
+      });
+      actions.appendChild(delBtn);
+      div.appendChild(checkbox);
+      div.appendChild(info);
+      div.appendChild(playBtn);
+      div.appendChild(actions);
+      listEl.appendChild(div);
+    }
+    updateDeleteSelectedVisibility();
+  }
+
   async function loadAdminStationsList() {
     if (!listEl) return;
     try {
       const res = await fetch(`${API_URL}/api/external-stations`);
-      const apiRows = (await res.json()) as AdminStationRow[];
-      const builtIn = getBuiltInStationsFlat();
+      const apiRows = (await res.json()) as Array<{ id?: string; name: string; description?: string | null; streamUrl: string; websiteUrl?: string; logoUrl?: string | null; location?: string | null }>;
+      const builtIn = getBuiltInStationsForAdmin();
       const byStreamUrl = new Map<string, AdminStationRow>();
       for (const r of apiRows) {
-        if (r.streamUrl) byStreamUrl.set(r.streamUrl, { ...r, websiteUrl: r.websiteUrl ?? r.streamUrl });
+        if (r.streamUrl) {
+          byStreamUrl.set(r.streamUrl, {
+            id: r.id,
+            name: r.name,
+            description: r.description ?? null,
+            streamUrl: r.streamUrl,
+            websiteUrl: r.websiteUrl ?? r.streamUrl,
+            logoUrl: r.logoUrl ?? null,
+            location: r.location ?? null,
+            source: "api",
+            bundleName: "API",
+          });
+        }
       }
       for (const s of builtIn) {
         if (!byStreamUrl.has(s.streamUrl)) {
@@ -4320,146 +4584,49 @@ function initAdminForm() {
             websiteUrl: s.websiteUrl,
             logoUrl: s.logoUrl || null,
             location: s.location || null,
+            source: "builtin",
+            bundleName: s.bundleName,
           });
         }
       }
-      let allRows = Array.from(byStreamUrl.values()).sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
-      allRows = allRows.filter((r) => !stationOverrides[r.streamUrl]?.hidden);
-      listEl.innerHTML = "";
-      if (!allRows.length) {
-        listEl.innerHTML = "<p style='color: var(--text-muted); font-size: 13px;'>No stations.</p>";
-        return;
-      }
-      for (const row of allRows) {
-        const display = applyStationOverride({ ...row }, row.streamUrl);
-        const div = document.createElement("div");
-        div.className = "admin-station-row";
-        const info = document.createElement("div");
-        info.style.cssText = "min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;";
-        const name = document.createElement("span");
-        name.className = "name";
-        name.textContent = display.name || "Unnamed";
-        const streamUrl = document.createElement("span");
-        streamUrl.className = "stream-url";
-        streamUrl.textContent = row.streamUrl || "";
-        info.appendChild(name);
-        info.appendChild(streamUrl);
-        const btnWrap = document.createElement("div");
-        btnWrap.style.cssText = "display: flex; gap: 8px; flex-shrink: 0; align-items: center;";
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => {
-          if (div.querySelector(".admin-station-edit-form")) return;
-          const form = document.createElement("div");
-          form.className = "admin-station-edit-form";
-          form.innerHTML = `
-            <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(display.name || "")}" /></div>
-            <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(display.description || "")}</textarea></div>
-            <div class="form-group"><label>Location</label><input type="text" data-field="location" value="${escapeAttr(display.location || "")}" placeholder="e.g. Berlin, Germany" /></div>
-            <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(display.websiteUrl || "")}" /></div>
-            <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(display.logoUrl || "")}" placeholder="https://..." /></div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button type="button" class="admin-edit-save">Save</button>
-              <button type="button" class="admin-edit-cancel">Cancel</button>
-            </div>
-          `;
-          form.style.cssText = "grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--border); margin-top: 8px; background: var(--bg);";
-          const saveBtn = form.querySelector(".admin-edit-save")!;
-          const cancelBtn = form.querySelector(".admin-edit-cancel")!;
-          cancelBtn.addEventListener("click", () => { form.remove(); });
-          saveBtn.addEventListener("click", async () => {
-            const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
-            const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
-            const locVal = (form.querySelector("[data-field=location]") as HTMLInputElement)?.value?.trim() || "";
-            const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
-            const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
-            if (!nameVal) { alert("Name is required"); return; }
-            (saveBtn as HTMLButtonElement).setAttribute("disabled", "true");
-            try {
-              if (row.id) {
-                const patchRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
-                });
-                if (patchRes.ok) {
-                  form.remove();
-                  await loadAdminStationsList();
-                  await loadExternalStations();
-                } else {
-                  const data = (await patchRes.json().catch(() => ({}))) as { error?: string };
-                  alert(data.error || "Failed to update");
-                }
-              } else {
-                const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ streamUrl: row.streamUrl, name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
-                });
-                if (overrideRes.ok) {
-                  form.remove();
-                  await loadAdminStationsList();
-                  await loadExternalStations();
-                } else {
-                  const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
-                  alert(data.error || "Failed to save");
-                }
-              }
-            } finally {
-              (saveBtn as HTMLButtonElement).removeAttribute("disabled");
-            }
-          });
-          div.appendChild(form);
-        });
-        btnWrap.appendChild(editBtn);
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", async () => {
-          if (!token) return;
-          if (!confirm(`Remove "${display.name || "this station"}" from the site?`)) return;
-          delBtn.setAttribute("disabled", "true");
-          try {
-            if (row.id) {
-              const delRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (delRes.ok) {
-                await loadAdminStationsList();
-                await loadExternalStations();
-              } else {
-                const data = (await delRes.json().catch(() => ({}))) as { error?: string };
-                alert(data.error || "Failed to delete");
-              }
-            } else {
-              const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ streamUrl: row.streamUrl, hidden: true }),
-              });
-              if (overrideRes.ok) {
-                await loadAdminStationsList();
-                await loadExternalStations();
-              } else {
-                const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
-                alert(data.error || "Failed to remove");
-              }
-            }
-          } finally {
-            delBtn.removeAttribute("disabled");
-          }
-        });
-        btnWrap.appendChild(delBtn);
-        div.appendChild(info);
-        div.appendChild(btnWrap);
-        listEl.appendChild(div);
-      }
+      adminAllRows = Array.from(byStreamUrl.values())
+        .filter((r) => !stationOverrides[r.streamUrl]?.hidden)
+        .sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+      renderAdminList();
     } catch (_) {
       listEl.innerHTML = "<p style='color: var(--status-offline); font-size: 13px;'>Failed to load list.</p>";
     }
   }
+
+  const adminSearchInput = document.getElementById("admin-search") as HTMLInputElement | null;
+  const adminFilterSource = document.getElementById("admin-filter-source") as HTMLSelectElement | null;
+  const adminFilterBundle = document.getElementById("admin-filter-bundle") as HTMLSelectElement | null;
+  adminSearchInput?.addEventListener("input", () => renderAdminList());
+  adminFilterSource?.addEventListener("change", () => renderAdminList());
+  adminFilterBundle?.addEventListener("change", () => renderAdminList());
+  const deleteSelectedBtn = document.getElementById("admin-delete-selected");
+  deleteSelectedBtn?.addEventListener("click", async () => {
+    if (!token) return;
+    const checkboxes = listEl?.querySelectorAll?.(".admin-row-checkbox:checked") as NodeListOf<HTMLInputElement> | undefined;
+    if (!checkboxes?.length) return;
+    const streamUrls = Array.from(checkboxes).map((cb) => cb.dataset.streamUrl).filter(Boolean) as string[];
+    const rowsToDelete = adminAllRows.filter((r) => streamUrls.includes(r.streamUrl));
+    if (!rowsToDelete.length) return;
+    if (!confirm(`Remove ${rowsToDelete.length} station(s) from the site?`)) return;
+    (deleteSelectedBtn as HTMLButtonElement).setAttribute("disabled", "true");
+    try {
+      let okCount = 0;
+      for (const row of rowsToDelete) {
+        if (await deleteAdminRow(row)) okCount++;
+      }
+      if (okCount > 0) {
+        await loadAdminStationsList();
+        await loadExternalStations();
+      }
+    } finally {
+      (deleteSelectedBtn as HTMLButtonElement).removeAttribute("disabled");
+    }
+  });
 
   submitBtn.addEventListener("click", async () => {
     const url = (urlInput.value ?? "").trim();

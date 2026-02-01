@@ -1,20 +1,28 @@
 #!/usr/bin/env node
 /**
- * Test each radio station (API + built-in) and delete/hide the ones that do not connect.
- * - API stations: DELETE /api/external-stations/:id for failing streams.
- * - Built-in stations: PATCH /api/station-overrides with { streamUrl, hidden: true } so they are hidden in the client.
+ * Test each radio station (API + built-in) from the API server's network.
+ * By default only REPORTS which streams failed the check; it does NOT delete/hide.
+ *
+ * IMPORTANT: The check runs from the API server (e.g. Railway), not from users' browsers.
+ * Some streams may "fail" here but still work when users click (different IP, region, headers).
+ * Use the report as a hint for manual review; only apply remove/hide if you have verified
+ * a station is truly dead (e.g. offline for good).
+ *
+ * - API stations: DELETE /api/external-stations/:id for failing streams (only if REMOVE=1).
+ * - Built-in stations: PATCH /api/station-overrides with { streamUrl, hidden: true } (only if REMOVE=1).
  *
  * Requires:
- *   API_URL   - base URL of the API (e.g. https://your-api.railway.app or http://localhost:5000)
- *   AUTH_TOKEN - Bearer token (admin) for DELETE and PATCH
+ *   API_URL - base URL of the API (e.g. https://your-api.railway.app)
  *
  * Optional:
  *   BUILT_IN_JSON - path to built-in stream URLs JSON (default: scripts/built-in-stream-urls.json)
- *   RUN_DRY      - set to 1 to only report, do not delete/hide
+ *   REMOVE=1     - actually delete/hide failing stations (default: 0, report only)
+ *   AUTH_TOKEN   - required only when REMOVE=1 (Bearer token for admin)
  *
  * Usage:
  *   node scripts/export-built-in-stream-urls.mjs   # generate built-in list first
- *   API_URL=https://... AUTH_TOKEN=... node scripts/test-and-remove-stations.mjs
+ *   API_URL=https://... node scripts/test-and-remove-stations.mjs                    # report only
+ *   API_URL=https://... REMOVE=1 AUTH_TOKEN=... node scripts/test-and-remove-stations.mjs  # apply changes
  */
 
 import { readFileSync, existsSync } from "fs";
@@ -26,7 +34,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const API_URL = (process.env.API_URL || "http://localhost:5000").replace(/\/$/, "");
 const AUTH_TOKEN = process.env.AUTH_TOKEN || "";
 const BUILT_IN_JSON = process.env.BUILT_IN_JSON || join(__dirname, "built-in-stream-urls.json");
-const DRY_RUN = process.env.RUN_DRY === "1";
+const REMOVE = process.env.REMOVE === "1";
 
 async function checkStream(baseUrl, streamUrl) {
   const url = `${baseUrl}/api/stream-check?url=${encodeURIComponent(streamUrl)}`;
@@ -37,9 +45,13 @@ async function checkStream(baseUrl, streamUrl) {
 }
 
 async function main() {
-  if (!AUTH_TOKEN && !DRY_RUN) {
-    console.error("AUTH_TOKEN is required (or set RUN_DRY=1 to only report).");
+  const REMOVE = process.env.REMOVE === "1";
+  if (REMOVE && !AUTH_TOKEN) {
+    console.error("AUTH_TOKEN is required when REMOVE=1.");
     process.exit(1);
+  }
+  if (!REMOVE) {
+    console.log("Running in report-only mode (no delete/hide). Set REMOVE=1 and AUTH_TOKEN to apply changes.\n");
   }
 
   const headers = AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {};
@@ -103,9 +115,10 @@ async function main() {
     return;
   }
 
-  if (DRY_RUN) {
-    console.log("\n[DRY RUN] Would remove/hide:");
+  if (!REMOVE) {
+    console.log("\n[Report only] These failed the check from the API server (may still work for users):");
     failing.forEach((s) => console.log(`  ${s.source}: ${s.streamUrl} (${s.status})`));
+    console.log("\nTo actually hide/delete them, run with REMOVE=1 and AUTH_TOKEN.");
     return;
   }
 

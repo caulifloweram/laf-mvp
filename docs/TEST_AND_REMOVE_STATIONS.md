@@ -1,50 +1,101 @@
 # Test and remove stations that do not connect
 
-Two scripts let you test every radio station (API + built-in) and remove or hide the ones that fail the stream check.
+You run **two scripts on your own computer** (terminal). They call your API (e.g. on Railway); you do **not** set any variables in Railway for these scripts.
 
-## 1. Export built-in stream URLs (one-time or when client list changes)
+---
+
+## Why do some working radios appear as failing?
+
+The script uses your **API’s** `/api/stream-check` endpoint. That check runs **on the API server** (e.g. Railway), not in your browser. So:
+
+- A stream that **works for you** on the website can **fail** in the report (e.g. different region, firewall, or the stream was slow when the script ran).
+- The “failing” list is a **hint** for review—not a list of stations to hide blindly. If a station works on the website for you, you can ignore it in the report and leave it visible.
+
+---
+
+## Step 1: Export built-in stream URLs (one-time or when client list changes)
+
+In the project folder, in a terminal:
 
 ```bash
 node scripts/export-built-in-stream-urls.mjs
 ```
 
-This reads `packages/client-web/src/main.ts`, extracts all `streamUrl` values from `EXTERNAL_STATION_CONFIGS`, and writes `scripts/built-in-stream-urls.json` (unique URLs). Run again after adding/editing built-in stations.
+This creates/updates `scripts/built-in-stream-urls.json`. Run again if you change built-in stations in the client.
 
-## 2. Test all stations and remove/hide failing ones
+---
 
-**Requirements**
+## Step 2: Get your API URL (no paste into Railway)
 
-- API must be running (local or deployed).
-- Admin auth token for DELETE (external stations) and PATCH (station overrides).
+- **Railway:** Open your Railway project → select the **API** service → **Settings** or **Deployments** → copy the **public URL** (e.g. `https://laf-mvp-api-production-xxxx.up.railway.app`). Use that as `API_URL`; **do not** add `/api` at the end.
+- **Local:** If the API runs on your machine, use `http://localhost:4000` (or whatever port it uses).
 
-**Dry run (report only, no changes)**
+You will paste this URL **only in the terminal** when you run the script (see Step 4). You do **not** put it in Railway’s environment variables for this.
+
+---
+
+## Step 3: Get an admin auth token (only if you want to delete/hide for real)
+
+You need this only when you run **without** `RUN_DRY=1` (i.e. when you actually delete/hide stations).
+
+1. Open your app in the browser (e.g. the LAF client that uses your API).
+2. Sign in with an **admin** account (one whose email is in `LAF_ADMIN_EMAILS` on the API).
+3. Get the JWT your app uses for API calls:
+   - **Option A:** In the browser, DevTools → **Application** (or **Storage**) → **Local Storage** (or **Session Storage**) → find the key that holds the token (e.g. `token`, `jwt`, `auth`) and copy its value.
+   - **Option B:** In **Network**, trigger a request that sends `Authorization: Bearer ...` and copy the token from that header.
+
+That value is your `AUTH_TOKEN`. You paste it **only in the terminal** when you run the script (Step 4). You do **not** put it in Railway.
+
+---
+
+## Step 4: Run the test script in the terminal
+
+Open a terminal in the project root (where `scripts/` is).
+
+**4a) Dry run (only see which stations would be removed; no changes)**
+
+Replace `https://YOUR-API-URL.up.railway.app` with your real API URL (from Step 2):
 
 ```bash
-API_URL=https://your-api.railway.app RUN_DRY=1 node scripts/test-and-remove-stations.mjs
+API_URL=https://YOUR-API-URL.up.railway.app RUN_DRY=1 node scripts/test-and-remove-stations.mjs
 ```
 
-**Run for real (delete API stations, hide built-in via overrides)**
+Example:
 
 ```bash
-API_URL=https://your-api.railway.app AUTH_TOKEN=your_admin_bearer_token node scripts/test-and-remove-stations.mjs
+API_URL=https://laf-mvp-api-production-abc123.up.railway.app RUN_DRY=1 node scripts/test-and-remove-stations.mjs
 ```
 
-**Behavior**
+No `AUTH_TOKEN` needed. The script will list which stations fail the stream check; it will **not** delete or hide anything.
 
-- Fetches all stations from `GET /api/external-stations`.
-- Adds built-in stream URLs from `scripts/built-in-stream-urls.json` (if present).
-- For each unique stream URL, calls `GET /api/stream-check?url=...`.
-- **Failing streams**
-  - **API stations** (have `id`): `DELETE /api/external-stations/:id` (removed from DB).
-  - **Built-in only**: `PATCH /api/station-overrides` with `{ streamUrl, hidden: true }` (hidden in client, not removed from code).
+**4b) Actually remove/hide failing stations**
 
-**Env vars**
+Replace `https://YOUR-API-URL.up.railway.app` and `YOUR_ADMIN_JWT` with your API URL and admin token:
 
-| Variable       | Required | Description |
-|----------------|----------|-------------|
-| `API_URL`      | Yes      | Base URL of the API (e.g. `https://your-app.railway.app` or `http://localhost:5000`). |
-| `AUTH_TOKEN`   | Yes*     | Bearer token for an admin user (*not needed if `RUN_DRY=1`). |
-| `BUILT_IN_JSON`| No       | Path to built-in URLs JSON (default: `scripts/built-in-stream-urls.json`). |
-| `RUN_DRY`      | No       | Set to `1` to only report failing stations and not delete/hide. |
+```bash
+API_URL=https://YOUR-API-URL.up.railway.app AUTH_TOKEN=YOUR_ADMIN_JWT node scripts/test-and-remove-stations.mjs
+```
 
-After running, only stations that pass the stream check remain visible (API ones that fail are deleted; built-in that fail are hidden via overrides).
+Example:
+
+```bash
+API_URL=https://laf-mvp-api-production-abc123.up.railway.app AUTH_TOKEN=eyJhbGciOiJIUzI1NiIs... node scripts/test-and-remove-stations.mjs
+```
+
+This will:
+
+- **API stations** that fail: delete them from the database.
+- **Built-in stations** that fail: hide them via `station_overrides` (they stay in code but don’t show in the app).
+
+---
+
+## Summary
+
+| What | Where |
+|------|--------|
+| **Where you run the script** | Your computer, in a terminal, in the project folder. |
+| **Where you get API_URL** | Railway dashboard → API service → public URL (or localhost if running API locally). |
+| **Where you use API_URL** | In the terminal: `API_URL=https://...` before `node scripts/test-and-remove-stations.mjs`. |
+| **Where you get AUTH_TOKEN** | From your app after signing in as admin (local/session storage or Network header). |
+| **Where you use AUTH_TOKEN** | In the terminal: `AUTH_TOKEN=...` when running without `RUN_DRY=1`. |
+| **Railway env vars** | You do **not** need to add API_URL or AUTH_TOKEN to Railway for this script. |

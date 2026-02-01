@@ -945,12 +945,24 @@
       .auth-error { color: var(--status-offline); font-size: 12px; margin-top: 8px; }
       .auth-tab { padding: 6px 12px; border: 1px solid var(--border); background: var(--card-hover); cursor: pointer; font-weight: bold; }
       .auth-tab.active { background: var(--surface); }
+      .admin-toolbar { margin-bottom: 16px; }
+      .admin-toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+      .admin-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+      .admin-search-input { min-width: 180px; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; }
+      .admin-select { padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; min-width: 120px; }
+      .admin-delete-selected { padding: 6px 12px; font-size: 13px; background: rgba(180,0,0,0.15); color: var(--status-offline); border: 1px solid var(--status-offline); border-radius: 4px; cursor: pointer; }
+      .admin-delete-selected:hover:not(:disabled) { background: rgba(180,0,0,0.25); }
+      .admin-delete-selected.hidden { display: none !important; }
       .admin-stations-list { display: flex; flex-direction: column; gap: 8px; }
-      .admin-station-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+      .admin-station-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
       .admin-station-row .admin-station-edit-form { grid-column: 1 / -1; }
+      .admin-station-row .admin-station-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .admin-station-row .name { font-weight: bold; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .admin-station-row .stream-url { font-size: 11px; color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-station-row .admin-station-badge { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+      .admin-station-row .admin-station-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
       .admin-station-row button { flex-shrink: 0; }
+      .admin-station-row .admin-btn-play { padding: 6px 10px; font-size: 12px; }
 
       .hidden { display: none !important; }
 
@@ -1156,9 +1168,26 @@
           <div id="admin-status" class="status info hidden" style="margin-bottom: 12px;"></div>
           <button type="button" id="admin-submit-btn">Add station</button>
         </div>
-        <div class="page-content" style="max-width: 720px; margin-top: 32px;">
+        <div class="page-content admin-stations-section" style="max-width: 900px; margin-top: 32px;">
           <h2 class="section-title">All stations on the site</h2>
-          <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 13px;">All stations. Edit any station to change name, description, logo or website. Delete any station to remove it from the site.</p>
+          <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 13px;">Search and filter, play to test, then edit or delete. Use &quot;Delete selected&quot; to remove multiple stations at once.</p>
+          <div class="admin-toolbar">
+            <div class="admin-toolbar-row">
+              <label for="admin-search" class="admin-label">Search</label>
+              <input type="text" id="admin-search" placeholder="Name, URL, description…" class="admin-search-input" />
+              <label for="admin-filter-source" class="admin-label">Source</label>
+              <select id="admin-filter-source" class="admin-select" aria-label="Filter by source">
+                <option value="">All</option>
+                <option value="builtin">Built-in</option>
+                <option value="api">API</option>
+              </select>
+              <label for="admin-filter-bundle" class="admin-label">Bundle</label>
+              <select id="admin-filter-bundle" class="admin-select" aria-label="Filter by bundle">
+                <option value="">All bundles</option>
+              </select>
+              <button type="button" id="admin-delete-selected" class="admin-delete-selected hidden">Delete selected</button>
+            </div>
+          </div>
           <div id="admin-stations-list" class="admin-stations-list"></div>
         </div>
       </div>
