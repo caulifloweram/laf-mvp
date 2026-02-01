@@ -878,6 +878,24 @@ let stationsViewMode: "grid" | "list" = "grid";
 /** Admin overrides for any station (built-in or added) keyed by streamUrl. hidden = true means station is removed from the site. */
 let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; location?: string | null; lat?: number | null; lng?: number | null; hidden?: boolean }> = {};
 
+/** Tags and group per streamUrl from Musical Expert (docs/station-tags.json, served from public/). Used for group filter. */
+let stationTagsByUrl: Record<string, { tags: string[]; group: string }> = {};
+
+async function fetchStationTags(): Promise<void> {
+  try {
+    const res = await fetch("/station-tags.json", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as Record<string, { tags?: string[]; group?: string }>;
+    stationTagsByUrl = {};
+    for (const [url, entry] of Object.entries(data)) {
+      if (url.startsWith("_")) continue;
+      if (entry && (entry.tags || entry.group)) stationTagsByUrl[url] = { tags: entry.tags ?? [], group: entry.group ?? "" };
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string; location?: string; lat?: number; lng?: number }>(
   station: T,
   streamUrl: string
@@ -1314,11 +1332,13 @@ const stationsList = document.getElementById("stations-list")!;
 const stationsCheckingBanner = document.getElementById("stations-checking-banner");
 const initialLoadingScreen = document.getElementById("initial-loading-screen");
 const initialLoadingBar = document.getElementById("initial-loading-bar");
+const initialLoadingCountdown = document.getElementById("initial-loading-countdown");
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
 const showOfflineFilter = document.getElementById("show-offline-filter") as HTMLInputElement | null;
 const showOfflineFilterWrap = document.getElementById("show-offline-filter-wrap");
+const groupFilter = document.getElementById("group-filter") as HTMLSelectElement | null;
 const topbarSearchWrap = document.getElementById("topbar-search-wrap");
 const topbarClockEl = document.getElementById("topbar-clock");
 const topbarSearchToggle = document.getElementById("topbar-search-toggle");
@@ -1808,7 +1828,20 @@ function renderUnifiedStations(): void {
     items.push({ type: "external", station: { ...station, ...stationWithOverride } });
   }
 
+  type ItemType = (typeof items)[number];
+  function getItemGroup(item: ItemType): string {
+    if (item.type === "laf") return "";
+    if (item.type === "external") return item.station.group ?? stationTagsByUrl[item.station.streamUrl]?.group ?? "";
+    const firstUrl = item.liveChannels[0]?.streamUrl;
+    return item.config.group ?? (firstUrl ? stationTagsByUrl[firstUrl]?.group ?? "" : "");
+  }
+
   let filtered = items.filter((item) => {
+    const groupValue = (groupFilter?.value ?? "").trim();
+    if (groupValue) {
+      if (item.type === "laf") return false;
+      if (getItemGroup(item) !== groupValue) return false;
+    }
     const name =
       item.type === "laf"
         ? item.channel.title
@@ -2286,19 +2319,22 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
   );
 }
 
-/** Show initial loading screen for INITIAL_LOAD_MS, animate progress bar, then hide and reveal the stations grid. */
+/** Show initial loading screen for INITIAL_LOAD_MS, progress bar and countdown 10→0, then hide. */
 function startInitialLoadScreen(): void {
   if (!initialLoadingScreen || !initialLoadingBar) return;
   initialLoadPhase = true;
   initialLoadStartTime = Date.now();
   initialLoadingScreen.classList.remove("hidden");
   initialLoadingBar.style.width = "0%";
+  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "10";
 
   if (initialLoadProgressIntervalId) clearInterval(initialLoadProgressIntervalId);
   initialLoadProgressIntervalId = setInterval(() => {
     const elapsed = Date.now() - initialLoadStartTime;
     const pct = Math.min(100, (elapsed / INITIAL_LOAD_MS) * 100);
     initialLoadingBar.style.width = `${pct}%`;
+    const secsLeft = Math.max(0, Math.ceil((INITIAL_LOAD_MS - elapsed) / 1000));
+    if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(secsLeft);
     if (pct >= 100) {
       if (initialLoadProgressIntervalId) {
         clearInterval(initialLoadProgressIntervalId);
@@ -2314,6 +2350,7 @@ function startInitialLoadScreen(): void {
     }
     initialLoadPhase = false;
     initialLoadingBar.style.width = "100%";
+    if (initialLoadingCountdown) initialLoadingCountdown.textContent = "0";
     initialLoadingScreen.classList.add("hidden");
   }, INITIAL_LOAD_MS);
 }
@@ -4145,7 +4182,9 @@ loadRuntimeConfig().then(() => {
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
   showOfflineFilter?.addEventListener("change", () => renderUnifiedStations());
+  groupFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
+  fetchStationTags();
 
   // View mode switcher
   document.querySelectorAll(".view-mode-btn").forEach((btn) => {
