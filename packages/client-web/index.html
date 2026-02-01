@@ -189,6 +189,8 @@
       .station-list-bar .list-bar-status { font-size: 11px; flex-shrink: 0; }
       .favorites-filter-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
       .favorites-filter-wrap input { width: auto; margin: 0; }
+      .stations-checking-banner { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; padding: 8px 0; }
+      .stations-checking-banner.hidden { display: none !important; }
       .stations-grid-unified { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--grid-gap); }
       .stations-grid-unified.hidden { display: none !important; }
       .suggest-card {
@@ -700,6 +702,8 @@
       .player-expanded-location { font-size: 12px; color: var(--footer-text); opacity: 0.9; margin-bottom: 6px; }
       .player-expanded-desc { font-size: 13px; line-height: 1.45; margin-bottom: 12px; max-height: 4.5em; overflow-y: auto; color: var(--footer-text); opacity: 0.9; }
       .player-expanded-link { font-size: 13px; color: var(--footer-text); text-decoration: underline; display: inline-block; padding: 4px 0; }
+      .player-expanded-buffer-hint { font-size: 11px; color: var(--footer-text); opacity: 0.75; margin-top: 8px; }
+      .player-expanded-buffer-hint.hidden { display: none !important; }
       .player-expanded-controls { display: flex; gap: 16px; align-items: center; justify-content: center; flex-shrink: 0; }
       .player-expanded-controls button {
         min-width: 48px;
@@ -1028,6 +1032,10 @@
               <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
               <span>Favorites only</span>
             </label>
+            <label class="favorites-filter-wrap" id="show-offline-filter-wrap">
+              <input type="checkbox" id="show-offline-filter" aria-label="Show offline and error stations" />
+              <span>Show offline/error</span>
+            </label>
             <div class="view-mode-switcher" role="tablist" aria-label="View mode">
               <button type="button" class="view-mode-btn active" data-mode="grid" aria-pressed="true">Grid</button>
               <button type="button" class="view-mode-btn" data-mode="list" aria-pressed="false">List</button>
@@ -1035,6 +1043,7 @@
           </div>
         </div>
         <div id="stations-view-container">
+          <p id="stations-checking-banner" class="stations-checking-banner hidden" aria-live="polite">Checking stream availability…</p>
           <div id="stations-grid" class="stations-grid-unified" role="tabpanel"></div>
           <div id="stations-list" class="stations-list-view hidden" role="tabpanel"></div>
         </div>
@@ -1103,6 +1112,7 @@
           <div class="player-expanded-location" id="player-expanded-location"></div>
           <div class="player-expanded-desc" id="player-expanded-desc"></div>
           <a id="player-expanded-website-link" href="#" target="_blank" rel="noopener" class="player-expanded-link">Visit website</a>
+          <p id="player-expanded-buffer-hint" class="player-expanded-buffer-hint hidden">If playback stalls, try another channel or stream.</p>
         </div>
         <div class="player-expanded-controls">
           <button type="button" id="btn-prev-expanded" class="external-only hidden" title="Previous">&#9664;</button>

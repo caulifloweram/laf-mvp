@@ -745,7 +745,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "Drop FM", description: "Bass, listener-supported underground. New Zealand.", websiteUrl: "http://www.dropfm.com/", streamUrl: "https://s2.radio.co/s7649837db/listen", logoUrl: "http://www.dropfm.com/uploads/1/2/4/0/124005161/new-logo-black.png", location: "New Zealand" },
   { name: "WIDE Radio", description: "Club, dance, electronic, grime, hip-hop, R&B, underground.", websiteUrl: "http://itswide.com/", streamUrl: "http://stream.radiojar.com/65s5r7weh24tv.mp3", logoUrl: "", location: "" },
   { name: "Radio Flouka", description: "Arab, underground. Paris.", websiteUrl: "https://www.radioflouka.com/", streamUrl: "https://flouka.out.airtime.pro/flouka_a", logoUrl: "https://www.radioflouka.com/favicon.ico", location: "Paris, France" },
-  { name: "NimFM", description: "Alternative, talk, topical, underground. Australia.", websiteUrl: "https://www.nimfm.org/", streamUrl: "http://uk5.internet-radio.com:8055/stream", logoUrl: "", location: "Australia" },
   { name: "Underground Radio Czech", description: "Underground. Czech Republic.", websiteUrl: "http://www.undergroundradio.cz/", streamUrl: "http://icecast2.play.cz/Underground128.mp3", logoUrl: "", location: "Czech Republic" },
   { name: "Rundfunkautist", description: "Non-commercial, eclectic, experimental, underground. Germany.", websiteUrl: "http://rundfunkautist.bplaced.net/", streamUrl: "https://stream.laut.fm/rundfunkautist", logoUrl: "https://api.laut.fm/station/rundfunkautist/images/station", location: "Germany" },
   { name: "GDS.FM", description: "Acid house, experimental, hip-hop, indie rock, nu-jazz, trip hop. Zürich.", websiteUrl: "http://www.gds.fm/", streamUrl: "http://gdsfm.out.airtime.pro:8000/gdsfm_a", logoUrl: "http://www.gds.fm/_nuxt/icons/icon_64x64.96821f.png", location: "Zürich, Switzerland" },
@@ -1300,9 +1299,12 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 // DOM refs
 const stationsGrid = document.getElementById("stations-grid")!;
 const stationsList = document.getElementById("stations-list")!;
+const stationsCheckingBanner = document.getElementById("stations-checking-banner");
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
+const showOfflineFilter = document.getElementById("show-offline-filter") as HTMLInputElement | null;
+const showOfflineFilterWrap = document.getElementById("show-offline-filter-wrap");
 const topbarSearchWrap = document.getElementById("topbar-search-wrap");
 const topbarClockEl = document.getElementById("topbar-clock");
 const topbarSearchToggle = document.getElementById("topbar-search-toggle");
@@ -1324,6 +1326,7 @@ const playerExpandedTitle = document.getElementById("player-expanded-title")!;
 const playerExpandedLocation = document.getElementById("player-expanded-location")!;
 const playerExpandedDesc = document.getElementById("player-expanded-desc")!;
 const playerExpandedWebsiteLink = document.getElementById("player-expanded-website-link") as HTMLAnchorElement | null;
+const playerExpandedBufferHint = document.getElementById("player-expanded-buffer-hint");
 const playerExpandedCover = document.getElementById("player-expanded-cover") as HTMLImageElement | null;
 const btnPrevExpanded = document.getElementById("btn-prev-expanded");
 const btnPlayPauseExpanded = document.getElementById("btn-play-pause-expanded");
@@ -1395,6 +1398,7 @@ function updateExpandedPlayerUI(): void {
   playerExpanded.querySelector(".player-expanded-cover-wrap")?.classList.remove("placeholder");
   btnPrevExpanded?.classList.add("hidden");
   btnNextExpanded?.classList.add("hidden");
+  if (playerExpandedBufferHint) playerExpandedBufferHint.classList.add("hidden");
 
   if (currentExternalStation) {
     playerExpandedTitle.textContent = currentExternalStation.name;
@@ -1416,6 +1420,7 @@ function updateExpandedPlayerUI(): void {
     }
     btnPrevExpanded?.classList.remove("hidden");
     btnNextExpanded?.classList.remove("hidden");
+    if (playerExpandedBufferHint) playerExpandedBufferHint.classList.remove("hidden");
   } else if (currentChannel) {
     playerExpandedTitle.textContent = currentChannel.title;
     playerExpandedDesc.textContent = currentChannel.description ?? "";
@@ -1744,19 +1749,27 @@ function renderUnifiedStations(): void {
     ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
   ];
 
+  const addedStreamUrls = new Set<string>();
   for (const config of EXTERNAL_STATION_CONFIGS) {
     if (stationOverrides[config.streamUrl]?.hidden) continue;
-    const configWithOverride = applyStationOverride(
-      { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl, location: config.location, lat: config.lat, lng: config.lng },
-      config.streamUrl
-    );
     if (config.channels && config.channels.length > 0) {
       const liveChannels = config.channels.filter((ch) => !stationOverrides[ch.streamUrl]?.hidden);
       if (liveChannels.length > 0) {
+        const configWithOverride = applyStationOverride(
+          { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl, location: config.location, lat: config.lat, lng: config.lng },
+          config.streamUrl
+        );
         const mergedConfig = { ...config, ...configWithOverride };
         items.push({ type: "external_multi", config: mergedConfig, liveChannels });
+        liveChannels.forEach((ch) => addedStreamUrls.add(ch.streamUrl));
       }
     } else {
+      if (addedStreamUrls.has(config.streamUrl)) continue;
+      addedStreamUrls.add(config.streamUrl);
+      const configWithOverride = applyStationOverride(
+        { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl, location: config.location, lat: config.lat, lng: config.lng },
+        config.streamUrl
+      );
       items.push({
         type: "external",
         station: {
@@ -1809,6 +1822,18 @@ function renderUnifiedStations(): void {
         const anyFav = item.liveChannels.some((ch) => favoriteRefs.has(`external:${ch.streamUrl}`));
         if (!anyFav) return false;
       }
+    }
+    if (!showOfflineFilter?.checked) {
+      if (item.type === "laf") return true;
+      if (item.type === "external") {
+        const c = streamStatusCache[item.station.streamUrl];
+        return !c || c.ok;
+      }
+      const allBad = item.liveChannels.every((ch) => {
+        const c = streamStatusCache[ch.streamUrl];
+        return c && !c.ok;
+      });
+      return !allBad;
     }
     return true;
   });
@@ -2048,11 +2073,19 @@ function renderUnifiedStations(): void {
   }
   const allUrls = getAllStreamUrls();
   const uncachedCount = allUrls.filter((u) => streamStatusCache[u] === undefined).length;
+  if (stationsCheckingBanner) {
+    if (uncachedCount > 0) {
+      stationsCheckingBanner.classList.remove("hidden");
+      stationsCheckingBanner.textContent = "Checking stream availability…";
+    } else {
+      stationsCheckingBanner.classList.add("hidden");
+    }
+  }
   if (filtered.length === 0) {
     if (uncachedCount > 0) {
-      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>Checking which stations are live…</p>";
+      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>Checking stream availability…</p>";
     } else {
-      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>No stations currently live.</p>";
+      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>No stations match. Try search or turn on “Show offline/error”.</p>";
     }
   }
 }
@@ -2065,9 +2098,9 @@ function getStatusLabel(
   if (streamUrl && currentExternalStation?.streamUrl === streamUrl) {
     return { text: "LIVE", statusClass: "status-live" };
   }
-  if (!cached) return { text: "Checking…", statusClass: "status-unknown" };
+  if (!cached) return { text: "—", statusClass: "status-unknown" };
   if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
-  if (cached.status === "verifying") return { text: "Checking…", statusClass: "status-unknown" };
+  if (cached.status === "verifying") return { text: "—", statusClass: "status-unknown" };
   const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
   const statusClass = cached.status === "timeout" ? "status-timeout" : cached.status === "unavailable" ? "status-offline" : "status-error";
   return { text: label, statusClass };
@@ -2115,7 +2148,7 @@ function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
   return new Promise((resolve) => {
     const playbackUrl = getExternalStreamPlaybackUrl(streamUrl);
     const audio = new Audio();
-    const VERIFY_TIMEOUT_MS = 8000;
+    const VERIFY_TIMEOUT_MS = 12000;
     let settled = false;
     const cleanup = () => {
       if (settled) return;
@@ -3982,6 +4015,7 @@ loadRuntimeConfig().then(() => {
   }, STREAM_RECHECK_INTERVAL_MS);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
+  showOfflineFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
 
   // View mode switcher
