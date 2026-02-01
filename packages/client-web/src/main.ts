@@ -3,6 +3,8 @@ import { initRouter, getRoute, type RouteId } from "./router";
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
+/** Broadcast app URL. Empty = same origin /broadcaster/. Set when client is deployed alone. */
+let BROADCASTER_APP_URL = (import.meta.env.VITE_BROADCASTER_APP_URL as string) || "";
 
 function ensureRelayWsUrl(url: string): string {
   const trimmed = url.replace(/\/$/, "");
@@ -20,7 +22,7 @@ async function loadRuntimeConfig(): Promise<void> {
     const res = await fetch(`${base}/config.json`, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) return;
-    const config = (await res.json()) as { apiUrl?: string; relayWsUrl?: string };
+    const config = (await res.json()) as { apiUrl?: string; relayWsUrl?: string; broadcasterAppUrl?: string };
     if (config.apiUrl) API_URL = config.apiUrl.replace(/\/$/, "");
     if (config.relayWsUrl) {
       RELAY_BASE = config.relayWsUrl.replace(/\/$/, "");
@@ -28,9 +30,21 @@ async function loadRuntimeConfig(): Promise<void> {
         RELAY_BASE = (window.location.protocol === "https:" ? "wss:" : "ws:") + "//" + RELAY_BASE;
       }
     }
+    if (config.broadcasterAppUrl != null && config.broadcasterAppUrl !== "") BROADCASTER_APP_URL = config.broadcasterAppUrl.replace(/\/$/, "");
   } catch (_) {
     // Use build-time defaults
   }
+}
+
+/** Set Broadcast link href from config (same-origin /broadcaster/ or BROADCASTER_APP_URL when client is deployed alone). */
+function applyBroadcastLink() {
+  const href = BROADCASTER_APP_URL || "/broadcaster/";
+  const set = (id: string) => {
+    const el = document.getElementById(id);
+    if (el && "href" in el) (el as HTMLAnchorElement).href = href;
+  };
+  set("nav-broadcast");
+  set("drawer-broadcast");
 }
 
 const MIN_TIER = Number(import.meta.env.VITE_LAF_MIN_TIER || 1);
@@ -2476,6 +2490,7 @@ function applyStationsSearch() {
   renderUnifiedStations();
 }
 loadRuntimeConfig().then(() => {
+  applyBroadcastLink();
   updateTopBarAuth();
   initTheme();
   initMobileNav();

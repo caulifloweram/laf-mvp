@@ -53,7 +53,8 @@ function clientAppHref(path = "") {
 function applyClientAppUrls() {
   const home = clientAppHref();
   const about = clientAppHref("#about");
-  const broadcastHref = CLIENT_APP_URL ? "/" : "/broadcaster/";
+  // If we're under /broadcaster/ (combined deploy), link to /broadcaster/; else we're standalone, link to /
+  const broadcastHref = typeof window !== "undefined" && window.location.pathname.startsWith("/broadcaster") ? "/broadcaster/" : "/";
   const set = (id: string, href: string) => {
     const el = document.getElementById(id);
     if (el && "href" in el) (el as HTMLAnchorElement).href = href;

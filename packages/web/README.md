@@ -14,6 +14,7 @@ The web package needs the full monorepo to build (client-web + broadcaster-web).
    - `API_URL` – e.g. `https://your-api.up.railway.app` (no trailing slash)
    - `RELAY_WS_URL` – e.g. `wss://your-relay.up.railway.app` (WebSocket URL, no trailing slash)
    At container start, these are written to `dist/config.json`; the client and broadcaster fetch it and use these URLs.
+   - **If the client and broadcaster are on different domains:** set `BROADCASTER_APP_URL` on the client service (e.g. `https://lafbroadcaster-web-production.up.railway.app`) so the "Broadcast" button goes there; set `CLIENT_APP_URL` on the broadcaster service (e.g. `https://laf.up.railway.app`) so "Live Stations" goes there.
 4. Deploy. The root `nixpacks.toml` runs `pnpm install && pnpm build`. The start command (root `nixpacks.toml` or `railway.json`) must be: `cd packages/web && node scripts/write-config.cjs && npx --yes serve dist -p $PORT` so that `config.json` is written from env and `packages/web/dist/` is served (client at `/`, broadcaster at `/broadcaster/`).
 5. Your launcher URL is the service’s public URL (e.g. `https://your-web-service.up.railway.app`).
 
