@@ -930,6 +930,19 @@ let liveChannelsList: LiveChannel[] = [];
 let favoriteRefs = new Set<string>();
 /** Cache stream status so we don't re-show "Checking…" on every re-render. */
 const streamStatusCache: Record<string, { ok: boolean; status: string }> = {};
+/** When true, show "Looking for live radios…" and do not show stations until all stream checks are done. */
+let streamCheckInProgress = false;
+
+/** Return URL to use for Audio() playback. Use API proxy when page is HTTPS and stream is HTTP (mixed content). */
+function getExternalStreamPlaybackUrl(streamUrl: string): string {
+  if (typeof window === "undefined") return streamUrl;
+  const pageHttps = window.location?.protocol === "https:";
+  const streamHttps = streamUrl.startsWith("https:");
+  if (pageHttps && !streamHttps) {
+    return `${API_URL}/api/stream-proxy?url=${encodeURIComponent(streamUrl)}`;
+  }
+  return streamUrl;
+}
 /** Stations whose logo failed to load; show initial letter from the start on re-render (no blink). */
 const logoLoadFailed = new Set<string>();
 let externalAudio: HTMLAudioElement | null = null;
@@ -1044,6 +1057,10 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
 
 function renderUnifiedStations(): void {
   stationsGrid.innerHTML = "";
+  if (streamCheckInProgress) {
+    stationsGrid.innerHTML = "<p class='stations-loading-message'>Looking for live radios…</p>";
+    return;
+  }
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
   const onlyFavorites = favoritesFilter?.checked ?? false;
 
@@ -1336,19 +1353,25 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
     });
 }
 
-/** Run stream checks for all URLs in batches; re-render after each batch so list fills in as results arrive. */
+/** Run stream checks for all URLs in batches; show "Looking for live radios" until all are done, then render once. */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
+  streamCheckInProgress = true;
+  renderUnifiedStations();
   let index = 0;
   function runNextBatch() {
     const batch = toCheck.slice(index, index + STREAM_CHECK_BATCH_SIZE);
     index += STREAM_CHECK_BATCH_SIZE;
     if (batch.length === 0) return;
     Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
-      renderUnifiedStations();
-      if (index < toCheck.length) setTimeout(runNextBatch, 800);
+      if (index >= toCheck.length) {
+        streamCheckInProgress = false;
+        renderUnifiedStations();
+      } else {
+        setTimeout(runNextBatch, 800);
+      }
     });
   }
   runNextBatch();
@@ -1408,7 +1431,8 @@ function selectExternalStation(station: ExternalStation) {
     try { mediaSource.disconnect(); } catch (_) {}
     mediaSource = null;
   }
-  externalAudio = new Audio(station.streamUrl);
+  const playbackUrl = getExternalStreamPlaybackUrl(station.streamUrl);
+  externalAudio = new Audio(playbackUrl);
   externalStreamConnectStartTime = Date.now();
   btnPrevStation.classList.remove("hidden");
   btnNextStation.classList.remove("hidden");
