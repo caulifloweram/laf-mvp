@@ -115,8 +115,11 @@
       }
       .topbar-chat-toggle:hover { background: rgba(255,255,255,0.1); }
       .topbar-chat-toggle.hidden { display: none !important; }
+      .topbar-chat-toggle .chat-icon-retro { display: block; }
       .topbar-center { justify-self: center; display: flex; align-items: center; }
-      .topbar-search { width: 200px; max-width: 100%; padding: 6px 10px; font-size: 13px; margin: 0; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; }
+      .topbar-search { width: 140px; max-width: 100%; padding: 4px 0; font-size: 13px; margin: 0; border: none; border-bottom: 1px solid rgba(255,255,255,0.5); border-radius: 0; background: transparent; color: var(--topbar-text); }
+      .topbar-search::placeholder { color: rgba(255,255,255,0.5); }
+      .topbar-search:focus { outline: none; border-bottom-color: rgba(255,255,255,0.9); }
       /* Macintosh 1984 style: clock and search */
       .topbar-clock {
         font-variant-numeric: tabular-nums;
@@ -157,38 +160,38 @@
       .topbar-search-field {
         display: none;
         align-items: center;
-        margin-left: 4px;
-        border: 1px solid rgba(255,255,255,0.5);
-        background: rgba(0,0,0,0.2);
-        box-shadow: inset 1px 1px 0 rgba(0,0,0,0.2);
-        border-radius: 0;
-        overflow: hidden;
+        margin-left: 6px;
+        padding-bottom: 2px;
+        border-bottom: 1px solid rgba(255,255,255,0.5);
+        background: transparent;
+        min-width: 0;
       }
       .topbar-search-wrap.expanded .topbar-search-toggle { margin-right: 0; }
       .topbar-search-wrap.expanded .topbar-search-field { display: flex; }
       .topbar-search-wrap.expanded .topbar-search-field .topbar-search {
-        width: 180px;
+        width: 120px;
+        min-width: 80px;
         border: none;
-        background: transparent;
-        box-shadow: none;
-        border-radius: 0;
+        border-bottom: none;
+        padding: 2px 4px;
       }
       .topbar-search-field .topbar-search-close {
-        width: 22px;
-        height: 100%;
+        width: 20px;
+        height: 20px;
         padding: 0;
+        margin-left: 2px;
         border: none;
-        border-left: 1px solid rgba(255,255,255,0.3);
         background: transparent;
-        color: var(--topbar-text);
+        color: rgba(255,255,255,0.7);
         font-size: 14px;
         cursor: pointer;
         line-height: 1;
         flex-shrink: 0;
       }
-      .topbar-search-field .topbar-search-close:hover { background: rgba(255,255,255,0.15); }
+      .topbar-search-field .topbar-search-close:hover { color: var(--topbar-text); }
       .live-view-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
       .live-view-toolbar .page-header { margin-bottom: 0; }
+      .live-view-toolbar .toolbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
       .view-mode-switcher { display: flex; gap: 4px; flex-wrap: wrap; }
       .view-mode-btn { padding: 6px 12px; font-size: 12px; border-radius: 0; }
       .view-mode-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
@@ -342,9 +345,9 @@
       body.nav-open .nav-backdrop { display: block; opacity: 1; }
       body.nav-open .nav-drawer { transform: translateX(0); }
 
-      /* Main content: 80% viewport width */
+      /* Main content: 90% viewport width on desktop */
       .main {
-        max-width: 80vw;
+        max-width: 90vw;
         margin: 0 auto;
         padding: 24px 16px;
       }
@@ -583,15 +586,32 @@
         display: none;
       }
       .player-expanded.open { display: block; }
+      .player-expanded-inner {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        max-width: 560px;
+        margin: 0 auto;
+        text-align: left;
+      }
+      .player-expanded-inner .player-expanded-cover-wrap { flex-shrink: 0; }
+      .player-expanded-inner .player-expanded-info { flex: 1; min-width: 0; text-align: left; }
+      .player-expanded-inner .player-expanded-controls { flex-shrink: 0; }
+      .player-expanded.fullscreen-mobile .player-expanded-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+      .player-expanded.fullscreen-mobile .player-expanded-inner .player-expanded-info { text-align: center; }
       .player-expanded.fullscreen-mobile {
         bottom: 0;
-        top: 0;
+        top: 48px;
         max-height: none;
-        height: 100%;
-        height: 100dvh;
-        padding-top: env(safe-area-inset-top, 0);
+        height: calc(100dvh - 48px);
+        padding-top: 16px;
         padding-bottom: calc(56px + env(safe-area-inset-bottom, 0));
-        z-index: 30;
+        z-index: 25;
       }
       .player-expanded.fullscreen-mobile .player-expanded-minimize {
         display: flex !important;
@@ -618,15 +638,7 @@
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
       }
-      .player-expanded-inner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        max-width: 360px;
-        margin: 0 auto;
-        min-width: 0;
-      }
+      .player-expanded-inner { min-width: 0; }
       .player-expanded-cover-wrap { width: 140px; height: 140px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; border-radius: 4px; }
       .player-expanded-cover-wrap img { width: 100%; height: 100%; object-fit: contain; }
       .player-expanded-info { text-align: center; min-width: 0; width: 100%; }
@@ -892,7 +904,7 @@
         .footer-player .controls button { min-width: 40px; min-height: 40px; padding: 6px 10px; font-size: 11px; }
         .footer-player .status-text { display: none; }
         body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)); }
-        .player-expanded.fullscreen-mobile { bottom: 0; top: 0; height: 100dvh; }
+        .player-expanded.fullscreen-mobile { bottom: 0; top: 44px; height: calc(100dvh - 44px); }
         .player-expanded:not(.fullscreen-mobile) { bottom: 60px; max-height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0)); }
       }
     </style>
@@ -910,7 +922,7 @@
         </div>
       </div>
       <div class="topbar-right" id="client-topbar-right">
-        <button type="button" class="topbar-chat-toggle hidden" id="topbar-chat-toggle" aria-label="Open chat" title="Chat">&#128172;</button>
+        <button type="button" class="topbar-chat-toggle hidden" id="topbar-chat-toggle" aria-label="Open chat" title="Chat"><svg class="chat-icon-retro" viewBox="0 0 16 14" width="16" height="14" aria-hidden="true"><path d="M1 1 L15 1 L15 9 L9 9 L5 13 L5 9 L1 9 Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg></button>
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">Dark</button>
         <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item hidden"></span>
@@ -940,14 +952,16 @@
       <div id="view-live" class="view" role="main">
         <div class="live-view-toolbar">
           <h1 class="page-header">LIVE</h1>
-          <div class="view-mode-switcher" role="tablist" aria-label="View mode">
-            <button type="button" class="view-mode-btn active" data-mode="grid" aria-pressed="true">Grid</button>
-            <button type="button" class="view-mode-btn" data-mode="list" aria-pressed="false">List</button>
+          <div class="toolbar-right">
+            <label class="favorites-filter-wrap" id="favorites-filter-wrap">
+              <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
+              <span>Favorites only</span>
+            </label>
+            <div class="view-mode-switcher" role="tablist" aria-label="View mode">
+              <button type="button" class="view-mode-btn active" data-mode="grid" aria-pressed="true">Grid</button>
+              <button type="button" class="view-mode-btn" data-mode="list" aria-pressed="false">List</button>
+            </div>
           </div>
-          <label class="favorites-filter-wrap" id="favorites-filter-wrap">
-            <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
-            <span>Favorites only</span>
-          </label>
         </div>
         <div id="stations-view-container">
           <div id="stations-grid" class="stations-grid-unified" role="tabpanel"></div>
@@ -965,6 +979,8 @@
           <p>Browse stations that are currently live. Click to listen, sign in to participate in live chat.</p>
           <h2>Technology</h2>
           <p>LAF uses low-latency WebSocket streaming for real-time audio delivery.</p>
+          <h2>Disclaimer</h2>
+          <p>This is an independent project trying to aggregate the best independent radios in the world in one place. We do not have rights or exclusivity over any of the material shared through here. If there are any copyright issues or demands, please <a href="mailto:contact@laf.fm" id="about-contact-link">contact us</a>.</p>
         </div>
       </div>
 

@@ -1635,7 +1635,7 @@ function renderUnifiedStations(): void {
     const suggestCard = document.createElement("button");
     suggestCard.type = "button";
     suggestCard.className = "suggest-card";
-    suggestCard.innerHTML = "<span class=\"suggest-card-title\">Any other radio you wanted to see here?</span> Send us";
+    suggestCard.innerHTML = "<span class=\"suggest-card-title\">Are we missing any other radios?</span> Share with us?";
     suggestCard.onclick = () => {
       const overlay = document.getElementById("suggest-overlay");
       const urlInput = document.getElementById("suggest-url") as HTMLInputElement;
@@ -3173,7 +3173,7 @@ function initAdminForm() {
     statusEl.classList.toggle("status-info", !isError);
   }
 
-  type AdminStationRow = { id?: string; name: string; description?: string | null; streamUrl: string; websiteUrl?: string; logoUrl?: string | null };
+  type AdminStationRow = { id?: string; name: string; description?: string | null; streamUrl: string; websiteUrl?: string; logoUrl?: string | null; location?: string | null };
   async function loadAdminStationsList() {
     if (!listEl) return;
     try {
@@ -3192,6 +3192,7 @@ function initAdminForm() {
             streamUrl: s.streamUrl,
             websiteUrl: s.websiteUrl,
             logoUrl: s.logoUrl || null,
+            location: s.location || null,
           });
         }
       }
@@ -3228,6 +3229,7 @@ function initAdminForm() {
           form.innerHTML = `
             <div class="form-group"><label>Name</label><input type="text" data-field="name" value="${escapeAttr(display.name || "")}" /></div>
             <div class="form-group"><label>Description</label><textarea data-field="description" rows="2">${escapeHtml(display.description || "")}</textarea></div>
+            <div class="form-group"><label>Location</label><input type="text" data-field="location" value="${escapeAttr(display.location || "")}" placeholder="e.g. Berlin, Germany" /></div>
             <div class="form-group"><label>Website URL</label><input type="url" data-field="websiteUrl" value="${escapeAttr(display.websiteUrl || "")}" /></div>
             <div class="form-group"><label>Logo URL</label><input type="url" data-field="logoUrl" value="${escapeAttr(display.logoUrl || "")}" placeholder="https://..." /></div>
             <div style="display:flex;gap:8px;margin-top:8px;">
@@ -3242,6 +3244,7 @@ function initAdminForm() {
           saveBtn.addEventListener("click", async () => {
             const nameVal = (form.querySelector("[data-field=name]") as HTMLInputElement)?.value?.trim() || "";
             const descVal = (form.querySelector("[data-field=description]") as HTMLTextAreaElement)?.value?.trim() || "";
+            const locVal = (form.querySelector("[data-field=location]") as HTMLInputElement)?.value?.trim() || "";
             const webVal = (form.querySelector("[data-field=websiteUrl]") as HTMLInputElement)?.value?.trim() || "";
             const logoVal = (form.querySelector("[data-field=logoUrl]") as HTMLInputElement)?.value?.trim() || "";
             if (!nameVal) { alert("Name is required"); return; }
@@ -3251,7 +3254,7 @@ function initAdminForm() {
                 const patchRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ name: nameVal, description: descVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+                  body: JSON.stringify({ name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
                 });
                 if (patchRes.ok) {
                   form.remove();
@@ -3265,7 +3268,7 @@ function initAdminForm() {
                 const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ streamUrl: row.streamUrl, name: nameVal, description: descVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
+                  body: JSON.stringify({ streamUrl: row.streamUrl, name: nameVal, description: descVal || undefined, location: locVal || undefined, websiteUrl: webVal || undefined, logoUrl: logoVal || undefined }),
                 });
                 if (overrideRes.ok) {
                   form.remove();

@@ -619,7 +619,7 @@ app.patch("/api/external-stations/:id", authMiddleware, async (req, res) => {
   }
   const id = req.params.id;
   if (!id) return res.status(400).json({ error: "Station id is required" });
-  const { name, description, websiteUrl, logoUrl } = req.body;
+  const { name, description, websiteUrl, logoUrl, location } = req.body;
   const updates: string[] = [];
   const values: unknown[] = [];
   let pos = 1;
@@ -639,13 +639,17 @@ app.patch("/api/external-stations/:id", authMiddleware, async (req, res) => {
     updates.push(`logo_url = $${pos++}`);
     values.push(typeof logoUrl === "string" && logoUrl.trim() ? logoUrl.trim() : null);
   }
+  if (location !== undefined) {
+    updates.push(`location = $${pos++}`);
+    values.push(typeof location === "string" ? location.trim() || null : null);
+  }
   if (updates.length === 0) {
     return res.status(400).json({ error: "No fields to update" });
   }
   values.push(id);
   try {
     const result = await pool.query(
-      `UPDATE external_stations SET ${updates.join(", ")} WHERE id = $${pos} RETURNING id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl"`,
+      `UPDATE external_stations SET ${updates.join(", ")} WHERE id = $${pos} RETURNING id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl", location`,
       values
     );
     if (result.rowCount === 0) {
