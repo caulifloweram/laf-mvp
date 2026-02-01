@@ -80,9 +80,11 @@ export async function initDb() {
       description TEXT,
       website_url TEXT,
       logo_url TEXT,
+      hidden BOOLEAN DEFAULT false,
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE station_overrides ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false`).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_favorites (

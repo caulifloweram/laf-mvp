@@ -378,8 +378,8 @@ let allExternalStations: ExternalStation[] = (() => {
 })();
 let stationsSearchQuery = "";
 
-/** Admin overrides for any station (built-in or added) keyed by streamUrl. */
-let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null }> = {};
+/** Admin overrides for any station (built-in or added) keyed by streamUrl. hidden = true means station is removed from the site. */
+let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; hidden?: boolean }> = {};
 
 function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string }>(
   station: T,
@@ -439,10 +439,10 @@ async function loadExternalStations(): Promise<void> {
       streamUrl: string;
       logoUrl?: string | null;
     }>;
-    const overrides = (await overridesRes.json()) as Array<{ streamUrl: string; name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null }>;
+    const overrides = (await overridesRes.json()) as Array<{ streamUrl: string; name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; hidden?: boolean }>;
     stationOverrides = {};
     for (const o of overrides || []) {
-      if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl };
+      if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl, hidden: !!o.hidden };
     }
     const userStations: ExternalStation[] = (rows || []).map((r) => ({
       id: r.id,
@@ -1102,12 +1102,14 @@ function renderUnifiedStations(): void {
   ];
 
   for (const config of EXTERNAL_STATION_CONFIGS) {
+    if (stationOverrides[config.streamUrl]?.hidden) continue;
     const configWithOverride = applyStationOverride(
       { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl },
       config.streamUrl
     );
     if (config.channels && config.channels.length > 0) {
       const liveChannels = config.channels.filter((ch) => {
+        if (stationOverrides[ch.streamUrl]?.hidden) return false;
         const c = streamStatusCache[ch.streamUrl];
         return c && c.ok;
       });
@@ -1130,6 +1132,7 @@ function renderUnifiedStations(): void {
   }
 
   const userStationsLive = allExternalStations.filter((s) => {
+    if (stationOverrides[s.streamUrl]?.hidden) return false;
     if (!s.id) return false;
     const cached = streamStatusCache[s.streamUrl];
     return cached && cached.ok;
@@ -2722,7 +2725,8 @@ function initAdminForm() {
           });
         }
       }
-      const allRows = Array.from(byStreamUrl.values()).sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+      let allRows = Array.from(byStreamUrl.values()).sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+      allRows = allRows.filter((r) => !stationOverrides[r.streamUrl]?.hidden);
       listEl.innerHTML = "";
       if (!allRows.length) {
         listEl.innerHTML = "<p style='color: var(--text-muted); font-size: 13px;'>No stations.</p>";
@@ -2809,15 +2813,15 @@ function initAdminForm() {
           div.appendChild(form);
         });
         btnWrap.appendChild(editBtn);
-        if (row.id) {
-          const delBtn = document.createElement("button");
-          delBtn.type = "button";
-          delBtn.textContent = "Delete";
-          delBtn.addEventListener("click", async () => {
-            if (!token) return;
-            if (!confirm(`Remove "${display.name || "this station"}" from the list?`)) return;
-            delBtn.setAttribute("disabled", "true");
-            try {
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", async () => {
+          if (!token) return;
+          if (!confirm(`Remove "${display.name || "this station"}" from the site?`)) return;
+          delBtn.setAttribute("disabled", "true");
+          try {
+            if (row.id) {
               const delRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
@@ -2829,12 +2833,25 @@ function initAdminForm() {
                 const data = (await delRes.json().catch(() => ({}))) as { error?: string };
                 alert(data.error || "Failed to delete");
               }
-            } finally {
-              delBtn.removeAttribute("disabled");
+            } else {
+              const overrideRes = await fetch(`${API_URL}/api/station-overrides`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ streamUrl: row.streamUrl, hidden: true }),
+              });
+              if (overrideRes.ok) {
+                await loadAdminStationsList();
+                await loadExternalStations();
+              } else {
+                const data = (await overrideRes.json().catch(() => ({}))) as { error?: string };
+                alert(data.error || "Failed to remove");
+              }
             }
-          });
-          btnWrap.appendChild(delBtn);
-        }
+          } finally {
+            delBtn.removeAttribute("disabled");
+          }
+        });
+        btnWrap.appendChild(delBtn);
         div.appendChild(info);
         div.appendChild(btnWrap);
         listEl.appendChild(div);
