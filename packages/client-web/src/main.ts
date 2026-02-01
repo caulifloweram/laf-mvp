@@ -1300,6 +1300,8 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 const stationsGrid = document.getElementById("stations-grid")!;
 const stationsList = document.getElementById("stations-list")!;
 const stationsCheckingBanner = document.getElementById("stations-checking-banner");
+const initialLoadingScreen = document.getElementById("initial-loading-screen");
+const initialLoadingBar = document.getElementById("initial-loading-bar");
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
@@ -2122,6 +2124,12 @@ const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
+const INITIAL_LOAD_MS = 10000;
+const INITIAL_LOAD_PROGRESS_INTERVAL_MS = 80;
+let initialLoadPhase = true;
+let initialLoadStartTime = 0;
+let initialLoadProgressIntervalId: ReturnType<typeof setInterval> | null = null;
+
 const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
 
 function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
@@ -2239,6 +2247,38 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
     });
 }
 
+/** Show initial loading screen for INITIAL_LOAD_MS, animate progress bar, then hide and reveal the stations grid. */
+function startInitialLoadScreen(): void {
+  if (!initialLoadingScreen || !initialLoadingBar) return;
+  initialLoadPhase = true;
+  initialLoadStartTime = Date.now();
+  initialLoadingScreen.classList.remove("hidden");
+  initialLoadingBar.style.width = "0%";
+
+  if (initialLoadProgressIntervalId) clearInterval(initialLoadProgressIntervalId);
+  initialLoadProgressIntervalId = setInterval(() => {
+    const elapsed = Date.now() - initialLoadStartTime;
+    const pct = Math.min(100, (elapsed / INITIAL_LOAD_MS) * 100);
+    initialLoadingBar.style.width = `${pct}%`;
+    if (pct >= 100) {
+      if (initialLoadProgressIntervalId) {
+        clearInterval(initialLoadProgressIntervalId);
+        initialLoadProgressIntervalId = null;
+      }
+    }
+  }, INITIAL_LOAD_PROGRESS_INTERVAL_MS);
+
+  setTimeout(() => {
+    if (initialLoadProgressIntervalId) {
+      clearInterval(initialLoadProgressIntervalId);
+      initialLoadProgressIntervalId = null;
+    }
+    initialLoadPhase = false;
+    initialLoadingBar.style.width = "100%";
+    initialLoadingScreen.classList.add("hidden");
+  }, INITIAL_LOAD_MS);
+}
+
 /** Update only the "Checking stream availability…" banner. Called when stream checks complete so we don't re-render the whole grid. */
 function updateCheckingBanner(): void {
   if (!stationsCheckingBanner) return;
@@ -2252,15 +2292,18 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks for all URLs in batches in the background. List is already visible; cards update in place via updateCardStatus (no full re-render). */
+/** Run stream checks for all URLs in batches in the background. During initial 10s load we use larger batches and shorter delay. */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
   let index = 0;
+  const firstBatchSize = initialLoadPhase ? 36 : STREAM_CHECK_FIRST_BATCH_SIZE;
+  const batchSizeAfter = initialLoadPhase ? 12 : STREAM_CHECK_BATCH_SIZE;
+  const delayMs = initialLoadPhase ? 400 : 800;
   function runNextBatch() {
-    const batchSize = index === 0 ? STREAM_CHECK_FIRST_BATCH_SIZE : STREAM_CHECK_BATCH_SIZE;
+    const batchSize = index === 0 ? firstBatchSize : batchSizeAfter;
     const batch = toCheck.slice(index, index + batchSize);
     index += batchSize;
     if (batch.length === 0) return;
@@ -2269,7 +2312,7 @@ function runFullStreamCheck() {
         streamCheckInProgress = false;
         updateCheckingBanner();
       } else {
-        setTimeout(runNextBatch, 800);
+        setTimeout(runNextBatch, delayMs);
       }
     });
   }
@@ -4051,6 +4094,7 @@ loadRuntimeConfig().then(() => {
   initAdminForm();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
+  if (getRoute() === "live") startInitialLoadScreen();
   loadExternalStations();
   if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();

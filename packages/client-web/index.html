@@ -191,6 +191,50 @@
       .favorites-filter-wrap input { width: auto; margin: 0; }
       .stations-checking-banner { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; padding: 8px 0; }
       .stations-checking-banner.hidden { display: none !important; }
+
+      /* Initial loading screen (first 10s on live view) */
+      .view-live-wrap { position: relative; min-height: 40vh; }
+      .initial-loading-screen {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        background: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.4s ease, visibility 0.4s ease;
+      }
+      .initial-loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+      .initial-loading-inner {
+        text-align: center;
+        padding: 32px 48px;
+        max-width: 320px;
+      }
+      .initial-loading-logo {
+        font-size: 42px;
+        font-weight: bold;
+        letter-spacing: 0.08em;
+        color: var(--text);
+        margin-bottom: 16px;
+      }
+      .initial-loading-text {
+        font-size: 14px;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+      }
+      .initial-loading-bar-wrap {
+        height: 4px;
+        background: var(--card-hover);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .initial-loading-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        border-radius: 2px;
+        transition: width 0.15s linear;
+      }
       .stations-grid-unified { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--grid-gap); }
       .stations-grid-unified.hidden { display: none !important; }
       .suggest-card {
@@ -1036,7 +1080,16 @@
     </div>
 
     <main class="main">
-      <div id="view-live" class="view" role="main">
+      <div id="view-live" class="view view-live-wrap" role="main">
+        <div id="initial-loading-screen" class="initial-loading-screen" aria-live="polite" aria-busy="true">
+          <div class="initial-loading-inner">
+            <div class="initial-loading-logo">LAF</div>
+            <p class="initial-loading-text">Loading stations…</p>
+            <div class="initial-loading-bar-wrap">
+              <div class="initial-loading-bar" id="initial-loading-bar"></div>
+            </div>
+          </div>
+        </div>
         <div class="live-view-toolbar">
           <h1 class="page-header">LIVE</h1>
           <div class="toolbar-right">
