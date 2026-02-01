@@ -2043,6 +2043,13 @@ function renderUnifiedStations(): void {
 
   type ItemType = (typeof items)[number];
 
+  function isItemFavorite(item: ItemType): boolean {
+    if (!token) return false;
+    if (item.type === "laf") return favoriteRefs.has(`laf:${item.channel.id}`);
+    if (item.type === "external") return favoriteRefs.has(`external:${item.station.streamUrl}`);
+    return item.liveChannels.some((ch) => favoriteRefs.has(`external:${ch.streamUrl}`));
+  }
+
   let filtered = items.filter((item) => {
     const name =
       item.type === "laf"
@@ -2090,6 +2097,12 @@ function renderUnifiedStations(): void {
       a.type === "laf" ? a.channel.title : a.type === "external" ? a.station.name : a.config.name;
     const nb =
       b.type === "laf" ? b.channel.title : b.type === "external" ? b.station.name : b.config.name;
+    if (token) {
+      const favA = isItemFavorite(a);
+      const favB = isItemFavorite(b);
+      if (favA && !favB) return -1;
+      if (!favA && favB) return 1;
+    }
     return na.localeCompare(nb, undefined, { sensitivity: "base" });
   });
 
@@ -4078,8 +4091,8 @@ const PRESET_BG_COLORS = [
   "#2c3e50", "#c0392b", "#27ae60", "#2980b9",
 ];
 
-/** Dark theme colors: dark grey, black, dark blue. When selected, station cards use dark surface; otherwise only background changes and cards stay light. */
-const DARK_THEME_HEX = new Set(["#000000", "#111111", "#2c3e50", "#34495e", "#2980b9"]);
+/** Only black and dark gray get dark cards; red, pink, blue, etc. only change --bg and keep cards white. */
+const DARK_THEME_HEX = new Set(["#000000", "#111111", "#2c3e50", "#34495e"]);
 
 function hexToRgb(hex: string): [number, number, number] | null {
   const m = hex.replace(/^#/, "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -4099,8 +4112,7 @@ function getLuminance(hex: string): number {
 
 function isDarkThemeColor(hex: string): boolean {
   const normalized = hex.replace(/^\s+|\s+$/g, "").toLowerCase();
-  if (DARK_THEME_HEX.has(normalized)) return true;
-  return getLuminance(normalized) <= 0.25;
+  return DARK_THEME_HEX.has(normalized);
 }
 
 function getContrastColors(bgHex: string): {

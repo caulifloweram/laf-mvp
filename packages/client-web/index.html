@@ -85,13 +85,13 @@
       .topbar-nav-item:hover { background: rgba(255,255,255,0.1); }
       .topbar-nav-item.active { background: rgba(255,255,255,0.2); }
       .topbar-chat-toggle {
-        width: 36px;
-        height: 36px;
+        width: 28px;
+        height: 28px;
         padding: 0;
         border: 1px solid rgba(255,255,255,0.4);
         background: transparent;
         color: var(--topbar-text);
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -986,9 +986,12 @@
           gap: 4px;
           align-items: center;
         }
-        .topbar-chat-toggle { min-width: 44px; min-height: 44px; }
+        .topbar-chat-toggle { min-width: 44px; min-height: 44px; width: 28px; height: 28px; }
         .topbar-search-toggle { min-width: 44px; min-height: 44px; }
         .topbar-search-wrap.expanded .topbar-search-field .topbar-search { width: 100px; min-width: 70px; }
+        .footer-player,
+        .player-expanded,
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; }
         .main { max-width: 100%; padding: 12px 16px; }
         .live-view-toolbar { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 12px; }
         .live-view-toolbar .toolbar-right { justify-content: flex-end; }
@@ -1030,6 +1033,9 @@
       @media (max-width: 480px) {
         :root { --topbar-height: 44px; }
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
+        .footer-player,
+        .player-expanded,
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; }
         .topbar-right .topbar-nav-item,
         .topbar-right .color-picker-wrap,
         .topbar-right #client-logout-btn { padding: 5px 6px; font-size: 10px; }
@@ -1065,6 +1071,13 @@
         </div>
       </div>
       <div class="topbar-right" id="client-topbar-right">
+        <div id="topbar-search-wrap" class="topbar-search-wrap">
+          <button type="button" class="topbar-search-toggle" id="topbar-search-toggle" aria-label="Search stations" title="Search"><svg class="search-icon-retro" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/><path d="M9.5 9.5 L14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg></button>
+          <div class="topbar-search-field">
+            <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search..." aria-label="Search stations" />
+            <button type="button" class="topbar-search-close" id="topbar-search-close" aria-label="Close search">&#215;</button>
+          </div>
+        </div>
         <button type="button" class="topbar-chat-toggle hidden" id="topbar-chat-toggle" aria-label="Open chat" title="Chat"><svg class="chat-icon-retro" viewBox="0 0 16 14" width="16" height="14" aria-hidden="true"><path d="M1 1 L15 1 L15 9 L9 9 L5 13 L5 9 L1 9 Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg></button>
         <div class="color-picker-wrap topbar-desktop-only" id="color-picker-wrap">
           <button type="button" class="color-picker-btn" id="color-picker-btn" aria-label="Choose background color" aria-expanded="false" aria-haspopup="true">
@@ -1075,13 +1088,6 @@
         <a href="#" id="client-signin-link" class="topbar-nav-item topbar-desktop-only">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item topbar-desktop-only hidden"></span>
         <button type="button" id="client-logout-btn" class="topbar-desktop-only hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
-        <div id="topbar-search-wrap" class="topbar-search-wrap">
-          <button type="button" class="topbar-search-toggle" id="topbar-search-toggle" aria-label="Search stations" title="Search"><svg class="search-icon-retro" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/><path d="M9.5 9.5 L14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg></button>
-          <div class="topbar-search-field">
-            <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search..." aria-label="Search stations" />
-            <button type="button" class="topbar-search-close" id="topbar-search-close" aria-label="Close search">&#215;</button>
-          </div>
-        </div>
         <span id="topbar-clock" class="topbar-clock topbar-desktop-only" aria-live="polite"></span>
       </div>
     </nav>
