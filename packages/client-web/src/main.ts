@@ -1557,6 +1557,9 @@ let externalStreamConnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let externalStreamReconnectCount = 0;
 const EXTERNAL_STREAM_MAX_RECONNECTS = 10;
 const EXTERNAL_STREAM_RECONNECT_DELAY_MS = 1500;
+/** Wait for buffer before starting play to reduce lag/glitches. Fallback if canplaythrough doesn't fire (e.g. Safari live streams). */
+const EXTERNAL_STREAM_BUFFER_WAIT_MS = 600;
+const EXTERNAL_STREAM_PLAY_FALLBACK_MS = 6000;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
@@ -2223,6 +2226,8 @@ function attachExternalStreamAudio(station: ExternalStation): void {
   }
   const playbackUrl = getExternalStreamPlaybackUrl(station.streamUrl);
   externalAudio = new Audio(playbackUrl);
+  externalAudio.preload = "auto";
+  externalAudio.setAttribute("playsinline", "true");
   externalStreamConnectStartTime = Date.now();
   if (externalStreamReconnectCount === 0) {
     Promise.all([
@@ -2238,6 +2243,34 @@ function attachExternalStreamAudio(station: ExternalStation): void {
     }).catch(() => {});
   }
 
+  let playStarted = false;
+  let bufferWaitTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let playFallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  const clearBufferWait = () => {
+    if (bufferWaitTimeoutId != null) {
+      clearTimeout(bufferWaitTimeoutId);
+      bufferWaitTimeoutId = null;
+    }
+    if (playFallbackTimeoutId != null) {
+      clearTimeout(playFallbackTimeoutId);
+      playFallbackTimeoutId = null;
+    }
+  };
+  const tryPlay = () => {
+    if (playStarted || !externalAudio || currentExternalStation?.streamUrl !== station.streamUrl) return;
+    playStarted = true;
+    clearBufferWait();
+    externalAudio.play().catch((err) => {
+      if (externalStreamConnectTimeoutId != null) {
+        clearTimeout(externalStreamConnectTimeoutId);
+        externalStreamConnectTimeoutId = null;
+      }
+      console.error("[External stream] Play failed:", err);
+      updatePlayerStatus("stopped", "Could not start stream");
+      markStreamUnavailable(station.streamUrl);
+    });
+  };
+
   externalAudio.onplaying = () => {
     if (externalStreamConnectTimeoutId != null) {
       clearTimeout(externalStreamConnectTimeoutId);
@@ -2246,11 +2279,17 @@ function attachExternalStreamAudio(station: ExternalStation): void {
     externalStreamReconnectCount = 0;
     updatePlayerStatus("playing", "Listening to stream");
   };
+  externalAudio.onwaiting = () => {
+    if (currentExternalStation?.streamUrl === station.streamUrl) {
+      updatePlayerStatus("playing", "Buffering…");
+    }
+  };
   externalAudio.onerror = () => {
     if (externalStreamConnectTimeoutId != null) {
       clearTimeout(externalStreamConnectTimeoutId);
       externalStreamConnectTimeoutId = null;
     }
+    clearBufferWait();
     const elapsed = Date.now() - externalStreamConnectStartTime;
     if (elapsed < EXTERNAL_STREAM_CONNECT_GRACE_MS) {
       updatePlayerStatus("playing", "Connecting…");
@@ -2273,21 +2312,24 @@ function attachExternalStreamAudio(station: ExternalStation): void {
       updatePlayerStatus("ready", "Stream ended");
     }
   };
+  externalAudio.oncanplaythrough = () => tryPlay();
+  externalAudio.oncanplay = () => {
+    if (playStarted) return;
+    if (bufferWaitTimeoutId != null) return;
+    bufferWaitTimeoutId = setTimeout(tryPlay, EXTERNAL_STREAM_BUFFER_WAIT_MS);
+  };
+  playFallbackTimeoutId = setTimeout(() => {
+    playFallbackTimeoutId = null;
+    tryPlay();
+  }, EXTERNAL_STREAM_PLAY_FALLBACK_MS);
+
   externalStreamConnectTimeoutId = setTimeout(() => {
     externalStreamConnectTimeoutId = null;
+    clearBufferWait();
     if (currentExternalStation?.streamUrl !== station.streamUrl) return;
     updatePlayerStatus("stopped", "Could not start stream");
     markStreamUnavailable(station.streamUrl);
   }, EXTERNAL_STREAM_CONNECT_TIMEOUT_MS);
-  externalAudio.play().catch((err) => {
-    if (externalStreamConnectTimeoutId != null) {
-      clearTimeout(externalStreamConnectTimeoutId);
-      externalStreamConnectTimeoutId = null;
-    }
-    console.error("[External stream] Play failed:", err);
-    updatePlayerStatus("stopped", "Could not start stream");
-    markStreamUnavailable(station.streamUrl);
-  });
   updatePlayerStatus("playing", externalStreamReconnectCount > 0 ? "Reconnecting…" : "Connecting…");
   showPauseButton();
   playerLiveBadge.classList.remove("hidden");
