@@ -6,3 +6,7 @@ cmds = ["pnpm install"]
 
 [phases.build]
 cmds = ["pnpm build"]
+
+# Serve @laf/web dist (client at /, broadcaster at /broadcaster/). Write config from env at startup.
+[start]
+cmd = "cd packages/web && node scripts/write-config.cjs && npx --yes serve dist -p $PORT"
