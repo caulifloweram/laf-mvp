@@ -989,9 +989,14 @@
         .topbar-chat-toggle { min-width: 44px; min-height: 44px; width: 28px; height: 28px; }
         .topbar-search-toggle { min-width: 44px; min-height: 44px; }
         .topbar-search-wrap.expanded .topbar-search-field .topbar-search { width: 100px; min-width: 70px; }
+        #footer-player,
+        #player-expanded,
         .footer-player,
         .player-expanded,
-        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; color: #fff !important; }
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; background-color: #000 !important; color: #fff !important; }
+        .footer-player .cover-wrap,
+        .footer-player .cover-wrap.placeholder { background: #1a1a1a !important; background-color: #1a1a1a !important; }
+        .player-expanded .player-expanded-cover-wrap { background: #1a1a1a !important; background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.3) !important; }
         .footer-player .player-expand-btn,
         .footer-player .info .title,
         .footer-player .info .desc,
@@ -1047,9 +1052,14 @@
       @media (max-width: 480px) {
         :root { --topbar-height: 44px; }
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
+        #footer-player,
+        #player-expanded,
         .footer-player,
         .player-expanded,
-        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; color: #fff !important; }
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; background-color: #000 !important; color: #fff !important; }
+        .footer-player .cover-wrap,
+        .footer-player .cover-wrap.placeholder { background: #1a1a1a !important; background-color: #1a1a1a !important; }
+        .player-expanded .player-expanded-cover-wrap { background: #1a1a1a !important; background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.3) !important; }
         .footer-player .player-expand-btn,
         .footer-player .info .title,
         .footer-player .info .desc,
