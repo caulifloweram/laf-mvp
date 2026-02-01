@@ -2374,7 +2374,6 @@ function renderUnifiedStations(): void {
     }
       }
       chunkStart = end;
-      if (end > 0) tryHideInitialLoadScreen();
       if (chunkStart < filtered.length) {
         if (thisGeneration !== gridRenderGeneration) return;
         requestAnimationFrame(appendChunk);
@@ -2478,7 +2477,8 @@ const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 9000;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
-const INITIAL_LOAD_MS = 15000; // Initialization screen: up to 15s; overlay hides when stations are ready or at 15s
+/** Forced loading screen: run as many stream checks as possible for this long, then reveal channel cards. */
+const INITIAL_LOAD_MS = 10000; // 10 seconds: loading screen stays up; stream checks run in background; only then reveal
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
 let initialLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -2666,7 +2666,7 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
   );
 }
 
-/** Hide the initial loading screen and clear the 20s timer. Idempotent. */
+/** Hide the initial loading screen and clear the 10s timer. Idempotent. */
 function tryHideInitialLoadScreen(): void {
   if (!initialLoadingScreen) return;
   if (initialLoadTimeoutId != null) {
@@ -2709,16 +2709,21 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). Mobile uses lower concurrency and smaller chunks. */
+/** During initial 10s load: run as many checks as possible (higher concurrency, same chunk as API limit). */
+const INITIAL_LOAD_STREAM_CHUNK = 25;
+const INITIAL_LOAD_STREAM_CONCURRENT = 8;
+
+/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). During initial load phase uses higher concurrency to maximize checks in 10s. */
 function runFullStreamCheck(urlList?: string[]) {
   const urls = urlList ?? getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
   const isMobile = isMobileViewport();
-  const chunkSize = isMobile ? STREAM_CHECK_MOBILE_CHUNK : STREAM_CHECK_BATCH_CHUNK;
-  const concurrent = isMobile ? STREAM_CHECK_MOBILE_CONCURRENT : STREAM_CHECK_BATCH_CONCURRENT;
-  const batchTimeout = isMobile ? STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS : undefined;
+  const useAggressive = initialLoadPhase;
+  const chunkSize = useAggressive ? INITIAL_LOAD_STREAM_CHUNK : (isMobile ? STREAM_CHECK_MOBILE_CHUNK : STREAM_CHECK_BATCH_CHUNK);
+  const concurrent = useAggressive ? INITIAL_LOAD_STREAM_CONCURRENT : (isMobile ? STREAM_CHECK_MOBILE_CONCURRENT : STREAM_CHECK_BATCH_CONCURRENT);
+  const batchTimeout = isMobile && !useAggressive ? STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS : undefined;
   const chunks: string[][] = [];
   for (let i = 0; i < toCheck.length; i += chunkSize) {
     chunks.push(toCheck.slice(i, i + chunkSize));
@@ -2770,7 +2775,7 @@ function clearStreamStatusCache() {
 
 function renderExternalStations() {
   renderUnifiedStations();
-  setTimeout(runFullStreamCheck, 100);
+  setTimeout(runFullStreamCheck, initialLoadPhase ? 0 : 100);
 }
 
 function selectExternalStation(station: ExternalStation) {
@@ -4697,26 +4702,19 @@ loadRuntimeConfig().then(() => {
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
   if (getRoute() === "live") {
+    startInitialLoadScreen(); // 10s forced loading; stream checks run in background, then reveal cards
     if (restoreStationsSnapshot()) {
-      renderExternalStations();
-      tryHideInitialLoadScreen(); // Hide overlay immediately on refresh when cache restored (desktop + mobile)
-      loadExternalStations().then(() => {
-        saveStationsSnapshot();
-        renderExternalStations();
-        setTimeout(runFullStreamCheck, 100);
-      });
-    } else {
-      startInitialLoadScreen();
-      loadExternalStations()
-        .then(() => {
-          renderExternalStations();
-          setTimeout(() => runFullStreamCheck(), 250);
-        })
-        .catch(() => {
-          renderExternalStations();
-          setTimeout(() => runFullStreamCheck(), 250);
-        });
+      renderExternalStations(); // renders grid + starts runFullStreamCheck(100ms) with aggressive concurrency
     }
+    loadExternalStations()
+      .then(() => {
+        renderExternalStations();
+        runFullStreamCheck();
+      })
+      .catch(() => {
+        renderExternalStations();
+        runFullStreamCheck();
+      });
   } else {
     loadExternalStations();
   }

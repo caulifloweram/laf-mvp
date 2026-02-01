@@ -991,7 +991,21 @@
         .topbar-search-wrap.expanded .topbar-search-field .topbar-search { width: 100px; min-width: 70px; }
         .footer-player,
         .player-expanded,
-        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; }
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; color: #fff !important; }
+        .footer-player .player-expand-btn,
+        .footer-player .info .title,
+        .footer-player .info .desc,
+        .footer-player .controls button,
+        .footer-player .status-text { color: #fff !important; border-color: #fff !important; }
+        .footer-player .controls button:hover { background: rgba(255,255,255,0.15) !important; color: #fff !important; }
+        .player-expanded .player-expanded-title,
+        .player-expanded .player-expanded-location,
+        .player-expanded .player-expanded-desc,
+        .player-expanded .player-expanded-link,
+        .player-expanded .player-expanded-buffer-hint,
+        .player-expanded-controls button,
+        .player-expanded.fullscreen-mobile .player-expanded-minimize-btn { color: #fff !important; border-color: #fff !important; }
+        .player-expanded-controls button:hover { background: rgba(255,255,255,0.15) !important; color: #fff !important; }
         .main { max-width: 100%; padding: 12px 16px; }
         .live-view-toolbar { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 12px; }
         .live-view-toolbar .toolbar-right { justify-content: flex-end; }
@@ -1035,7 +1049,21 @@
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
         .footer-player,
         .player-expanded,
-        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; }
+        .player-expanded.fullscreen-mobile .player-expanded-minimize { background: #000 !important; color: #fff !important; }
+        .footer-player .player-expand-btn,
+        .footer-player .info .title,
+        .footer-player .info .desc,
+        .footer-player .controls button,
+        .footer-player .status-text { color: #fff !important; border-color: #fff !important; }
+        .footer-player .controls button:hover { background: rgba(255,255,255,0.15) !important; color: #fff !important; }
+        .player-expanded .player-expanded-title,
+        .player-expanded .player-expanded-location,
+        .player-expanded .player-expanded-desc,
+        .player-expanded .player-expanded-link,
+        .player-expanded .player-expanded-buffer-hint,
+        .player-expanded-controls button,
+        .player-expanded.fullscreen-mobile .player-expanded-minimize-btn { color: #fff !important; border-color: #fff !important; }
+        .player-expanded-controls button:hover { background: rgba(255,255,255,0.15) !important; color: #fff !important; }
         .topbar-right .topbar-nav-item,
         .topbar-right .color-picker-wrap,
         .topbar-right #client-logout-btn { padding: 5px 6px; font-size: 10px; }
@@ -1122,7 +1150,7 @@
         <div id="initial-loading-screen" class="initial-loading-screen hidden" aria-live="polite" aria-busy="true">
           <div class="initial-loading-inner">
             <div class="initial-loading-logo">LAF</div>
-            <p class="initial-loading-text">Loading stations… This may take up to 15 seconds.</p>
+            <p class="initial-loading-text">Loading stations… Checking streams (about 10 seconds).</p>
             <div class="initial-loading-bar-wrap">
               <div class="initial-loading-bar" id="initial-loading-bar" aria-hidden="true"></div>
             </div>
