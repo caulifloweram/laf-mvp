@@ -13,6 +13,31 @@ The script uses your **API’s** `/api/stream-check` endpoint. That check runs *
 
 ---
 
+## Permanently remove built-in stations from code
+
+In the **admin panel**, “Delete” on a **built-in** station only **hides** it (via API overrides); it stays in the client code. To **actually delete** built-in stations from the codebase (so they’re gone from `packages/client-web/src/main.ts`):
+
+1. **Option A – From a file**  
+   Put one stream URL per line in a text file (e.g. `scripts/stations-to-remove.txt`), then run:
+   ```bash
+   node scripts/remove-built-in-stations.mjs scripts/stations-to-remove.txt
+   ```
+
+2. **Option B – From the API**  
+   If you’ve already hidden built-in stations in the admin panel, the script can read those and remove them from code. First run `node scripts/export-built-in-stream-urls.mjs`, then:
+   ```bash
+   API_URL=https://YOUR-API-URL.up.railway.app node scripts/remove-built-in-stations.mjs --from-api
+   ```
+   This removes from code only built-in stations that are currently **hidden** in the API.
+
+**Dry run (no file changes):**
+   ```bash
+   DRY_RUN=1 node scripts/remove-built-in-stations.mjs scripts/stations-to-remove.txt
+   ```
+   After running for real, commit the updated `main.ts` and deploy.
+
+---
+
 ## Step 1: Export built-in stream URLs (one-time or when client list changes)
 
 In the project folder, in a terminal:
