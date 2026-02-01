@@ -1926,6 +1926,9 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
   }
 }
 
+/** Incremented on each full grid render; in-flight chunked appends check this so only the latest run completes. */
+let gridRenderGeneration = 0;
+
 function renderUnifiedStations(): void {
   const mode = stationsViewMode;
   stationsGrid.classList.toggle("hidden", mode !== "grid");
@@ -2086,9 +2089,11 @@ function renderUnifiedStations(): void {
   }
 
   if (mode === "grid" && filtered.length > 0) {
-    const GRID_CHUNK_SIZE = 60;
+    const thisGeneration = ++gridRenderGeneration;
+    const GRID_CHUNK_SIZE = 50;
     let chunkStart = 0;
     function appendChunk(): void {
+      if (thisGeneration !== gridRenderGeneration) return;
       const end = Math.min(chunkStart + GRID_CHUNK_SIZE, filtered.length);
       for (let i = chunkStart; i < end; i++) {
         const item = filtered[i];
@@ -2154,7 +2159,7 @@ function renderUnifiedStations(): void {
         if (img) {
           img.onerror = () => {
             logoLoadFailed.add(station.streamUrl);
-            renderUnifiedStations();
+            if (!initialLoadPhase) renderUnifiedStations();
           };
         }
       }
@@ -2218,7 +2223,7 @@ function renderUnifiedStations(): void {
         if (img) {
           img.onerror = () => {
             logoLoadFailed.add(config.logoUrl);
-            renderUnifiedStations();
+            if (!initialLoadPhase) renderUnifiedStations();
           };
         }
       }
@@ -2264,6 +2269,7 @@ function renderUnifiedStations(): void {
       }
       chunkStart = end;
       if (chunkStart < filtered.length) {
+        if (thisGeneration !== gridRenderGeneration) return;
         requestAnimationFrame(appendChunk);
       } else {
         const suggestCard = document.createElement("button");
@@ -2357,7 +2363,7 @@ const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 9000;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
-const INITIAL_LOAD_MS = 20000; // Fixed 20s tunnel: load stations + stream checks in background; overlay hides at 20s
+const INITIAL_LOAD_MS = 15000; // Initialization screen: up to 15s; overlay hides when stations are ready or at 15s
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
 let initialLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -2550,8 +2556,8 @@ function tryHideInitialLoadScreen(): void {
 }
 
 /**
- * Show initial loading screen for exactly 20s. Message only (no countdown).
- * Data tunnel: stations load + stream checks run in background so radios are ready when overlay hides.
+ * Show initial loading screen (up to INITIAL_LOAD_MS). Data tunnel: fetch stations only;
+ * overlay hides when loadExternalStations resolves; stream checks run after first render.
  */
 function startInitialLoadScreen(): void {
   if (!initialLoadingScreen) return;
@@ -4446,10 +4452,9 @@ loadRuntimeConfig().then(() => {
       });
     } else {
       startInitialLoadScreen();
-      runFullStreamCheck(getBuiltInStreamUrls());
       loadExternalStations()
-        .then(() => setTimeout(() => runFullStreamCheck(), 100))
-        .catch(() => setTimeout(() => runFullStreamCheck(), 100));
+        .then(() => setTimeout(() => runFullStreamCheck(), 250))
+        .catch(() => setTimeout(() => runFullStreamCheck(), 250));
     }
   } else {
     loadExternalStations();
