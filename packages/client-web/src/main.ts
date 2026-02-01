@@ -1129,7 +1129,7 @@ function renderUnifiedStations(): void {
       const liveChannels = config.channels.filter((ch) => {
         if (stationOverrides[ch.streamUrl]?.hidden) return false;
         const c = streamStatusCache[ch.streamUrl];
-        return c && c.ok;
+        return c && (c.ok || c.status === "verifying");
       });
       if (liveChannels.length > 0) {
         const mergedConfig = { ...config, ...configWithOverride };
@@ -1137,7 +1137,7 @@ function renderUnifiedStations(): void {
       }
     } else {
       const c = streamStatusCache[config.streamUrl];
-      if (c && c.ok) {
+      if (c && (c.ok || c.status === "verifying")) {
         items.push({
           type: "external",
           station: {
@@ -1153,7 +1153,7 @@ function renderUnifiedStations(): void {
     if (stationOverrides[s.streamUrl]?.hidden) return false;
     if (!s.id) return false;
     const cached = streamStatusCache[s.streamUrl];
-    return cached && cached.ok;
+    return cached && (cached.ok || cached.status === "verifying");
   });
   for (const station of userStationsLive) {
     const stationWithOverride = applyStationOverride({ ...station }, station.streamUrl);
@@ -1371,6 +1371,7 @@ function getStatusLabel(
   }
   if (!cached) return { text: "—", statusClass: "status-unknown" };
   if (cached.ok) return { text: "LIVE", statusClass: "status-live" };
+  if (cached.status === "verifying") return { text: "Checking…", statusClass: "status-unknown" };
   const label = cached.status === "timeout" ? "Timeout" : cached.status === "unavailable" ? "Offline" : "Error";
   const statusClass = cached.status === "timeout" ? "status-timeout" : cached.status === "unavailable" ? "status-offline" : "status-error";
   return { text: label, statusClass };
@@ -1409,7 +1410,43 @@ function markStreamUnavailable(streamUrl: string): void {
   renderUnifiedStations();
 }
 
-/** Check a single stream (used on demand when user selects, or in full check). Skips if already cached unless force. */
+/** Verify in the browser that the stream can actually be played (same URL as user would get). Returns true if canplay/playing, false on error or timeout. */
+function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const playbackUrl = getExternalStreamPlaybackUrl(streamUrl);
+    const audio = new Audio();
+    const VERIFY_TIMEOUT_MS = 8000;
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      audio.src = "";
+      audio.oncanplay = null;
+      audio.onplaying = null;
+      audio.onerror = null;
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve(false);
+    }, VERIFY_TIMEOUT_MS);
+    audio.oncanplay = () => {
+      cleanup();
+      resolve(true);
+    };
+    audio.onplaying = () => {
+      cleanup();
+      resolve(true);
+    };
+    audio.onerror = () => {
+      cleanup();
+      resolve(false);
+    };
+    audio.src = playbackUrl;
+  });
+}
+
+/** Check a single stream (used on demand when user selects, or in full check). Skips if already cached unless force. When API says ok, we verify in browser before showing LIVE. */
 function checkOneStream(streamUrl: string, force = false): Promise<void> {
   if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
   const controller = new AbortController();
@@ -1418,7 +1455,17 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
     .then((res) => res.json() as Promise<{ ok?: boolean; status?: string }>)
     .then((data) => {
       clearTimeout(timeoutId);
-      updateCardStatus(streamUrl, !!data.ok, data.status || "error");
+      if (data.ok) {
+        streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
+        updateCardStatus(streamUrl, false, "verifying");
+        renderUnifiedStations();
+        verifyStreamInBrowser(streamUrl).then((verified) => {
+          updateCardStatus(streamUrl, verified, verified ? "live" : "error");
+          renderUnifiedStations();
+        });
+      } else {
+        updateCardStatus(streamUrl, false, data.status || "error");
+      }
     })
     .catch(() => {
       clearTimeout(timeoutId);
