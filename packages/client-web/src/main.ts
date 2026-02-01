@@ -4351,6 +4351,7 @@ loadRuntimeConfig().then(() => {
   if (getRoute() === "live") {
     if (restoreStationsSnapshot()) {
       renderExternalStations();
+      tryHideInitialLoadScreen(); // Hide overlay immediately on refresh when cache restored (desktop + mobile)
       loadExternalStations().then(() => {
         saveStationsSnapshot();
         renderExternalStations();
