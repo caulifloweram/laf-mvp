@@ -1139,8 +1139,6 @@ async function loadExternalStations(): Promise<void> {
   }
   restoreStreamStatusCacheFromStorage();
   saveStationsSnapshot();
-  tryHideInitialLoadScreen();
-  renderExternalStations();
   };
   const timeoutPromise = new Promise<void>((_, reject) =>
     setTimeout(() => reject(new Error("load timeout")), maxWait)
@@ -1149,8 +1147,6 @@ async function loadExternalStations(): Promise<void> {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     restoreStreamStatusCacheFromStorage();
     saveStationsSnapshot();
-    tryHideInitialLoadScreen();
-    renderExternalStations();
   });
 }
 
@@ -1464,6 +1460,7 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 const stationsGrid = document.getElementById("stations-grid")!;
 const stationsList = document.getElementById("stations-list")!;
 const stationsCheckingBanner = document.getElementById("stations-checking-banner");
+const livePageHeader = document.getElementById("live-page-header");
 const initialLoadingScreen = document.getElementById("initial-loading-screen");
 const initialLoadingBar = document.getElementById("initial-loading-bar");
 const initialLoadingCountdown = document.getElementById("initial-loading-countdown");
@@ -1862,9 +1859,10 @@ async function loadChannels() {
     }
     const channels: LiveChannel[] = await res.json();
     liveChannelsList = channels;
+    if (initialLoadPhase) return;
     renderUnifiedStations();
   if (channels.length === 0) {
-    renderExternalStations();
+    if (!initialLoadPhase) renderExternalStations();
     if (currentChannel) {
       if (ws) { loopRunning = false; ws.close(); ws = null; }
       updatePlayerStatus("stopped", "Stream ended");
@@ -1873,7 +1871,7 @@ async function loadChannels() {
     }
     return;
   }
-  renderExternalStations();
+  if (!initialLoadPhase) renderExternalStations();
   if (currentChannel && !channels.find(c => c.id === currentChannel.id)) {
       if (ws) {
         loopRunning = false;
@@ -1889,7 +1887,7 @@ async function loadChannels() {
     console.error("[loadChannels] Exception caught:", err);
     const errMsg = err.message || "Failed to load channels";
     stationsGrid.innerHTML = `<p style='opacity: 0.7; color: var(--status-offline, #c00);'>Error: ${escapeHtml(errMsg)}</p>`;
-    renderExternalStations();
+    if (!initialLoadPhase) renderExternalStations();
   }
 }
 
@@ -2203,7 +2201,7 @@ function renderUnifiedStations(): void {
         ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" loading="lazy" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
       const cardLoading = !cached || cached.status === "verifying";
-      if (cardLoading) card.classList.add("card-loading");
+      if (cardLoading && !initialLoadPhase) card.classList.add("card-loading");
       card.innerHTML = `
         <div class="ext-card-loading-overlay" aria-hidden="true">Loading</div>
         ${logoHtml}
@@ -2264,7 +2262,7 @@ function renderUnifiedStations(): void {
       const card = document.createElement("div");
       card.className = "external-station-card external-station-card-multi";
       card.style.position = "relative";
-      if (anyChannelLoading) card.classList.add("card-loading");
+      if (anyChannelLoading && !initialLoadPhase) card.classList.add("card-loading");
       card.innerHTML = `
         <div class="ext-card-loading-overlay" aria-hidden="true">Loading</div>
         ${logoHtml}
@@ -2328,6 +2326,7 @@ function renderUnifiedStations(): void {
     }
       }
       chunkStart = end;
+      if (end > 0) tryHideInitialLoadScreen();
       if (chunkStart < filtered.length) {
         if (thisGeneration !== gridRenderGeneration) return;
         requestAnimationFrame(appendChunk);
@@ -2389,6 +2388,9 @@ function renderUnifiedStations(): void {
     } else {
       stationsCheckingBanner.classList.add("hidden");
     }
+  }
+  if (livePageHeader) {
+    livePageHeader.textContent = filtered.length > 0 ? `LIVE (${filtered.length})` : "LIVE";
   }
   if (filtered.length === 0) {
     if (uncachedCount > 0) {
@@ -2648,6 +2650,7 @@ function updateCheckingBanner(): void {
     stationsCheckingBanner.textContent = "Checking stream availability…";
   } else {
     stationsCheckingBanner.classList.add("hidden");
+    if (!initialLoadPhase) renderUnifiedStations();
   }
 }
 
@@ -4518,8 +4521,14 @@ loadRuntimeConfig().then(() => {
     } else {
       startInitialLoadScreen();
       loadExternalStations()
-        .then(() => setTimeout(() => runFullStreamCheck(), 250))
-        .catch(() => setTimeout(() => runFullStreamCheck(), 250));
+        .then(() => {
+          renderExternalStations();
+          setTimeout(() => runFullStreamCheck(), 250);
+        })
+        .catch(() => {
+          renderExternalStations();
+          setTimeout(() => runFullStreamCheck(), 250);
+        });
     }
   } else {
     loadExternalStations();
