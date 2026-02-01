@@ -1041,9 +1041,11 @@ function scheduleSaveStreamStatusCache(): void {
   }, 1500);
 }
 
-const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 5000;
+const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 4000;
+const EXTERNAL_STATIONS_MAX_WAIT_MS = 6000;
 
 async function loadExternalStations(): Promise<void> {
+  const doLoad = async (): Promise<void> => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_STATIONS_FETCH_TIMEOUT_MS);
@@ -1088,7 +1090,28 @@ async function loadExternalStations(): Promise<void> {
   }
   restoreStreamStatusCacheFromStorage();
   renderExternalStations();
-  if (getRoute() === "live") tryHideInitialLoadScreen();
+  if (getRoute() === "live") {
+    const elapsed = Date.now() - initialLoadStartTime;
+    if (elapsed >= INITIAL_LOAD_MIN_DISPLAY_MS) {
+      tryHideInitialLoadScreen();
+    } else {
+      setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS - elapsed);
+    }
+  }
+  };
+  const timeoutPromise = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error("load timeout")), EXTERNAL_STATIONS_MAX_WAIT_MS)
+  );
+  await Promise.race([doLoad(), timeoutPromise]).catch(() => {
+    allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    restoreStreamStatusCacheFromStorage();
+    renderExternalStations();
+    if (getRoute() === "live") {
+      const elapsed = Date.now() - initialLoadStartTime;
+      if (elapsed >= INITIAL_LOAD_MIN_DISPLAY_MS) tryHideInitialLoadScreen();
+      else setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS - elapsed);
+    }
+  });
 }
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
@@ -2240,7 +2263,7 @@ const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
 const INITIAL_LOAD_MS = 20000;
-const INITIAL_LOAD_MIN_DISPLAY_MS = 1500;
+const INITIAL_LOAD_MIN_DISPLAY_MS = 800;
 const INITIAL_LOAD_PROGRESS_INTERVAL_MS = 80;
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
@@ -4256,7 +4279,13 @@ loadRuntimeConfig().then(() => {
   initAdminForm();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
-  if (getRoute() === "live") startInitialLoadScreen();
+  if (getRoute() === "live") {
+    startInitialLoadScreen();
+    allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    restoreStreamStatusCacheFromStorage();
+    renderExternalStations();
+    setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS);
+  }
   loadExternalStations();
   if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();
