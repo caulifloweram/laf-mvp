@@ -262,6 +262,20 @@ function getExternalStationsFlat(): ExternalStation[] {
   );
 }
 
+/** All stream URLs (built-in + user) for live checks. */
+function getAllStreamUrls(): string[] {
+  const set = new Set<string>();
+  for (const c of EXTERNAL_STATION_CONFIGS) {
+    if (c.channels?.length) {
+      c.channels.forEach((ch) => set.add(ch.streamUrl));
+    } else {
+      set.add(c.streamUrl);
+    }
+  }
+  allExternalStations.forEach((s) => set.add(s.streamUrl));
+  return Array.from(set);
+}
+
 const EXTERNAL_STATIONS_FETCH_TIMEOUT_MS = 5000;
 
 async function loadExternalStations(): Promise<void> {
@@ -896,21 +910,21 @@ function renderUnifiedStations(): void {
   type Item =
     | { type: "laf"; channel: LiveChannel }
     | { type: "external"; station: ExternalStation }
-    | { type: "external_multi"; config: ExternalStationConfig };
+    | { type: "external_multi"; config: ExternalStationConfig; liveChannels: Array<{ name: string; streamUrl: string }> };
   const items: Item[] = [
     ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
   ];
 
   for (const config of EXTERNAL_STATION_CONFIGS) {
     if (config.channels && config.channels.length > 0) {
-      const atLeastOneLive = config.channels.some((ch) => {
+      const liveChannels = config.channels.filter((ch) => {
         const c = streamStatusCache[ch.streamUrl];
-        return !c || c.ok;
+        return c && c.ok;
       });
-      if (atLeastOneLive) items.push({ type: "external_multi", config });
+      if (liveChannels.length > 0) items.push({ type: "external_multi", config, liveChannels });
     } else {
       const c = streamStatusCache[config.streamUrl];
-      if (!c || c.ok) {
+      if (c && c.ok) {
         items.push({
           type: "external",
           station: {
@@ -928,7 +942,7 @@ function renderUnifiedStations(): void {
   const userStationsLive = allExternalStations.filter((s) => {
     if (!s.id) return false;
     const cached = streamStatusCache[s.streamUrl];
-    return !cached || cached.ok;
+    return cached && cached.ok;
   });
   for (const station of userStationsLive) {
     items.push({ type: "external", station });
@@ -954,7 +968,7 @@ function renderUnifiedStations(): void {
       } else if (item.type === "external") {
         if (!favoriteRefs.has(`external:${item.station.streamUrl}`)) return false;
       } else {
-        const anyFav = item.config.channels?.some((ch) => favoriteRefs.has(`external:${ch.streamUrl}`));
+        const anyFav = item.liveChannels.some((ch) => favoriteRefs.has(`external:${ch.streamUrl}`));
         if (!anyFav) return false;
       }
     }
@@ -1050,6 +1064,7 @@ function renderUnifiedStations(): void {
       stationsGrid.appendChild(card);
     } else if (item.type === "external_multi") {
       const config = item.config;
+      const liveChannels = item.liveChannels;
       const hasLogo = !!config.logoUrl;
       const initial = (config.name.trim().charAt(0) || "?").toUpperCase();
       const logoFailed = hasLogo && logoLoadFailed.has(config.logoUrl);
@@ -1058,7 +1073,7 @@ function renderUnifiedStations(): void {
           ? `<div class="ext-station-logo-wrap"><span class="ext-station-initial">${escapeHtml(initial)}</span></div>`
           : `<div class="ext-station-logo-wrap"><img src="${escapeAttr(config.logoUrl)}" alt="" class="ext-station-logo" /><span class="ext-station-initial hidden">${escapeHtml(initial)}</span></div>`
         : `<div class="ext-station-name-only">${escapeHtml(config.name)}</div>`;
-      const channelRows = (config.channels || [])
+      const channelRows = liveChannels
         .map((ch) => {
           const cached = streamStatusCache[ch.streamUrl];
           const { text: statusText, statusClass } = getStatusLabel(cached, ch.streamUrl);
@@ -1096,7 +1111,7 @@ function renderUnifiedStations(): void {
           e.preventDefault();
           const streamUrl = row.getAttribute("data-stream-url");
           if (streamUrl) {
-            const ch = config.channels?.find((c) => c.streamUrl === streamUrl);
+            const ch = liveChannels.find((c) => c.streamUrl === streamUrl);
             if (ch) {
               selectExternalStation({
                 name: `${config.name}: ${ch.name}`,
@@ -1112,8 +1127,14 @@ function renderUnifiedStations(): void {
       stationsGrid.appendChild(card);
     }
   });
+  const allUrls = getAllStreamUrls();
+  const uncachedCount = allUrls.filter((u) => streamStatusCache[u] === undefined).length;
   if (filtered.length === 0) {
-    stationsGrid.innerHTML = "<p style='opacity: 0.7;'>No stations to show.</p>";
+    if (uncachedCount > 0) {
+      stationsGrid.innerHTML = "<p style='opacity: 0.7;'>Checking which stations are live…</p>";
+    } else {
+      stationsGrid.innerHTML = "<p style='opacity: 0.7;'>No stations currently live.</p>";
+    }
   }
 }
 
@@ -1134,7 +1155,7 @@ function getStatusLabel(
 
 const STREAM_CHECK_TIMEOUT_MS = 3500;
 const STREAM_CHECK_BATCH_SIZE = 6;
-const STREAM_CHECK_MAX_BATCHES = 2;
+const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
 function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
@@ -1148,11 +1169,19 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
     if (ok) card.classList.remove("stream-offline");
     else card.classList.add("stream-offline");
   });
+  document.querySelectorAll<HTMLElement>(`.ext-channel-row[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((row) => {
+    const el = row.querySelector(".ext-stream-status");
+    if (!el) return;
+    const { text, statusClass } = getStatusLabel({ ok, status }, streamUrl);
+    el.classList.remove("status-unknown", "status-live", "status-offline", "status-error", "status-timeout");
+    el.textContent = text;
+    el.classList.add(statusClass);
+  });
 }
 
-/** Check a single stream (used on demand when user selects, or in background batch). */
-function checkOneStream(streamUrl: string): Promise<void> {
-  if (streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
+/** Check a single stream (used on demand when user selects, or in full check). Skips if already cached unless force. */
+function checkOneStream(streamUrl: string, force = false): Promise<void> {
+  if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
   return fetch(`${API_URL}/api/stream-check?url=${encodeURIComponent(streamUrl)}`, { signal: controller.signal })
@@ -1167,29 +1196,32 @@ function checkOneStream(streamUrl: string): Promise<void> {
     });
 }
 
-let backgroundStreamCheckDone = false;
+/** Run stream checks for all URLs in batches; re-render after each batch so list fills in as results arrive. */
+function runFullStreamCheck() {
+  const urls = getAllStreamUrls();
+  const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
+  if (toCheck.length === 0) return;
+  let index = 0;
+  function runNextBatch() {
+    const batch = toCheck.slice(index, index + STREAM_CHECK_BATCH_SIZE);
+    index += STREAM_CHECK_BATCH_SIZE;
+    if (batch.length === 0) return;
+    Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
+      renderUnifiedStations();
+      if (index < toCheck.length) setTimeout(runNextBatch, 800);
+    });
+  }
+  runNextBatch();
+}
 
-/** Lightweight background live check: one small batch after paint, once per load. Non-blocking. */
-function runBackgroundStreamCheck() {
-  if (backgroundStreamCheckDone) return;
-  backgroundStreamCheckDone = true;
-  const stations = getExternalStationsFlat();
-  const uncached = stations.filter((s) => streamStatusCache[s.streamUrl] === undefined);
-  if (uncached.length === 0) return;
-  const batch = uncached.slice(0, STREAM_CHECK_BATCH_SIZE);
-  Promise.all(batch.map((s) => checkOneStream(s.streamUrl))).then(() => {
-    const stillUncached = stations.filter((s) => streamStatusCache[s.streamUrl] === undefined);
-    if (stillUncached.length > 0 && STREAM_CHECK_MAX_BATCHES > 1) {
-      setTimeout(() => {
-        stillUncached.slice(0, STREAM_CHECK_BATCH_SIZE).forEach((s) => checkOneStream(s.streamUrl));
-      }, 2000);
-    }
-  });
+/** Clear stream status cache for all known URLs (used before periodic re-check). */
+function clearStreamStatusCache() {
+  getAllStreamUrls().forEach((url) => delete streamStatusCache[url]);
 }
 
 function renderExternalStations() {
   renderUnifiedStations();
-  setTimeout(runBackgroundStreamCheck, 100);
+  setTimeout(runFullStreamCheck, 100);
 }
 
 function selectExternalStation(station: ExternalStation) {
@@ -2453,6 +2485,10 @@ loadRuntimeConfig().then(() => {
   if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();
   setInterval(loadChannels, 15000);
+  setInterval(() => {
+    clearStreamStatusCache();
+    runFullStreamCheck();
+  }, STREAM_RECHECK_INTERVAL_MS);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
