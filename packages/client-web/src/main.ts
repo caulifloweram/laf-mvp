@@ -1077,6 +1077,7 @@ async function loadExternalStations(): Promise<void> {
   }
   restoreStreamStatusCacheFromStorage();
   renderExternalStations();
+  if (getRoute() === "live") tryHideInitialLoadScreen();
 }
 
 function decodeLAF(buf: ArrayBuffer): LAFPacket | null {
@@ -2227,11 +2228,13 @@ const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
-const INITIAL_LOAD_MS = 10000;
+const INITIAL_LOAD_MS = 20000;
+const INITIAL_LOAD_MIN_DISPLAY_MS = 1500;
 const INITIAL_LOAD_PROGRESS_INTERVAL_MS = 80;
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
 let initialLoadProgressIntervalId: ReturnType<typeof setInterval> | null = null;
+let initialLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
 
@@ -2353,18 +2356,23 @@ function checkOneStreamApi(streamUrl: string, timeoutMs: number): Promise<{ ok: 
 
 const STREAM_CHECK_RETRY_TIMEOUT_MS = Math.round(STREAM_CHECK_TIMEOUT_MS * 1.5);
 
-/** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. */
+/** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. During initial load we trust API only (no browser verify) to avoid blocking. */
 function checkOneStream(streamUrl: string, force = false): Promise<void> {
   if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
 
   const doCheck = (timeoutMs: number): Promise<void> =>
     checkOneStreamApi(streamUrl, timeoutMs).then(({ ok, status }) => {
       if (ok) {
-        streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
-        updateCardStatus(streamUrl, false, "verifying");
-        verifyStreamInBrowser(streamUrl).then((verified) => {
-          updateCardStatus(streamUrl, verified, verified ? "live" : "error");
-        });
+        if (initialLoadPhase) {
+          streamStatusCache[streamUrl] = { ok: true, status: "live" };
+          updateCardStatus(streamUrl, true, "live");
+        } else {
+          streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
+          updateCardStatus(streamUrl, false, "verifying");
+          verifyStreamInBrowser(streamUrl).then((verified) => {
+            updateCardStatus(streamUrl, verified, verified ? "live" : "error");
+          });
+        }
       } else {
         updateCardStatus(streamUrl, false, status);
       }
@@ -2377,7 +2385,25 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
   );
 }
 
-/** Show initial loading screen for INITIAL_LOAD_MS, progress bar and hint text, then hide. */
+/** Hide the initial loading screen if visible; clears max timer and progress interval. Call when data is ready (enforces min display time). */
+function tryHideInitialLoadScreen(): void {
+  if (!initialLoadingScreen || !initialLoadingBar) return;
+  const elapsed = Date.now() - initialLoadStartTime;
+  if (elapsed < INITIAL_LOAD_MIN_DISPLAY_MS) return;
+  if (initialLoadTimeoutId != null) {
+    clearTimeout(initialLoadTimeoutId);
+    initialLoadTimeoutId = null;
+  }
+  if (initialLoadProgressIntervalId != null) {
+    clearInterval(initialLoadProgressIntervalId);
+    initialLoadProgressIntervalId = null;
+  }
+  initialLoadPhase = false;
+  initialLoadingBar.style.width = "100%";
+  initialLoadingScreen.classList.add("hidden");
+}
+
+/** Show initial loading screen; hide after INITIAL_LOAD_MS max or when tryHideInitialLoadScreen() is called (after data ready). */
 function startInitialLoadScreen(): void {
   if (!initialLoadingScreen || !initialLoadingBar) return;
   initialLoadPhase = true;
@@ -2385,7 +2411,6 @@ function startInitialLoadScreen(): void {
   initialLoadingScreen.classList.remove("hidden");
   initialLoadingBar.style.width = "0%";
 
-  // Progress bar: update every 80ms (can drift under load, but looks smooth)
   if (initialLoadProgressIntervalId) clearInterval(initialLoadProgressIntervalId);
   initialLoadProgressIntervalId = setInterval(() => {
     const elapsed = Date.now() - initialLoadStartTime;
@@ -2397,14 +2422,11 @@ function startInitialLoadScreen(): void {
     }
   }, INITIAL_LOAD_PROGRESS_INTERVAL_MS);
 
-  setTimeout(() => {
-    if (initialLoadProgressIntervalId) {
-      clearInterval(initialLoadProgressIntervalId);
-      initialLoadProgressIntervalId = null;
+  initialLoadTimeoutId = setTimeout(() => {
+    if (initialLoadTimeoutId != null) {
+      initialLoadTimeoutId = null;
+      tryHideInitialLoadScreen();
     }
-    initialLoadPhase = false;
-    initialLoadingBar.style.width = "100%";
-    initialLoadingScreen.classList.add("hidden");
   }, INITIAL_LOAD_MS);
 }
 
@@ -2421,16 +2443,16 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks for all URLs in batches in the background. During initial 10s load we use larger batches and shorter delay. */
+/** Run stream checks for all URLs in batches in the background. During initial load we use smaller batches and no browser verify to keep UI responsive. */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
   let index = 0;
-  const firstBatchSize = initialLoadPhase ? 36 : STREAM_CHECK_FIRST_BATCH_SIZE;
-  const batchSizeAfter = initialLoadPhase ? 12 : STREAM_CHECK_BATCH_SIZE;
-  const delayMs = initialLoadPhase ? 400 : 800;
+  const firstBatchSize = initialLoadPhase ? 12 : STREAM_CHECK_FIRST_BATCH_SIZE;
+  const batchSizeAfter = initialLoadPhase ? 6 : STREAM_CHECK_BATCH_SIZE;
+  const delayMs = initialLoadPhase ? 500 : 800;
   function runNextBatch() {
     const batchSize = index === 0 ? firstBatchSize : batchSizeAfter;
     const batch = toCheck.slice(index, index + batchSize);
