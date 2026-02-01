@@ -100,14 +100,16 @@ app.get("/", (req, res) => {
   });
 });
 
-// Shared: check if a stream URL is reachable (returns quickly; does not read full body)
+const STREAM_CHECK_TIMEOUT_MS = 2000;
+
+/** Check if a stream URL is reachable (fast; does not read full body). */
 async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: string }> {
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
     return { ok: false, status: "invalid_url" };
   }
   try {
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 3000);
+    const t = setTimeout(() => controller.abort(), STREAM_CHECK_TIMEOUT_MS);
     const response = await fetch(url, {
       method: "GET",
       signal: controller.signal,
@@ -343,6 +345,24 @@ app.get("/api/stream-check", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
   const result = await checkStreamUrl(url);
   res.json(result);
+});
+
+const STREAM_CHECK_BATCH_MAX = 30;
+
+app.post("/api/stream-check-batch", async (req, res) => {
+  const body = req.body as { urls?: string[] };
+  const urls = Array.isArray(body?.urls) ? body.urls : [];
+  const trimmed = urls
+    .filter((u): u is string => typeof u === "string")
+    .map((u) => u.trim())
+    .filter((u) => u.startsWith("http://") || u.startsWith("https://"))
+    .slice(0, STREAM_CHECK_BATCH_MAX);
+  const results = await Promise.all(trimmed.map((url) => checkStreamUrl(url)));
+  const out: Record<string, { ok: boolean; status: string }> = {};
+  trimmed.forEach((url, i) => {
+    out[url] = results[i];
+  });
+  res.json({ results: out });
 });
 
 // User-Agent that many stream servers (e.g. Radiojar/Icecast) expect; avoids early disconnect.

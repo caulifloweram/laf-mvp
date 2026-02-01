@@ -2256,8 +2256,11 @@ function getStatusLabel(
   return { text: label, statusClass };
 }
 
-const STREAM_CHECK_TIMEOUT_MS = 5500;
+const STREAM_CHECK_TIMEOUT_MS = 2500;
 const STREAM_CHECK_BATCH_SIZE = 6;
+const STREAM_CHECK_BATCH_CHUNK = 25;
+const STREAM_CHECK_BATCH_CONCURRENT = 4;
+const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 6000;
 /** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
@@ -2388,6 +2391,32 @@ function checkOneStreamApi(streamUrl: string, timeoutMs: number): Promise<{ ok: 
     });
 }
 
+/** Check a batch of stream URLs in one API call. Returns results map or empty on failure. */
+function checkStreamBatchApi(urls: string[]): Promise<Record<string, { ok: boolean; status: string }>> {
+  if (urls.length === 0) return Promise.resolve({});
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS);
+  return fetch(`${API_URL}/api/stream-check-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ urls: urls.slice(0, STREAM_CHECK_BATCH_CHUNK) }),
+    signal: controller.signal,
+  })
+    .then((res) => res.json() as Promise<{ results?: Record<string, { ok?: boolean; status?: string }> }>)
+    .then((data) => {
+      clearTimeout(timeoutId);
+      const out: Record<string, { ok: boolean; status: string }> = {};
+      for (const [url, entry] of Object.entries(data.results || {})) {
+        out[url] = { ok: !!entry?.ok, status: entry?.status || "error" };
+      }
+      return out;
+    })
+    .catch(() => {
+      clearTimeout(timeoutId);
+      return {};
+    });
+}
+
 const STREAM_CHECK_RETRY_TIMEOUT_MS = Math.round(STREAM_CHECK_TIMEOUT_MS * 1.5);
 
 /** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. During initial load we trust API only (no browser verify) to avoid blocking. */
@@ -2477,31 +2506,49 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks for all URLs in batches in the background. During initial load we use smaller batches and no browser verify to keep UI responsive. */
+/** Run stream checks via batch API (fast) with limited concurrency. */
 function runFullStreamCheck() {
   const urls = getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
-  let index = 0;
-  const firstBatchSize = initialLoadPhase ? 12 : STREAM_CHECK_FIRST_BATCH_SIZE;
-  const batchSizeAfter = initialLoadPhase ? 6 : STREAM_CHECK_BATCH_SIZE;
-  const delayMs = initialLoadPhase ? 500 : 800;
-  function runNextBatch() {
-    const batchSize = index === 0 ? firstBatchSize : batchSizeAfter;
-    const batch = toCheck.slice(index, index + batchSize);
-    index += batchSize;
-    if (batch.length === 0) return;
-    Promise.all(batch.map((u) => checkOneStream(u))).then(() => {
-      if (index >= toCheck.length) {
-        streamCheckInProgress = false;
-        updateCheckingBanner();
-      } else {
-        setTimeout(runNextBatch, delayMs);
-      }
+  const chunks: string[][] = [];
+  for (let i = 0; i < toCheck.length; i += STREAM_CHECK_BATCH_CHUNK) {
+    chunks.push(toCheck.slice(i, i + STREAM_CHECK_BATCH_CHUNK));
+  }
+  let chunkIndex = 0;
+  function runNextWave(): void {
+    const wave = chunks.slice(chunkIndex, chunkIndex + STREAM_CHECK_BATCH_CONCURRENT);
+    chunkIndex += STREAM_CHECK_BATCH_CONCURRENT;
+    if (wave.length === 0) {
+      streamCheckInProgress = false;
+      updateCheckingBanner();
+      return;
+    }
+    Promise.all(wave.map((chunk) => checkStreamBatchApi(chunk))).then((resultMaps) => {
+      resultMaps.forEach((results) => {
+        for (const [streamUrl, { ok, status }] of Object.entries(results)) {
+          if (ok && initialLoadPhase) {
+            streamStatusCache[streamUrl] = { ok: true, status: "live" };
+            updateCardStatus(streamUrl, true, "live");
+          } else if (ok && !initialLoadPhase) {
+            streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
+            updateCardStatus(streamUrl, false, "verifying");
+            verifyStreamInBrowser(streamUrl).then((verified) => {
+              updateCardStatus(streamUrl, verified, verified ? "live" : "error");
+            });
+          } else {
+            streamStatusCache[streamUrl] = { ok, status };
+            updateCardStatus(streamUrl, ok, status);
+          }
+        }
+      });
+      scheduleSaveStreamStatusCache();
+      updateCheckingBanner();
+      runNextWave();
     });
   }
-  runNextBatch();
+  runNextWave();
 }
 
 /** Clear stream status cache for all known URLs (used before periodic re-check). */
