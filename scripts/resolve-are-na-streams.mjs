@@ -19,6 +19,7 @@ const EXISTING_DOMAINS = new Set([
   "refugeworldwide.com", "mutantradio.net", "radio80k.de", "kexp.org", "soma.fm", "wfmu.org",
   "nts.live", "lyl.live", "noodsradio.com", "veneno.live", "kioskradio.com", "kchungradio.org",
   "tikka.live", "wobc.stream", "particle.fm", "hopestradio.community", "netilradio.com",
+  "area3000.radio",
 ]);
 
 // Manual stream URL overrides (website domain -> stream URL or { streamUrl, name? })

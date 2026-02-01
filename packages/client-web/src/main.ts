@@ -272,6 +272,13 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     logoUrl: "https://www.radiocentraal.be/favicon.ico",
   },
   {
+    name: "Area 3000",
+    description: "24/7 digital radio from Naarm/Melbourne. Underground music, DJ sets, podcasts. Revolver Lane, Wurundjeri land.",
+    websiteUrl: "https://area3000.radio/",
+    streamUrl: "https://stream.radiocult.fm/area-3000",
+    logoUrl: "https://area3000.radio/cdn/shop/files/Area_3000_Logo_Black.png?v=1704440747",
+  },
+  {
     name: "Cashmere Radio",
     description: "Experimental radio station, Berlin. 88.4 FM Berlin, 90.7 Potsdam. Electronic, ambient, experimental.",
     websiteUrl: "https://cashmereradio.com/",
