@@ -224,9 +224,11 @@
         color: var(--text-muted);
         margin-bottom: 8px;
       }
-      .initial-loading-hint {
-        font-size: 13px;
-        color: var(--text-muted);
+      .initial-loading-countdown-wrap {
+        font-size: 28px;
+        font-variant-numeric: tabular-nums;
+        font-weight: bold;
+        color: var(--text);
         margin-bottom: 24px;
       }
       .initial-loading-bar-wrap {
@@ -1092,7 +1094,7 @@
           <div class="initial-loading-inner">
             <div class="initial-loading-logo">LAF</div>
             <p class="initial-loading-text">Loading stations…</p>
-            <p class="initial-loading-hint">This can take up to 20 seconds.</p>
+            <p class="initial-loading-countdown-wrap"><span id="initial-loading-countdown" aria-live="polite">20</span> seconds</p>
             <div class="initial-loading-bar-wrap">
               <div class="initial-loading-bar" id="initial-loading-bar"></div>
             </div>

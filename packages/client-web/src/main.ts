@@ -1090,14 +1090,6 @@ async function loadExternalStations(): Promise<void> {
   }
   restoreStreamStatusCacheFromStorage();
   renderExternalStations();
-  if (getRoute() === "live") {
-    const elapsed = Date.now() - initialLoadStartTime;
-    if (elapsed >= INITIAL_LOAD_MIN_DISPLAY_MS) {
-      tryHideInitialLoadScreen();
-    } else {
-      setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS - elapsed);
-    }
-  }
   };
   const timeoutPromise = new Promise<void>((_, reject) =>
     setTimeout(() => reject(new Error("load timeout")), EXTERNAL_STATIONS_MAX_WAIT_MS)
@@ -1106,11 +1098,6 @@ async function loadExternalStations(): Promise<void> {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     restoreStreamStatusCacheFromStorage();
     renderExternalStations();
-    if (getRoute() === "live") {
-      const elapsed = Date.now() - initialLoadStartTime;
-      if (elapsed >= INITIAL_LOAD_MIN_DISPLAY_MS) tryHideInitialLoadScreen();
-      else setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS - elapsed);
-    }
   });
 }
 
@@ -1426,6 +1413,7 @@ const stationsList = document.getElementById("stations-list")!;
 const stationsCheckingBanner = document.getElementById("stations-checking-banner");
 const initialLoadingScreen = document.getElementById("initial-loading-screen");
 const initialLoadingBar = document.getElementById("initial-loading-bar");
+const initialLoadingCountdown = document.getElementById("initial-loading-countdown");
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
@@ -2266,11 +2254,11 @@ const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
 const INITIAL_LOAD_MS = 20000;
-const INITIAL_LOAD_MIN_DISPLAY_MS = 800;
 const INITIAL_LOAD_PROGRESS_INTERVAL_MS = 80;
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
 let initialLoadProgressIntervalId: ReturnType<typeof setInterval> | null = null;
+let initialLoadCountdownIntervalId: ReturnType<typeof setInterval> | null = null;
 let initialLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
@@ -2448,11 +2436,9 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
   );
 }
 
-/** Hide the initial loading screen if visible; clears max timer and progress interval. Call when data is ready (enforces min display time). */
+/** Hide the initial loading screen (only called after 20s countdown). Clears timers and shows grid. */
 function tryHideInitialLoadScreen(): void {
   if (!initialLoadingScreen || !initialLoadingBar) return;
-  const elapsed = Date.now() - initialLoadStartTime;
-  if (elapsed < INITIAL_LOAD_MIN_DISPLAY_MS) return;
   if (initialLoadTimeoutId != null) {
     clearTimeout(initialLoadTimeoutId);
     initialLoadTimeoutId = null;
@@ -2461,18 +2447,24 @@ function tryHideInitialLoadScreen(): void {
     clearInterval(initialLoadProgressIntervalId);
     initialLoadProgressIntervalId = null;
   }
+  if (initialLoadCountdownIntervalId != null) {
+    clearInterval(initialLoadCountdownIntervalId);
+    initialLoadCountdownIntervalId = null;
+  }
   initialLoadPhase = false;
   initialLoadingBar.style.width = "100%";
+  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "0";
   initialLoadingScreen.classList.add("hidden");
 }
 
-/** Show initial loading screen; hide after INITIAL_LOAD_MS max or when tryHideInitialLoadScreen() is called (after data ready). */
+/** Show initial loading screen for full 20s; load stations and run stream checks during it; then hide and show grid. */
 function startInitialLoadScreen(): void {
   if (!initialLoadingScreen || !initialLoadingBar) return;
   initialLoadPhase = true;
   initialLoadStartTime = Date.now();
   initialLoadingScreen.classList.remove("hidden");
   initialLoadingBar.style.width = "0%";
+  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "20";
 
   if (initialLoadProgressIntervalId) clearInterval(initialLoadProgressIntervalId);
   initialLoadProgressIntervalId = setInterval(() => {
@@ -2484,6 +2476,17 @@ function startInitialLoadScreen(): void {
       initialLoadProgressIntervalId = null;
     }
   }, INITIAL_LOAD_PROGRESS_INTERVAL_MS);
+
+  if (initialLoadCountdownIntervalId) clearInterval(initialLoadCountdownIntervalId);
+  let secondsLeft = 20;
+  initialLoadCountdownIntervalId = setInterval(() => {
+    secondsLeft -= 1;
+    if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(Math.max(0, secondsLeft));
+    if (secondsLeft <= 0 && initialLoadCountdownIntervalId) {
+      clearInterval(initialLoadCountdownIntervalId);
+      initialLoadCountdownIntervalId = null;
+    }
+  }, 1000);
 
   initialLoadTimeoutId = setTimeout(() => {
     if (initialLoadTimeoutId != null) {
@@ -4326,13 +4329,7 @@ loadRuntimeConfig().then(() => {
   initAdminForm();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
-  if (getRoute() === "live") {
-    startInitialLoadScreen();
-    allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-    restoreStreamStatusCacheFromStorage();
-    renderExternalStations();
-    setTimeout(tryHideInitialLoadScreen, INITIAL_LOAD_MIN_DISPLAY_MS);
-  }
+  if (getRoute() === "live") startInitialLoadScreen();
   loadExternalStations();
   if (token) loadFavorites().then(() => renderUnifiedStations());
   loadChannels();
