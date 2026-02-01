@@ -106,6 +106,12 @@ interface ExternalStationConfig {
   channels?: Array<{ name: string; streamUrl: string }>;
 }
 
+/** Single item in the unified stations list (LAF channel or external station). */
+type UnifiedStationItem =
+  | { type: "laf"; channel: LiveChannel }
+  | { type: "external"; station: ExternalStation }
+  | { type: "external_multi"; config: ExternalStationConfig; liveChannels: Array<{ name: string; streamUrl: string }> };
+
 const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   {
     name: "Refuge Worldwide",
@@ -1929,6 +1935,18 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
 /** Incremented on each full grid render; in-flight chunked appends check this so only the latest run completes. */
 let gridRenderGeneration = 0;
 
+/** Session order: 6 random external stations first, then the rest. Null until we first build the grid with data. */
+let sessionOrderedExternalItems: UnifiedStationItem[] | null = null;
+/** After we've done the tactical "6 first + load rest" reveal once, we use normal full render. */
+let tacticalRevealDone = false;
+
+/** Get primary stream URL for an item (for ordering/dedup). */
+function getItemStreamUrl(item: UnifiedStationItem): string {
+  if (item.type === "laf") return "";
+  if (item.type === "external") return item.station.streamUrl;
+  return item.liveChannels[0]?.streamUrl ?? "";
+}
+
 function renderUnifiedStations(): void {
   const mode = stationsViewMode;
   stationsGrid.classList.toggle("hidden", mode !== "grid");
@@ -1940,10 +1958,7 @@ function renderUnifiedStations(): void {
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
   const onlyFavorites = favoritesFilter?.checked ?? false;
 
-  type Item =
-    | { type: "laf"; channel: LiveChannel }
-    | { type: "external"; station: ExternalStation }
-    | { type: "external_multi"; config: ExternalStationConfig; liveChannels: Array<{ name: string; streamUrl: string }> };
+  type Item = UnifiedStationItem;
   const items: Item[] = [
     ...liveChannelsList.filter((c) => c.id && c.streamId).map((c) => ({ type: "laf" as const, channel: c })),
   ];
@@ -2045,6 +2060,35 @@ function renderUnifiedStations(): void {
     return na.localeCompare(nb, undefined, { sensitivity: "base" });
   });
 
+  const lafItems = filtered.filter((x): x is UnifiedStationItem => x.type === "laf");
+  const externalItems = filtered.filter((x): x is UnifiedStationItem => x.type !== "laf");
+  const useTacticalOrder =
+    mode === "grid" &&
+    !q &&
+    !onlyFavorites &&
+    externalItems.length >= 6 &&
+    !tacticalRevealDone;
+  if (useTacticalOrder && sessionOrderedExternalItems === null) {
+    const shuffled = [...externalItems];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const firstSix = shuffled.slice(0, 6);
+    const firstSixUrls = new Set(firstSix.map(getItemStreamUrl));
+    const rest = externalItems
+      .filter((x) => !firstSixUrls.has(getItemStreamUrl(x)))
+      .sort((a, b) => {
+        const na = a.type === "external" ? a.station.name : a.config.name;
+        const nb = b.type === "external" ? b.station.name : b.config.name;
+        return na.localeCompare(nb, undefined, { sensitivity: "base" });
+      });
+    sessionOrderedExternalItems = [...firstSix, ...rest];
+  }
+  if (useTacticalOrder && sessionOrderedExternalItems) {
+    filtered = [...lafItems, ...sessionOrderedExternalItems];
+  }
+
   if (mode === "list") {
     filtered.forEach((item) => {
       const name = item.type === "laf" ? item.channel.title : item.type === "external" ? item.station.name : item.config.name;
@@ -2091,10 +2135,26 @@ function renderUnifiedStations(): void {
   if (mode === "grid" && filtered.length > 0) {
     const thisGeneration = ++gridRenderGeneration;
     const GRID_CHUNK_SIZE = 50;
+    const firstCut = useTacticalOrder ? lafItems.length + 6 : 0;
+    let loadingPlaceholder: HTMLElement | null = null;
+    if (useTacticalOrder && filtered.length > firstCut) {
+      loadingPlaceholder = document.createElement("div");
+      loadingPlaceholder.className = "stations-loading-rest";
+      loadingPlaceholder.setAttribute("aria-live", "polite");
+      loadingPlaceholder.innerHTML = "<span class=\"stations-loading-rest-text\">Loading the rest…</span>";
+      stationsGrid.appendChild(loadingPlaceholder);
+    }
     let chunkStart = 0;
+    function appendCard(card: HTMLElement, index: number): void {
+      if (loadingPlaceholder && index >= firstCut) stationsGrid.insertBefore(card, loadingPlaceholder);
+      else stationsGrid.appendChild(card);
+    }
     function appendChunk(): void {
       if (thisGeneration !== gridRenderGeneration) return;
-      const end = Math.min(chunkStart + GRID_CHUNK_SIZE, filtered.length);
+      const end =
+        firstCut > 0 && chunkStart === 0
+          ? firstCut
+          : Math.min(chunkStart + GRID_CHUNK_SIZE, filtered.length);
       for (let i = chunkStart; i < end; i++) {
         const item = filtered[i];
         if (item.type === "laf") {
@@ -2125,7 +2185,7 @@ function renderUnifiedStations(): void {
           toggleFavorite("laf", c.id);
         });
       }
-      stationsGrid.appendChild(card);
+      appendCard(card, i);
     } else if (item.type === "external") {
       const station = item.station;
       const card = document.createElement("div");
@@ -2176,7 +2236,7 @@ function renderUnifiedStations(): void {
           toggleFavorite("external", station.streamUrl);
         });
       }
-      stationsGrid.appendChild(card);
+      appendCard(card, i);
     } else if (item.type === "external_multi") {
       const config = item.config;
       const liveChannels = item.liveChannels;
@@ -2264,7 +2324,7 @@ function renderUnifiedStations(): void {
           }
         }
       });
-      stationsGrid.appendChild(card);
+      appendCard(card, i);
     }
       }
       chunkStart = end;
@@ -2272,6 +2332,11 @@ function renderUnifiedStations(): void {
         if (thisGeneration !== gridRenderGeneration) return;
         requestAnimationFrame(appendChunk);
       } else {
+        if (loadingPlaceholder) {
+          loadingPlaceholder.remove();
+          loadingPlaceholder = null;
+        }
+        if (useTacticalOrder) tacticalRevealDone = true;
         const suggestCard = document.createElement("button");
         suggestCard.type = "button";
         suggestCard.className = "suggest-card";
