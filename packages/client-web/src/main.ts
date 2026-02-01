@@ -485,8 +485,8 @@ let allExternalStations: ExternalStation[] = (() => {
   return b;
 })();
 let stationsSearchQuery = "";
-/** View mode for stations list: grid (cards), list (bars), dial (vintage dial), map (world map). */
-let stationsViewMode: "grid" | "list" | "dial" | "map" = "grid";
+/** View mode for stations list: grid (cards) or list (bars). */
+let stationsViewMode: "grid" | "list" = "grid";
 
 /** Admin overrides for any station (built-in or added) keyed by streamUrl. hidden = true means station is removed from the site. */
 let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; location?: string | null; lat?: number | null; lng?: number | null; hidden?: boolean }> = {};
@@ -891,8 +891,6 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 // DOM refs
 const stationsGrid = document.getElementById("stations-grid")!;
 const stationsList = document.getElementById("stations-list")!;
-const stationsDial = document.getElementById("stations-dial")!;
-const stationsMap = document.getElementById("stations-map")!;
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
@@ -1282,17 +1280,12 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
 }
 
 function renderUnifiedStations(): void {
-  // Show/hide view containers and clear active one
   const mode = stationsViewMode;
   stationsGrid.classList.toggle("hidden", mode !== "grid");
   stationsList.classList.toggle("hidden", mode !== "list");
-  stationsDial.classList.toggle("hidden", mode !== "dial");
-  stationsMap.classList.toggle("hidden", mode !== "map");
   stationsGrid.innerHTML = "";
   stationsList.innerHTML = "";
-  stationsDial.innerHTML = "";
-  stationsMap.innerHTML = "";
-  const activeContainer = mode === "grid" ? stationsGrid : mode === "list" ? stationsList : mode === "dial" ? stationsDial : stationsMap;
+  const activeContainer = mode === "grid" ? stationsGrid : stationsList;
 
   if (streamCheckInProgress) {
     const urls = getAllStreamUrls();
@@ -1342,13 +1335,22 @@ function renderUnifiedStations(): void {
     }
   }
 
+  const builtInStreamUrls = new Set<string>();
+  for (const item of items) {
+    if (item.type === "external") builtInStreamUrls.add(item.station.streamUrl);
+    if (item.type === "external_multi") for (const ch of item.liveChannels) builtInStreamUrls.add(ch.streamUrl);
+  }
   const userStationsLive = allExternalStations.filter((s) => {
     if (stationOverrides[s.streamUrl]?.hidden) return false;
     if (!s.id) return false;
+    if (builtInStreamUrls.has(s.streamUrl)) return false;
     const cached = streamStatusCache[s.streamUrl];
     return cached && (cached.ok || cached.status === "verifying");
   });
+  const addedUserUrls = new Set<string>();
   for (const station of userStationsLive) {
+    if (addedUserUrls.has(station.streamUrl)) continue;
+    addedUserUrls.add(station.streamUrl);
     const stationWithOverride = applyStationOverride({ ...station }, station.streamUrl);
     items.push({ type: "external", station: { ...station, ...stationWithOverride } });
   }
@@ -1434,96 +1436,6 @@ function renderUnifiedStations(): void {
       };
       stationsList.appendChild(bar);
     });
-  } else if (mode === "dial") {
-    const dialFace = document.createElement("div");
-    dialFace.className = "dial-face";
-    const tuneLabel = document.createElement("span");
-    tuneLabel.className = "dial-tune-label";
-    tuneLabel.setAttribute("aria-hidden", "true");
-    tuneLabel.textContent = "TUNE";
-    dialFace.appendChild(tuneLabel);
-    const needle = document.createElement("div");
-    needle.className = "dial-needle";
-    needle.style.left = "50%";
-    dialFace.appendChild(needle);
-    stationsDial.appendChild(dialFace);
-    const dialStations = document.createElement("div");
-    dialStations.className = "dial-stations";
-    filtered.forEach((item, idx) => {
-      const name = item.type === "laf" ? item.channel.title : item.type === "external" ? item.station.name : item.config.name;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "dial-station-btn";
-      if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) btn.classList.add("playing");
-      if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) btn.classList.add("playing");
-      btn.textContent = name;
-      btn.onclick = () => {
-        if (item.type === "laf") selectChannel(item.channel);
-        else if (item.type === "external") selectExternalStation(item.station);
-        else {
-          const ch = item.liveChannels[0];
-          if (ch) selectExternalStation({ name: `${item.config.name}: ${ch.name}`, description: item.config.description, websiteUrl: item.config.websiteUrl, streamUrl: ch.streamUrl, logoUrl: item.config.logoUrl, location: item.config.location, lat: item.config.lat, lng: item.config.lng });
-        }
-        const i = filtered.indexOf(item);
-        needle.style.left = `${(i / Math.max(1, filtered.length - 1)) * 100}%`;
-      };
-      dialStations.appendChild(btn);
-    });
-    // Set initial needle to current station if any
-    const currentIdx = filtered.findIndex((item) => {
-      if (currentExternalStation) {
-        if (item.type === "external" && item.station.streamUrl === currentExternalStation.streamUrl) return true;
-        if (item.type === "external_multi" && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation.streamUrl)) return true;
-      }
-      if (currentChannel && item.type === "laf" && item.channel.id === currentChannel.id) return true;
-      return false;
-    });
-    if (currentIdx >= 0 && filtered.length > 0) {
-      needle.style.left = `${(currentIdx / Math.max(1, filtered.length - 1)) * 100}%`;
-    }
-    stationsDial.appendChild(dialStations);
-  } else if (mode === "map") {
-    const withCoords = filtered.filter((item): item is { type: "external"; station: ExternalStation } | { type: "external_multi"; config: ExternalStationConfig; liveChannels: Array<{ name: string; streamUrl: string }> } => {
-      if (item.type === "laf") return false;
-      if (item.type === "external") return item.station.lat != null && item.station.lng != null;
-      return item.config.lat != null && item.config.lng != null;
-    });
-    const w = 800;
-    const h = 400;
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-    // Simplified world land outline (equirectangular 0 0 800 400) so map reads as globe
-    const worldLand = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    worldLand.setAttribute("class", "map-world-land");
-    worldLand.setAttribute("d", "M88,56 L252,52 L268,196 L176,316 L72,272 Z M244,216 L316,212 L324,372 L252,380 L236,316 Z M376,96 L516,92 L528,196 L404,200 L380,136 Z M400,196 L520,196 L532,356 L444,376 L396,324 Z M524,52 L756,48 L768,276 L596,280 L520,196 Z M596,276 L756,272 L764,356 L636,360 Z");
-    svg.appendChild(worldLand);
-    const lngToX = (lng: number) => ((lng + 180) / 360) * w;
-    const latToY = (lat: number) => ((90 - lat) / 180) * h;
-    withCoords.forEach((item) => {
-      const lat = item.type === "external" ? item.station.lat! : item.config.lat!;
-      const lng = item.type === "external" ? item.station.lng! : item.config.lng!;
-      const cx = lngToX(lng);
-      const cy = latToY(lat);
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("class", "map-marker");
-      if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) circle.classList.add("playing");
-      if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) circle.classList.add("playing");
-      circle.setAttribute("cx", String(cx));
-      circle.setAttribute("cy", String(cy));
-      circle.setAttribute("r", "6");
-      circle.setAttribute("title", item.type === "external" ? item.station.name : item.config.name);
-      circle.onclick = () => {
-        if (item.type === "external") selectExternalStation(item.station);
-        else {
-          const ch = item.liveChannels[0];
-          if (ch) selectExternalStation({ name: `${item.config.name}: ${ch.name}`, description: item.config.description, websiteUrl: item.config.websiteUrl, streamUrl: ch.streamUrl, logoUrl: item.config.logoUrl, location: item.config.location, lat: item.config.lat, lng: item.config.lng });
-        }
-      };
-      svg.appendChild(circle);
-    });
-    stationsMap.appendChild(svg);
   }
 
   if (mode === "grid") filtered.forEach((item) => {
@@ -3429,7 +3341,7 @@ loadRuntimeConfig().then(() => {
   // View mode switcher
   document.querySelectorAll(".view-mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const mode = (btn as HTMLElement).dataset.mode as "grid" | "list" | "dial" | "map";
+      const mode = (btn as HTMLElement).dataset.mode as "grid" | "list";
       if (!mode) return;
       stationsViewMode = mode;
       document.querySelectorAll(".view-mode-btn").forEach((b) => {

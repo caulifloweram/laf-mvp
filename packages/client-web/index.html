@@ -181,22 +181,6 @@
       .station-list-bar .list-bar-name { font-weight: bold; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .station-list-bar .list-bar-location { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
       .station-list-bar .list-bar-status { font-size: 11px; flex-shrink: 0; }
-      .stations-dial-view { padding: 24px; background: linear-gradient(180deg, #2a2520 0%, #1a1612 100%); border: 3px solid #4a4035; border-radius: 8px; font-family: Georgia, serif; }
-      .stations-dial-view.hidden { display: none !important; }
-      .dial-face { position: relative; height: 120px; background: linear-gradient(90deg, #3a3530 0%, #4a4540 50%, #3a3530 100%); border-radius: 4px; margin-bottom: 16px; }
-      .dial-tune-label { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 10px; letter-spacing: 0.3em; color: rgba(255,255,255,0.5); }
-      .dial-needle { position: absolute; top: 0; bottom: 0; width: 3px; background: #c00; left: 50%; transform: translateX(-50%); pointer-events: none; transition: left 0.15s ease-out; }
-      .dial-stations { display: flex; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
-      .dial-station-btn { padding: 8px 12px; background: #3a3530; border: 1px solid #5a5045; color: #e0d8d0; font-size: 12px; cursor: pointer; border-radius: 0; font-family: inherit; }
-      .dial-station-btn:hover { background: #4a4540; }
-      .dial-station-btn.playing { background: #5a3020; border-color: #8a4030; color: #fff; }
-      .stations-map-view { position: relative; height: 400px; background: #1a3a2a; border: 1px solid var(--border); }
-      .stations-map-view.hidden { display: none !important; }
-      .stations-map-view svg { width: 100%; height: 100%; display: block; }
-      .map-world-land { fill: #0d2818; stroke: #1a3a2a; stroke-width: 0.5; }
-      .map-marker { cursor: pointer; fill: var(--status-live); stroke: var(--surface); stroke-width: 1; }
-      .map-marker:hover { fill: var(--accent); }
-      .map-marker.playing { fill: var(--accent); }
       .favorites-filter-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
       .favorites-filter-wrap input { width: auto; margin: 0; }
       .stations-grid-unified { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--grid-gap); }
@@ -472,13 +456,29 @@
         color: var(--footer-text);
         border-top: 1px solid var(--border);
         display: grid;
-        grid-template-columns: 32px 72px 1fr auto auto;
+        grid-template-columns: 44px 72px 1fr auto auto;
         align-items: center;
-        gap: 16px;
-        padding: 0 16px;
+        gap: 12px;
+        padding: 0 12px;
+        padding-bottom: env(safe-area-inset-bottom, 0);
         z-index: 15;
       }
-      .player-expand-btn { width: 28px; height: 28px; padding: 0; background: transparent; border: 1px solid rgba(255,255,255,0.4); color: var(--footer-text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .player-expand-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0;
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.4);
+        color: var(--footer-text);
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+      }
       .player-expand-btn:hover { background: rgba(255,255,255,0.1); }
       .player-expand-btn[aria-expanded="true"] { transform: rotate(180deg); }
       /* Expanded player panel */
@@ -487,26 +487,47 @@
         bottom: 72px;
         left: 0;
         right: 0;
-        max-height: 70vh;
+        max-height: calc(85vh - 72px);
         overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
         background: var(--footer-bg);
         color: var(--footer-text);
         border-top: 1px solid var(--border);
-        padding: 24px;
+        padding: 20px 16px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
         z-index: 14;
         display: none;
       }
       .player-expanded.open { display: block; }
-      .player-expanded-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; max-width: 360px; margin: 0 auto; }
-      .player-expanded-cover-wrap { width: 120px; height: 120px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; }
+      .player-expanded-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 360px;
+        margin: 0 auto;
+        min-width: 0;
+      }
+      .player-expanded-cover-wrap { width: 140px; height: 140px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; border-radius: 4px; }
       .player-expanded-cover-wrap img { width: 100%; height: 100%; object-fit: contain; }
-      .player-expanded-info { text-align: center; min-width: 0; }
-      .player-expanded-title { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
-      .player-expanded-location { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-      .player-expanded-desc { font-size: 13px; line-height: 1.4; margin-bottom: 12px; }
-      .player-expanded-link { font-size: 12px; color: var(--footer-text); text-decoration: underline; }
-      .player-expanded-controls { display: flex; gap: 12px; align-items: center; }
-      .player-expanded-controls button { background: transparent; color: var(--footer-text); border: 1px solid var(--footer-text); padding: 10px 18px; font-size: 13px; cursor: pointer; }
+      .player-expanded-info { text-align: center; min-width: 0; width: 100%; }
+      .player-expanded-title { font-size: 18px; font-weight: bold; margin-bottom: 6px; word-wrap: break-word; overflow-wrap: break-word; }
+      .player-expanded-location { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+      .player-expanded-desc { font-size: 13px; line-height: 1.45; margin-bottom: 12px; max-height: 4.5em; overflow-y: auto; }
+      .player-expanded-link { font-size: 13px; color: var(--footer-text); text-decoration: underline; display: inline-block; padding: 4px 0; }
+      .player-expanded-controls { display: flex; gap: 16px; align-items: center; justify-content: center; flex-shrink: 0; }
+      .player-expanded-controls button {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 12px 20px;
+        background: transparent;
+        color: var(--footer-text);
+        border: 1px solid var(--footer-text);
+        font-size: 14px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
       .player-expanded-controls button:hover { background: rgba(255,255,255,0.15); }
       .footer-player .cover-wrap {
         position: relative;
@@ -551,6 +572,8 @@
         gap: 8px;
       }
       .footer-player .controls button {
+        min-width: 44px;
+        min-height: 44px;
         background: transparent;
         color: var(--footer-text);
         border: 1px solid var(--footer-text);
@@ -559,6 +582,7 @@
         font-weight: bold;
         font-family: inherit;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
       }
       .footer-player .controls button:hover { background: rgba(255,255,255,0.15); }
       .footer-player .controls button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -711,18 +735,24 @@
         .external-station-card.now-playing { border-width: 2px; }
         .stations-search { max-width: 100%; margin-bottom: 12px; border-width: 1px; }
         .footer-player {
-          grid-template-columns: 48px 1fr auto;
+          grid-template-columns: 44px 56px 1fr auto;
           gap: 8px;
           padding: 0 10px;
-          height: 60px;
+          height: 64px;
+          min-height: 64px;
           border-top-width: 1px;
         }
-        .footer-player .cover-wrap { width: 40px; height: 40px; }
-        .footer-player .info .title { font-size: 12px; }
-        .footer-player .info .desc { font-size: 10px; }
-        .footer-player .controls button { padding: 6px 8px; font-size: 11px; min-width: auto; }
+        .footer-player .cover-wrap { width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
+        .footer-player .info { min-width: 0; }
+        .footer-player .info .title { font-size: 13px; line-height: 1.2; }
+        .footer-player .info .desc { font-size: 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .footer-player .controls button { min-width: 44px; min-height: 44px; padding: 8px 12px; font-size: 12px; }
         .footer-player .status-text { display: none; }
-        body { padding-bottom: 60px; }
+        body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0)); }
+        .player-expanded { bottom: 64px; max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0)); padding: 16px 12px; }
+        .player-expanded-cover-wrap { width: 120px; height: 120px; }
+        .player-expanded-title { font-size: 17px; }
+        .player-expanded-controls button { min-width: 48px; min-height: 48px; padding: 12px 18px; }
         .confirm-dialog { max-width: calc(100vw - 24px); margin: 0 12px; }
         .ext-channel-row { border-width: 1px; }
         .ext-channel-row.now-playing { border-width: 2px; }
@@ -733,7 +763,14 @@
         .topbar-right .theme-toggle,
         .topbar-right #client-logout-btn { padding: 5px 6px; font-size: 10px; }
         .topbar-search { width: 72px; min-width: 60px; padding: 4px 6px; font-size: 11px; }
+        .footer-player { height: 60px; min-height: 60px; grid-template-columns: 40px 44px 1fr auto; gap: 6px; padding: 0 8px; }
+        .footer-player .cover-wrap { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+        .footer-player .info .title { font-size: 12px; }
         .footer-player .controls { gap: 4px; }
+        .footer-player .controls button { min-width: 40px; min-height: 40px; padding: 6px 10px; font-size: 11px; }
+        .player-expand-btn { width: 40px; height: 40px; min-width: 40px; min-height: 40px; font-size: 18px; }
+        body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)); }
+        .player-expanded { bottom: 60px; max-height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0)); }
       }
     </style>
   </head>
@@ -782,8 +819,6 @@
           <div class="view-mode-switcher" role="tablist" aria-label="View mode">
             <button type="button" class="view-mode-btn active" data-mode="grid" aria-pressed="true">Card grid</button>
             <button type="button" class="view-mode-btn" data-mode="list" aria-pressed="false">List</button>
-            <button type="button" class="view-mode-btn" data-mode="dial" aria-pressed="false">Radio dial</button>
-            <button type="button" class="view-mode-btn" data-mode="map" aria-pressed="false">World map</button>
           </div>
           <label class="favorites-filter-wrap" id="favorites-filter-wrap">
             <input type="checkbox" id="favorites-filter" aria-label="Show favorites only" />
@@ -793,8 +828,6 @@
         <div id="stations-view-container">
           <div id="stations-grid" class="stations-grid-unified" role="tabpanel"></div>
           <div id="stations-list" class="stations-list-view hidden" role="tabpanel"></div>
-          <div id="stations-dial" class="stations-dial-view hidden" role="tabpanel"></div>
-          <div id="stations-map" class="stations-map-view hidden" role="tabpanel"></div>
         </div>
       </div>
 
