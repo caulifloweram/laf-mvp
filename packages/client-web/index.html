@@ -192,7 +192,7 @@
       .stations-checking-banner { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; padding: 8px 0; }
       .stations-checking-banner.hidden { display: none !important; }
 
-      /* Initial loading screen (first 10s on live view) – fixed so visible without scroll */
+      /* Initial loading screen (up to 20s on live view) – fixed so visible without scroll */
       .view-live-wrap { position: relative; }
       .initial-loading-screen {
         position: fixed;
@@ -218,29 +218,27 @@
         margin-bottom: 16px;
       }
       .initial-loading-text {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
-        margin-bottom: 8px;
-      }
-      .initial-loading-countdown-wrap {
-        font-size: 28px;
-        font-variant-numeric: tabular-nums;
-        font-weight: bold;
-        color: var(--text);
+        line-height: 1.4;
         margin-bottom: 24px;
       }
       .initial-loading-bar-wrap {
-        height: 4px;
+        height: 3px;
         background: var(--card-hover);
         border-radius: 2px;
         overflow: hidden;
       }
       .initial-loading-bar {
         height: 100%;
-        width: 0%;
-        background: var(--accent);
+        width: 30%;
         border-radius: 2px;
-        transition: width 0.15s linear;
+        background: var(--accent);
+        animation: initial-load-shimmer 1.8s ease-in-out infinite;
+      }
+      @keyframes initial-load-shimmer {
+        0%, 100% { transform: translateX(-100%); }
+        50% { transform: translateX(400%); }
       }
       .stations-grid-unified { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--grid-gap); }
       .stations-grid-unified.hidden { display: none !important; }
@@ -1092,10 +1090,9 @@
         <div id="initial-loading-screen" class="initial-loading-screen hidden" aria-live="polite" aria-busy="true">
           <div class="initial-loading-inner">
             <div class="initial-loading-logo">LAF</div>
-            <p class="initial-loading-text">Loading stations…</p>
-            <p class="initial-loading-countdown-wrap"><span id="initial-loading-countdown" aria-live="polite">20</span> seconds</p>
+            <p class="initial-loading-text">Loading stations… This may take up to 20 seconds.</p>
             <div class="initial-loading-bar-wrap">
-              <div class="initial-loading-bar" id="initial-loading-bar"></div>
+              <div class="initial-loading-bar" id="initial-loading-bar" aria-hidden="true"></div>
             </div>
           </div>
         </div>

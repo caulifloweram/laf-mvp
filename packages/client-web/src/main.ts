@@ -954,8 +954,8 @@ function getExternalStationsFlat(): ExternalStation[] {
   );
 }
 
-/** All stream URLs (built-in + user) for live checks. */
-function getAllStreamUrls(): string[] {
+/** Stream URLs from built-in config only (available before API load). Used to start checks during initial 20s tunnel. */
+function getBuiltInStreamUrls(): string[] {
   const set = new Set<string>();
   for (const c of EXTERNAL_STATION_CONFIGS) {
     if (c.channels?.length) {
@@ -964,6 +964,12 @@ function getAllStreamUrls(): string[] {
       set.add(c.streamUrl);
     }
   }
+  return Array.from(set);
+}
+
+/** All stream URLs (built-in + user) for live checks. */
+function getAllStreamUrls(): string[] {
+  const set = new Set<string>(getBuiltInStreamUrls());
   allExternalStations.forEach((s) => set.add(s.streamUrl));
   return Array.from(set);
 }
@@ -2246,13 +2252,9 @@ const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 6000;
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 
-const INITIAL_LOAD_MS = 20000;
-const INITIAL_LOAD_MIN_DISPLAY_MS = 2000; // Minimum time to show overlay before allowing early hide when load completes
-const INITIAL_LOAD_TICK_MS = 150; // Single ticker: update progress + countdown from elapsed time (avoids stuck countdown)
+const INITIAL_LOAD_MS = 20000; // Fixed 20s tunnel: load stations + stream checks in background; overlay hides at 20s
 let initialLoadPhase = true;
 let initialLoadStartTime = 0;
-let initialLoadStationsLoaded = false; // Set when loadExternalStations() resolves in no-cache path
-let initialLoadTickerId: ReturnType<typeof setInterval> | null = null;
 let initialLoadTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const BAD_STATUSES = new Set(["error", "timeout", "unavailable"]);
@@ -2430,52 +2432,26 @@ function checkOneStream(streamUrl: string, force = false): Promise<void> {
   );
 }
 
-/** Hide the initial loading screen and clear all timers. Idempotent. */
+/** Hide the initial loading screen and clear the 20s timer. Idempotent. */
 function tryHideInitialLoadScreen(): void {
-  if (!initialLoadingScreen || !initialLoadingBar) return;
+  if (!initialLoadingScreen) return;
   if (initialLoadTimeoutId != null) {
     clearTimeout(initialLoadTimeoutId);
     initialLoadTimeoutId = null;
   }
-  if (initialLoadTickerId != null) {
-    clearInterval(initialLoadTickerId);
-    initialLoadTickerId = null;
-  }
   initialLoadPhase = false;
-  initialLoadingBar.style.width = "100%";
-  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "0";
   initialLoadingScreen.classList.add("hidden");
 }
 
-/** Call when stations have just loaded: hide overlay if we've shown it long enough, or let the 20s timeout handle it. */
-function tryHideInitialLoadScreenIfReady(): void {
-  if (!initialLoadPhase || !initialLoadingScreen) return;
-  const elapsed = Date.now() - initialLoadStartTime;
-  const minReached = elapsed >= INITIAL_LOAD_MIN_DISPLAY_MS;
-  if (initialLoadStationsLoaded && minReached) tryHideInitialLoadScreen();
-}
-
 /**
- * Show initial loading screen. One ticker drives progress and countdown from elapsed time (reliable on desktop + mobile).
- * Hide when: (stations loaded AND elapsed >= MIN_DISPLAY) OR elapsed >= 20s — so channels are always loaded when overlay goes away.
+ * Show initial loading screen for exactly 20s. Message only (no countdown).
+ * Data tunnel: stations load + stream checks run in background so radios are ready when overlay hides.
  */
 function startInitialLoadScreen(): void {
-  if (!initialLoadingScreen || !initialLoadingBar) return;
+  if (!initialLoadingScreen) return;
   initialLoadPhase = true;
-  initialLoadStationsLoaded = false;
   initialLoadStartTime = Date.now();
   initialLoadingScreen.classList.remove("hidden");
-  initialLoadingBar.style.width = "0%";
-  if (initialLoadingCountdown) initialLoadingCountdown.textContent = "20";
-
-  if (initialLoadTickerId) clearInterval(initialLoadTickerId);
-  initialLoadTickerId = setInterval(() => {
-    const elapsed = Date.now() - initialLoadStartTime;
-    const pct = Math.min(100, (elapsed / INITIAL_LOAD_MS) * 100);
-    initialLoadingBar.style.width = `${pct}%`;
-    const secondsLeft = Math.max(0, 20 - Math.floor(elapsed / 1000));
-    if (initialLoadingCountdown) initialLoadingCountdown.textContent = String(secondsLeft);
-  }, INITIAL_LOAD_TICK_MS);
 
   initialLoadTimeoutId = setTimeout(() => {
     if (initialLoadTimeoutId != null) {
@@ -2498,9 +2474,9 @@ function updateCheckingBanner(): void {
   }
 }
 
-/** Run stream checks via batch API (fast) with limited concurrency. */
-function runFullStreamCheck() {
-  const urls = getAllStreamUrls();
+/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). */
+function runFullStreamCheck(urlList?: string[]) {
+  const urls = urlList ?? getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
   streamCheckInProgress = true;
@@ -4355,17 +4331,10 @@ loadRuntimeConfig().then(() => {
       });
     } else {
       startInitialLoadScreen();
+      runFullStreamCheck(getBuiltInStreamUrls());
       loadExternalStations()
-        .then(() => {
-          initialLoadStationsLoaded = true;
-          tryHideInitialLoadScreenIfReady();
-          setTimeout(runFullStreamCheck, 100);
-        })
-        .catch(() => {
-          initialLoadStationsLoaded = true;
-          tryHideInitialLoadScreenIfReady();
-          setTimeout(runFullStreamCheck, 100);
-        });
+        .then(() => setTimeout(() => runFullStreamCheck(), 100))
+        .catch(() => setTimeout(() => runFullStreamCheck(), 100));
     }
   } else {
     loadExternalStations();
