@@ -774,6 +774,9 @@ const stationsSearchTopbar = document.getElementById("stations-search-topbar") a
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
 const topbarSearchWrap = document.getElementById("topbar-search-wrap");
+const topbarClockEl = document.getElementById("topbar-clock");
+const topbarSearchToggle = document.getElementById("topbar-search-toggle");
+const topbarSearchClose = document.getElementById("topbar-search-close");
 const footerPlayer = document.getElementById("footer-player")!;
 const nowPlayingTitle = document.getElementById("now-playing-title")!;
 const nowPlayingDesc = document.getElementById("now-playing-desc")!;
@@ -2637,7 +2640,10 @@ function setActiveView(route: RouteId) {
   if (navAdmin) navAdmin.classList.toggle("active", route === "admin");
   const drawerAdmin = document.getElementById("drawer-admin");
   if (drawerAdmin) drawerAdmin.classList.toggle("active", route === "admin");
-  if (topbarSearchWrap) topbarSearchWrap.classList.toggle("hidden", route !== "live");
+  if (topbarSearchWrap) {
+    topbarSearchWrap.classList.toggle("hidden", route !== "live");
+    if (route !== "live") topbarSearchWrap.classList.remove("expanded");
+  }
   if (route === "admin") onAdminViewShow?.();
 }
 
@@ -2687,6 +2693,36 @@ function applyStationsSearch() {
   stationsSearchQuery = v;
   if (stationsSearchTopbar) stationsSearchTopbar.value = v;
   renderUnifiedStations();
+}
+
+/** Macintosh-style topbar clock: update every second. */
+function updateTopbarClock() {
+  if (!topbarClockEl) return;
+  const now = new Date();
+  topbarClockEl.textContent = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
+}
+function initTopbarClock() {
+  updateTopbarClock();
+  setInterval(updateTopbarClock, 1000);
+}
+
+/** Search: magnifying glass toggles the search field (Mac 1984 style). */
+function initSearchToggle() {
+  if (!topbarSearchWrap || !topbarSearchToggle || !stationsSearchTopbar) return;
+  topbarSearchToggle.addEventListener("click", () => {
+    topbarSearchWrap!.classList.add("expanded");
+    stationsSearchTopbar!.focus();
+  });
+  topbarSearchClose?.addEventListener("click", () => {
+    topbarSearchWrap!.classList.remove("expanded");
+    if (stationsSearchTopbar) stationsSearchTopbar.blur();
+  });
+  document.addEventListener("click", (e) => {
+    if (!topbarSearchWrap!.classList.contains("expanded")) return;
+    const target = e.target as Node;
+    if (topbarSearchWrap!.contains(target)) return;
+    topbarSearchWrap!.classList.remove("expanded");
+  });
 }
 
 function initAdminForm() {
@@ -2905,6 +2941,8 @@ loadRuntimeConfig().then(() => {
   applyBroadcastLink();
   updateTopBarAuth();
   initTheme();
+  initTopbarClock();
+  initSearchToggle();
   initMobileNav();
   initAdminForm();
   initRouter((route) => setActiveView(route));

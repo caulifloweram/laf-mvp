@@ -98,6 +98,75 @@
       .topbar-nav-item.active { background: rgba(255,255,255,0.2); }
       .topbar-center { justify-self: center; display: flex; align-items: center; }
       .topbar-search { width: 200px; max-width: 100%; padding: 6px 10px; font-size: 13px; margin: 0; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; }
+      /* Macintosh 1984 style: clock and search */
+      .topbar-clock {
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+        padding: 4px 8px;
+        margin: 0 4px;
+        border: 1px solid rgba(255,255,255,0.4);
+        background: rgba(0,0,0,0.2);
+        box-shadow: inset 1px 1px 0 rgba(255,255,255,0.15);
+        border-radius: 0;
+        min-width: 4.5em;
+        text-align: center;
+      }
+      .topbar-search-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        min-width: 0;
+      }
+      .topbar-search-toggle {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255,255,255,0.5);
+        background: rgba(0,0,0,0.25);
+        color: var(--topbar-text);
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 0;
+        box-shadow: inset 1px 1px 0 rgba(255,255,255,0.1);
+        flex-shrink: 0;
+      }
+      .topbar-search-toggle:hover { background: rgba(255,255,255,0.15); }
+      .topbar-search-field {
+        display: none;
+        align-items: center;
+        margin-left: 4px;
+        border: 1px solid rgba(255,255,255,0.5);
+        background: rgba(0,0,0,0.2);
+        box-shadow: inset 1px 1px 0 rgba(0,0,0,0.2);
+        border-radius: 0;
+        overflow: hidden;
+      }
+      .topbar-search-wrap.expanded .topbar-search-toggle { margin-right: 0; }
+      .topbar-search-wrap.expanded .topbar-search-field { display: flex; }
+      .topbar-search-wrap.expanded .topbar-search-field .topbar-search {
+        width: 180px;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      .topbar-search-field .topbar-search-close {
+        width: 22px;
+        height: 100%;
+        padding: 0;
+        border: none;
+        border-left: 1px solid rgba(255,255,255,0.3);
+        background: transparent;
+        color: var(--topbar-text);
+        font-size: 14px;
+        cursor: pointer;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .topbar-search-field .topbar-search-close:hover { background: rgba(255,255,255,0.15); }
       .live-view-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
       .live-view-toolbar .page-header { margin-bottom: 0; }
       .favorites-filter-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
@@ -549,6 +618,8 @@
           font-size: 12px;
         }
         #topbar-search-wrap { min-width: 0; }
+        .topbar-search-wrap.expanded .topbar-search-field .topbar-search { width: 120px; min-width: 80px; }
+        .topbar-clock { font-size: 11px; padding: 3px 6px; min-width: 3.8em; }
         .main { padding: 16px 12px; }
         .page-header { font-size: 20px; margin-bottom: 20px; padding-bottom: 10px; border-bottom-width: 1px; }
         .section-title { font-size: 12px; margin: 20px 0 10px; }
@@ -604,9 +675,14 @@
         <a href="#" id="client-signin-link" class="topbar-nav-item">Sign in</a>
         <span id="client-user-email" class="topbar-nav-item hidden"></span>
         <button type="button" id="client-logout-btn" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:6px 12px;font-size:12px;">Logout</button>
-        <div id="topbar-search-wrap">
-          <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
+        <div id="topbar-search-wrap" class="topbar-search-wrap">
+          <button type="button" class="topbar-search-toggle" id="topbar-search-toggle" aria-label="Search stations" title="Search">&#128269;</button>
+          <div class="topbar-search-field">
+            <input type="text" id="stations-search-topbar" class="stations-search topbar-search" placeholder="Search stations..." aria-label="Search stations" />
+            <button type="button" class="topbar-search-close" id="topbar-search-close" aria-label="Close search">&#215;</button>
+          </div>
         </div>
+        <span id="topbar-clock" class="topbar-clock" aria-live="polite"></span>
       </div>
     </nav>
     <div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Menu">
