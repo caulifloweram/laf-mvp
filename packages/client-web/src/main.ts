@@ -334,6 +334,13 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     streamUrl: "http://n02.radiojar.com/78cxy6wkxtzuv",
     logoUrl: "https://yamakan.place/palestine/favicon.ico",
   },
+  {
+    name: "The Lake Radio",
+    description: "Independent online community radio from Copenhagen. Experimental, alternative, avant-garde music and sound art 24/7.",
+    websiteUrl: "https://thelakeradio.com/",
+    streamUrl: "http://hyades.shoutca.st:8627/",
+    logoUrl: "https://thelakeradio.com/favicon.ico",
+  },
 ];
 
 /** Built-in configs flattened to one entry per playable stream. */

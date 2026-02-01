@@ -158,12 +158,27 @@ async function resolveStationUrl(inputUrl: string): Promise<ResolvedStation> {
     }
   }
 
-  // 2) Try Radio Browser API: byurl (homepage) then search by name (hostname)
+  // 2) Try Radio Browser API: byurl (homepage), search by hostname, then by page title (after fetching HTML)
   const rbBase = "https://de1.api.radio-browser.info";
-  for (const endpoint of [
+  const hostnamePart = new URL(baseUrl).hostname.replace(/^www\./, "").split(".")[0] || "";
+  const rbEndpoints: string[] = [
     `/json/stations/byurl/${encodeURIComponent(baseUrl.replace(/\/$/, ""))}`,
-    `/json/stations/search?name=${encodeURIComponent(new URL(baseUrl).hostname.replace(/^www\./, "").split(".")[0] || "")}&limit=5`,
-  ]) {
+    `/json/stations/search?name=${encodeURIComponent(hostnamePart)}&limit=5`,
+  ];
+
+  // Fetch HTML early so we can try Radio Browser by page title and add same-origin path candidates
+  let htmlMeta: HtmlMetadata;
+  try {
+    htmlMeta = await fetchHtmlMetadata(baseUrl);
+  } catch (e) {
+    htmlMeta = { name: "", description: "", websiteUrl: baseUrl, logoUrl: null, streamUrls: [] };
+  }
+  const pageTitle = (htmlMeta.name || "").trim() || hostnamePart;
+  if (pageTitle && pageTitle.length > 2) {
+    rbEndpoints.push(`/json/stations/search?name=${encodeURIComponent(pageTitle)}&limit=5`);
+  }
+
+  for (const endpoint of rbEndpoints) {
     try {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 5000);
@@ -189,13 +204,49 @@ async function resolveStationUrl(inputUrl: string): Promise<ResolvedStation> {
         }
       }
     } catch (_) {
-      // try next endpoint or HTML scrape
+      // try next endpoint or HTML candidates
     }
   }
 
-  // 3) Fetch page as HTML and scrape stream URLs + og:meta
-  const htmlMeta = await fetchHtmlMetadata(baseUrl);
-  const streamCandidates = htmlMeta.streamUrls.length > 0 ? htmlMeta.streamUrls : [];
+  // 3) Use stream URLs from HTML scrape, then try same-origin common paths, then URLs found in script tags
+  let streamCandidates = htmlMeta.streamUrls.length > 0 ? [...htmlMeta.streamUrls] : [];
+  const origin = new URL(baseUrl).origin;
+
+  if (streamCandidates.length === 0) {
+    const commonPaths = ["/stream", "/live", "/listen", "/radio", "/stream.mp3", "/live.mp3", "/listen.mp3", "/icecast", "/stream.m3u", "/live.m3u"];
+    for (const path of commonPaths) {
+      streamCandidates.push(origin + path);
+    }
+  }
+
+  // Also scrape script/JSON in page for stream-like URLs (e.g. "http://host:port/" or ".mp3")
+  if (htmlMeta.rawHtml) {
+    const scriptUrlRe = /https?:\/\/[^\s"']+(?::\d+)?(?:\/[^\s"']*)?\.?(?:mp3|m3u8?|aac|ogg|pls)?/gi;
+    let m: RegExpExecArray | null;
+    scriptUrlRe.lastIndex = 0;
+    while ((m = scriptUrlRe.exec(htmlMeta.rawHtml)) !== null) {
+      const raw = m[0].replace(/[,;)\]\s]+$/, "");
+      if (/\.(m3u8?|pls|mp3|aac|ogg)(\?|$)/i.test(raw) || /:\d+\//.test(raw)) {
+        try {
+          const u = new URL(raw);
+          if (u.protocol === "http:" || u.protocol === "https:") streamCandidates.push(u.href);
+        } catch (_) {}
+      }
+    }
+  }
+
+  const seen = new Set<string>();
+  streamCandidates = streamCandidates.filter((u) => {
+    try {
+      const normalized = new URL(u).href;
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  });
+
   if (streamCandidates.length === 0) {
     throw new Error("No stream URL found on this page. Paste a direct stream URL (e.g. .mp3, .m3u) or a radio homepage that embeds a player.");
   }
@@ -225,6 +276,7 @@ interface HtmlMetadata {
   websiteUrl: string;
   logoUrl: string | null;
   streamUrls: string[];
+  rawHtml?: string;
 }
 
 async function fetchHtmlMetadata(pageUrl: string): Promise<HtmlMetadata> {
@@ -283,6 +335,7 @@ async function fetchHtmlMetadata(pageUrl: string): Promise<HtmlMetadata> {
     }
   }
   meta.streamUrls = [...seen];
+  meta.rawHtml = html;
   return meta;
 }
 
