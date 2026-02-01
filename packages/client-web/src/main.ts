@@ -1789,6 +1789,7 @@ function renderUnifiedStations(): void {
     if (stationOverrides[station.streamUrl]?.hidden) continue;
     if (!station.id) continue;
     if (builtInStreamUrls.has(station.streamUrl)) continue;
+    builtInStreamUrls.add(station.streamUrl);
     const stationWithOverride = applyStationOverride({ ...station }, station.streamUrl);
     items.push({ type: "external", station: { ...station, ...stationWithOverride } });
   }
@@ -1934,7 +1935,10 @@ function renderUnifiedStations(): void {
       const logoHtml = showLogoArea
         ? `<div class="ext-station-logo-wrap"><img src="${escapeAttr(station.logoUrl)}" alt="" class="ext-station-logo" /></div>`
         : `<div class="ext-station-name-only">${escapeHtml(station.name)}</div>`;
+      const cardLoading = !cached || cached.status === "verifying";
+      if (cardLoading) card.classList.add("card-loading");
       card.innerHTML = `
+        <div class="ext-card-loading-overlay" aria-hidden="true">Loading</div>
         ${logoHtml}
         ${showLogoArea ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
         ${station.location ? `<div class="ext-location">${escapeHtml(station.location)}</div>` : ""}
@@ -1986,10 +1990,16 @@ function renderUnifiedStations(): void {
           </button>`;
         })
         .join("");
+      const anyChannelLoading = liveChannels.some((ch) => {
+        const c = streamStatusCache[ch.streamUrl];
+        return !c || c.status === "verifying";
+      });
       const card = document.createElement("div");
       card.className = "external-station-card external-station-card-multi";
       card.style.position = "relative";
+      if (anyChannelLoading) card.classList.add("card-loading");
       card.innerHTML = `
+        <div class="ext-card-loading-overlay" aria-hidden="true">Loading</div>
         ${logoHtml}
         ${showLogoArea ? `<div class="ext-name">${escapeHtml(config.name)}</div>` : ""}
         ${config.location ? `<div class="ext-location">${escapeHtml(config.location)}</div>` : ""}
@@ -2124,6 +2134,7 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
     el.classList.add(statusClass);
     if (ok) card.classList.remove("stream-offline");
     else card.classList.add("stream-offline");
+    card.classList.toggle("card-loading", status === "verifying");
   });
   document.querySelectorAll<HTMLElement>(`.ext-channel-row[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((row) => {
     const el = row.querySelector(".ext-stream-status");
@@ -2132,6 +2143,17 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
     el.classList.remove("status-unknown", "status-live", "status-offline", "status-error", "status-timeout");
     el.textContent = text;
     el.classList.add(statusClass);
+    const multiCard = row.closest(".external-station-card-multi");
+    if (multiCard) {
+      const rows = multiCard.querySelectorAll<HTMLElement>(".ext-channel-row[data-stream-url]");
+      const anyLoading = Array.from(rows).some((r) => {
+        const u = r.getAttribute("data-stream-url");
+        if (!u) return false;
+        const c = streamStatusCache[u];
+        return !c || c.status === "verifying";
+      });
+      multiCard.classList.toggle("card-loading", anyLoading);
+    }
   });
 }
 
