@@ -72,6 +72,9 @@ export async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_external_stations_name ON external_stations(name);
   `).catch(() => {});
+  await pool.query(`ALTER TABLE external_stations ADD COLUMN IF NOT EXISTS location TEXT`).catch(() => {});
+  await pool.query(`ALTER TABLE external_stations ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`).catch(() => {});
+  await pool.query(`ALTER TABLE external_stations ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS station_overrides (
@@ -85,6 +88,9 @@ export async function initDb() {
     )
   `);
   await pool.query(`ALTER TABLE station_overrides ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false`).catch(() => {});
+  await pool.query(`ALTER TABLE station_overrides ADD COLUMN IF NOT EXISTS location TEXT`).catch(() => {});
+  await pool.query(`ALTER TABLE station_overrides ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`).catch(() => {});
+  await pool.query(`ALTER TABLE station_overrides ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`).catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_favorites (

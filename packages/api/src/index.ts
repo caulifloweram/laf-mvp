@@ -515,7 +515,7 @@ initDb()
 app.get("/api/station-overrides", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl", hidden
+      SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl", location, lat, lng, hidden
       FROM station_overrides
     `);
     res.json(result.rows);
@@ -529,7 +529,7 @@ app.get("/api/station-overrides", async (_req, res) => {
 app.get("/api/external-stations", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl", created_at as "createdAt"
+      SELECT id, name, description, website_url as "websiteUrl", stream_url as "streamUrl", logo_url as "logoUrl", location, lat, lng, created_at as "createdAt"
       FROM external_stations
       ORDER BY name ASC
     `);
@@ -689,7 +689,7 @@ app.patch("/api/station-overrides", authMiddleware, async (req, res) => {
   if (!ADMIN_EMAILS.includes(email)) {
     return res.status(403).json({ error: "Only authorized admins can edit station overrides" });
   }
-  const { streamUrl, name, description, websiteUrl, logoUrl, hidden } = req.body;
+  const { streamUrl, name, description, websiteUrl, logoUrl, location, lat, lng, hidden } = req.body;
   if (!streamUrl || typeof streamUrl !== "string" || !streamUrl.trim()) {
     return res.status(400).json({ error: "streamUrl is required" });
   }
@@ -701,6 +701,9 @@ app.patch("/api/station-overrides", authMiddleware, async (req, res) => {
   const descVal = description !== undefined ? (typeof description === "string" ? description.trim() || null : null) : null;
   const webVal = websiteUrl !== undefined && typeof websiteUrl === "string" && websiteUrl.trim() ? websiteUrl.trim() : null;
   const logoVal = logoUrl !== undefined ? (typeof logoUrl === "string" && logoUrl.trim() ? logoUrl.trim() : null) : null;
+  const locVal = location !== undefined ? (typeof location === "string" ? location.trim() || null : null) : null;
+  const latVal = lat !== undefined && lat !== null && typeof lat === "number" && !Number.isNaN(lat) ? lat : null;
+  const lngVal = lng !== undefined && lng !== null && typeof lng === "number" && !Number.isNaN(lng) ? lng : null;
   const hiddenVal = hidden === true ? true : hidden === false ? false : undefined;
   try {
     if (hiddenVal !== undefined) {
@@ -711,22 +714,26 @@ app.patch("/api/station-overrides", authMiddleware, async (req, res) => {
       );
     } else {
       await pool.query(
-        `INSERT INTO station_overrides (stream_url, name, description, website_url, logo_url, updated_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())
+        `INSERT INTO station_overrides (stream_url, name, description, website_url, logo_url, location, lat, lng, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
          ON CONFLICT (stream_url) DO UPDATE SET
            name = EXCLUDED.name,
            description = EXCLUDED.description,
            website_url = EXCLUDED.website_url,
            logo_url = EXCLUDED.logo_url,
+           location = EXCLUDED.location,
+           lat = EXCLUDED.lat,
+           lng = EXCLUDED.lng,
            updated_at = NOW()`,
-        [url, nameVal, descVal, webVal, logoVal]
+        [url, nameVal, descVal, webVal, logoVal, locVal, latVal, lngVal]
       );
     }
     const result = await pool.query(
-      `SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl", hidden FROM station_overrides WHERE stream_url = $1`,
+      `SELECT stream_url as "streamUrl", name, description, website_url as "websiteUrl", logo_url as "logoUrl", location, lat, lng, hidden FROM station_overrides WHERE stream_url = $1`,
       [url]
     );
-    res.json(result.rows[0] || { streamUrl: url, name: nameVal, description: descVal, websiteUrl: webVal, logoUrl: logoVal, hidden: !!hiddenVal });
+    const row = result.rows[0];
+    res.json(row || { streamUrl: url, name: nameVal, description: descVal, websiteUrl: webVal, logoUrl: logoVal, location: locVal, lat: latVal, lng: lngVal, hidden: !!hiddenVal });
   } catch (err: any) {
     console.error("Error upserting station override:", err);
     res.status(500).json({ error: "Failed to save override", details: err.message });

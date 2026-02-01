@@ -81,6 +81,12 @@ interface ExternalStation {
   websiteUrl: string;
   streamUrl: string;
   logoUrl: string;
+  /** City/country or place name for display and map. */
+  location?: string;
+  /** Latitude for world map mode (e.g. 52.52). */
+  lat?: number;
+  /** Longitude for world map mode (e.g. 13.405). */
+  lng?: number;
 }
 
 /** Station config: single stream or multiple channels (e.g. SomaFM). */
@@ -90,6 +96,12 @@ interface ExternalStationConfig {
   websiteUrl: string;
   streamUrl: string;
   logoUrl: string;
+  /** City/country or place name. */
+  location?: string;
+  /** Latitude for world map (optional). */
+  lat?: number;
+  /** Longitude for world map (optional). */
+  lng?: number;
   /** If set, one card per channel; otherwise one card using streamUrl. */
   channels?: Array<{ name: string; streamUrl: string }>;
 }
@@ -101,6 +113,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://refugeworldwide.com/",
     streamUrl: "https://streaming.radio.co/s3699c5e49/listen",
     logoUrl: "https://refugeworldwide.com/apple-touch-icon.png",
+    location: "Berlin, Germany",
+    lat: 52.52,
+    lng: 13.405,
   },
   {
     name: "Mutant Radio",
@@ -108,6 +123,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.mutantradio.net/",
     streamUrl: "https://listen.radioking.com/radio/282820/stream/328621",
     logoUrl: "https://www.mutantradio.net/icon?e5faaecf67dfe01a",
+    location: "Worldwide",
   },
   {
     name: "Radio 80000",
@@ -115,6 +131,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.radio80k.de/",
     streamUrl: "https://radio80k.out.airtime.pro:8000/radio80k_a",
     logoUrl: "https://www.radio80k.de/app/uploads/2022/10/cropped-favicon-8000-192x192.gif",
+    location: "Munich, Germany",
+    lat: 48.1351,
+    lng: 11.582,
   },
   // From Are.na channel online-radios-zlvblzsstly; stream URLs from Radio Browser API / official sites
   {
@@ -123,6 +142,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.kexp.org/",
     streamUrl: "https://kexp.streamguys1.com/kexp160.aac",
     logoUrl: "https://www.kexp.org/favicon.ico",
+    location: "Seattle, USA",
+    lat: 47.6062,
+    lng: -122.3321,
   },
   {
     name: "SomaFM",
@@ -130,6 +152,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "http://soma.fm/",
     streamUrl: "https://ice5.somafm.com/live-128-mp3",
     logoUrl: "https://somafm.com/img/somafm-logo-square.png",
+    location: "San Francisco, USA",
+    lat: 37.7749,
+    lng: -122.4194,
     channels: [
       { name: "Groove Salad", streamUrl: "https://ice5.somafm.com/groovesalad-128-mp3" },
       { name: "Drone Zone", streamUrl: "https://ice5.somafm.com/dronezone-128-mp3" },
@@ -147,6 +172,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.wfmu.org/",
     streamUrl: "http://stream0.wfmu.org/freeform-128k",
     logoUrl: "https://www.wfmu.org/favicon.ico",
+    location: "Jersey City, USA",
+    lat: 40.7178,
+    lng: -74.0431,
   },
   {
     name: "NTS Radio",
@@ -154,6 +182,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.nts.live/",
     streamUrl: "https://stream-relay-geo.ntslive.net/stream",
     logoUrl: "https://www.nts.live/favicon.ico",
+    location: "London, UK",
+    lat: 51.5074,
+    lng: -0.1278,
     channels: [
       { name: "Channel 1", streamUrl: "https://stream-relay-geo.ntslive.net/stream" },
       { name: "Channel 2", streamUrl: "https://stream-relay-geo.ntslive.net/stream2" },
@@ -165,6 +196,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://lyl.live/",
     streamUrl: "https://stream.lyl.live/live",
     logoUrl: "https://lyl.live/favicon.ico",
+    location: "Lyon, France",
+    lat: 45.764,
+    lng: 4.8357,
   },
   {
     name: "Noods Radio",
@@ -172,6 +206,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://noodsradio.com/",
     streamUrl: "https://stream.noodsradio.com/stream",
     logoUrl: "https://noodsradio.com/favicon.ico",
+    location: "Bristol, UK",
+    lat: 51.4545,
+    lng: -2.5879,
   },
   {
     name: "Veneno",
@@ -179,6 +216,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://veneno.live/",
     streamUrl: "https://veneno.out.airtime.pro/veneno_a",
     logoUrl: "https://veneno.live/wp-content/uploads/2024/02/veneno-v.svg",
+    location: "São Paulo, Brazil",
+    lat: -23.5505,
+    lng: -46.6333,
   },
   {
     name: "Kiosk Radio",
@@ -186,6 +226,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://kioskradio.com/",
     streamUrl: "https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b",
     logoUrl: "https://kioskradio.com/favicon.ico",
+    location: "Brussels, Belgium",
+    lat: 50.8503,
+    lng: 4.3517,
   },
   {
     name: "KCHUNG Radio",
@@ -193,6 +236,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "http://kchungradio.org/",
     streamUrl: "http://stream.kchungradio.org:8000/stream",
     logoUrl: "http://kchungradio.org/favicon.ico",
+    location: "Los Angeles, USA",
+    lat: 34.0522,
+    lng: -118.2437,
   },
   {
     name: "Tikka Radio",
@@ -200,6 +246,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://tikka.live/",
     streamUrl: "https://stream.tikka.live/live",
     logoUrl: "https://tikka.live/favicon.ico",
+    location: "Tokyo, Japan",
+    lat: 35.6762,
+    lng: 139.6503,
   },
   {
     name: "WOBC Chameleon Radio",
@@ -207,6 +256,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://wobc.stream/",
     streamUrl: "https://wobc.stream/stream",
     logoUrl: "https://wobc.stream/favicon.ico",
+    location: "Oberlin, USA",
+    lat: 41.2932,
+    lng: -82.2174,
   },
   {
     name: "Particle FM",
@@ -228,6 +280,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://netilradio.com/",
     streamUrl: "https://netilradio.out.airtime.pro/netilradio_b",
     logoUrl: "https://netilradio.com/favicon.ico",
+    location: "London, UK",
+    lat: 51.5074,
+    lng: -0.1278,
   },
   {
     name: "Tsubaki FM",
@@ -235,6 +290,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://tsubakifm.com/",
     streamUrl: "https://tsubakifm.out.airtime.pro/tsubakifm_a",
     logoUrl: "https://tsubakifm.com/favicon.ico",
+    location: "Tokyo, Japan",
+    lat: 35.6762,
+    lng: 139.6503,
   },
   {
     name: "Radio Nopal",
@@ -242,6 +300,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.radionopal.com/",
     streamUrl: "https://radionopal.out.airtime.pro/radionopal_a",
     logoUrl: "https://www.radionopal.com/favicon.ico",
+    location: "Online",
   },
   {
     name: "Good Times Bad Times",
@@ -249,6 +308,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://goodtimesbadtimes.club/",
     streamUrl: "https://radio.goodtimesbadtimes.club/radio/8000/radio.mp3",
     logoUrl: "https://goodtimesbadtimes.club/favicon.ico",
+    location: "Online",
   },
   {
     name: "Radio Robida",
@@ -256,6 +316,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://radio.robidacollective.com/",
     streamUrl: "https://radio.robidacollective.com/stream/programme",
     logoUrl: "https://radio.robidacollective.com/favicon.ico",
+    location: "Slovenia",
   },
   {
     name: "Yamakan Palestine",
@@ -263,6 +324,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://yamakan.place/palestine/",
     streamUrl: "https://yamakan.out.airtime.pro/yamakan_a",
     logoUrl: "https://yamakan.place/favicon.ico",
+    location: "Bethlehem, Palestine",
+    lat: 31.7054,
+    lng: 35.2022,
   },
   {
     name: "Radio Centraal",
@@ -270,6 +334,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.radiocentraal.be/",
     streamUrl: "http://streams.movemedia.eu/centraal",
     logoUrl: "https://www.radiocentraal.be/favicon.ico",
+    location: "Antwerp, Belgium",
+    lat: 51.2213,
+    lng: 4.4055,
   },
   {
     name: "Area 3000",
@@ -277,6 +344,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://area3000.radio/",
     streamUrl: "https://stream.radiocult.fm/area-3000",
     logoUrl: "https://area3000.radio/cdn/shop/files/Area_3000_Logo_Black.png?v=1704440747",
+    location: "Melbourne, Australia",
+    lat: -37.8136,
+    lng: 144.9631,
   },
   {
     name: "Cashmere Radio",
@@ -284,6 +354,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://cashmereradio.com/",
     streamUrl: "https://cashmereradio.out.airtime.pro/cashmereradio_b",
     logoUrl: "https://cashmereradio.com/favicon.ico",
+    location: "Berlin, Germany",
+    lat: 52.52,
+    lng: 13.405,
   },
   {
     name: "Radio Campus Brussels",
@@ -291,6 +364,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.radiocampus.be/",
     streamUrl: "https://stream.radiocampus.be/stream",
     logoUrl: "https://www.radiocampus.be/favicon.ico",
+    location: "Brussels, Belgium",
+    lat: 50.8503,
+    lng: 4.3517,
   },
   {
     name: "Black Rhino Radio",
@@ -298,6 +374,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://blackrhinoradio.com/",
     streamUrl: "https://blackrhinoradio.out.airtime.pro/blackrhinoradio_a",
     logoUrl: "https://blackrhinoradio.com/favicon.ico",
+    location: "Online",
   },
   {
     name: "Radio Aparat",
@@ -305,6 +382,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://radioaparat.rs/",
     streamUrl: "https://stream4.rcast.net/72355/",
     logoUrl: "https://radioaparat.rs/favicon.ico",
+    location: "Belgrade, Serbia",
+    lat: 44.7866,
+    lng: 20.4489,
   },
   {
     name: "dublab",
@@ -312,6 +392,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://www.dublab.com/",
     streamUrl: "https://dublab.out.airtime.pro/dublab_a",
     logoUrl: "https://www.dublab.com/favicon.ico",
+    location: "Los Angeles, USA",
+    lat: 34.0522,
+    lng: -118.2437,
   },
   {
     name: "RUKH",
@@ -319,6 +402,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://rukh.live/",
     streamUrl: "https://rukh.out.airtime.pro/rukh_a",
     logoUrl: "https://rukh.live/favicon.ico",
+    location: "Odesa, Ukraine",
+    lat: 46.4825,
+    lng: 30.7233,
   },
   {
     name: "Radio Helsinki",
@@ -326,6 +412,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://helsinki.at/",
     streamUrl: "https://live.helsinki.at:8088/live160.mp3",
     logoUrl: "https://helsinki.at/favicon.ico",
+    location: "Graz, Austria",
+    lat: 47.0707,
+    lng: 15.4395,
   },
   {
     name: "HKCR",
@@ -340,6 +429,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://yamakan.place/palestine/",
     streamUrl: "http://n02.radiojar.com/78cxy6wkxtzuv",
     logoUrl: "https://yamakan.place/palestine/favicon.ico",
+    location: "Bethlehem, Palestine",
+    lat: 31.7054,
+    lng: 35.2022,
   },
   {
     name: "The Lake Radio",
@@ -347,6 +439,9 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     websiteUrl: "https://thelakeradio.com/",
     streamUrl: "https://thelakeradio.out.airtime.pro/thelakeradio_a",
     logoUrl: "https://thelakeradio.com/favicon.ico",
+    location: "Copenhagen, Denmark",
+    lat: 55.6761,
+    lng: 12.5683,
   },
 ];
 
@@ -362,6 +457,9 @@ function getBuiltInStationsFlat(): ExternalStation[] {
           websiteUrl: s.websiteUrl,
           streamUrl: ch.streamUrl,
           logoUrl: s.logoUrl,
+          location: s.location,
+          lat: s.lat,
+          lng: s.lng,
         });
       }
     } else {
@@ -371,6 +469,9 @@ function getBuiltInStationsFlat(): ExternalStation[] {
         websiteUrl: s.websiteUrl,
         streamUrl: s.streamUrl,
         logoUrl: s.logoUrl,
+        location: s.location,
+        lat: s.lat,
+        lng: s.lng,
       });
     }
   }
@@ -384,11 +485,13 @@ let allExternalStations: ExternalStation[] = (() => {
   return b;
 })();
 let stationsSearchQuery = "";
+/** View mode for stations list: grid (cards), list (bars), dial (vintage dial), map (world map). */
+let stationsViewMode: "grid" | "list" | "dial" | "map" = "grid";
 
 /** Admin overrides for any station (built-in or added) keyed by streamUrl. hidden = true means station is removed from the site. */
-let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; hidden?: boolean }> = {};
+let stationOverrides: Record<string, { name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; location?: string | null; lat?: number | null; lng?: number | null; hidden?: boolean }> = {};
 
-function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string }>(
+function applyStationOverride<T extends { name?: string; description?: string; websiteUrl?: string; logoUrl?: string; location?: string; lat?: number; lng?: number }>(
   station: T,
   streamUrl: string
 ): T {
@@ -400,6 +503,9 @@ function applyStationOverride<T extends { name?: string; description?: string; w
     ...(o.description !== undefined && o.description !== null && { description: o.description }),
     ...(o.websiteUrl !== undefined && o.websiteUrl !== null && { websiteUrl: o.websiteUrl }),
     ...(o.logoUrl !== undefined && o.logoUrl !== null && { logoUrl: o.logoUrl }),
+    ...(o.location !== undefined && o.location !== null && { location: o.location }),
+    ...(o.lat !== undefined && o.lat !== null && { lat: o.lat }),
+    ...(o.lng !== undefined && o.lng !== null && { lng: o.lng }),
   } as T;
 }
 
@@ -409,7 +515,8 @@ function getExternalStationsFlat(): ExternalStation[] {
   return allExternalStations.filter(
     (s) =>
       s.name.toLowerCase().includes(q) ||
-      (s.description && s.description.toLowerCase().includes(q))
+      (s.description && s.description.toLowerCase().includes(q)) ||
+      (s.location && s.location.toLowerCase().includes(q))
   );
 }
 
@@ -445,11 +552,14 @@ async function loadExternalStations(): Promise<void> {
       websiteUrl: string;
       streamUrl: string;
       logoUrl?: string | null;
+      location?: string | null;
+      lat?: number | null;
+      lng?: number | null;
     }>;
-    const overrides = (await overridesRes.json()) as Array<{ streamUrl: string; name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; hidden?: boolean }>;
+    const overrides = (await overridesRes.json()) as Array<{ streamUrl: string; name?: string | null; description?: string | null; websiteUrl?: string | null; logoUrl?: string | null; location?: string | null; lat?: number | null; lng?: number | null; hidden?: boolean }>;
     stationOverrides = {};
     for (const o of overrides || []) {
-      if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl, hidden: !!o.hidden };
+      if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl, location: o.location, lat: o.lat, lng: o.lng, hidden: !!o.hidden };
     }
     const userStations: ExternalStation[] = (rows || []).map((r) => ({
       id: r.id,
@@ -458,6 +568,9 @@ async function loadExternalStations(): Promise<void> {
       websiteUrl: r.websiteUrl || r.streamUrl,
       streamUrl: r.streamUrl,
       logoUrl: r.logoUrl || "",
+      location: r.location ?? undefined,
+      lat: r.lat ?? undefined,
+      lng: r.lng ?? undefined,
     }));
     const builtIn = getBuiltInStationsFlat();
     const merged = [...builtIn, ...userStations];
@@ -777,6 +890,9 @@ function updateAbr(state: AbrState, inputs: AbrInputs, tierBuf: JitterBuffer, al
 
 // DOM refs
 const stationsGrid = document.getElementById("stations-grid")!;
+const stationsList = document.getElementById("stations-list")!;
+const stationsDial = document.getElementById("stations-dial")!;
+const stationsMap = document.getElementById("stations-map")!;
 const stationsSearchTopbar = document.getElementById("stations-search-topbar") as HTMLInputElement | null;
 const favoritesFilter = document.getElementById("favorites-filter") as HTMLInputElement | null;
 const favoritesFilterWrap = document.getElementById("favorites-filter-wrap");
@@ -795,6 +911,18 @@ const playPauseIcon = document.getElementById("play-pause-icon")!;
 const playPauseText = document.getElementById("play-pause-text")!;
 const playerLiveBadge = document.getElementById("player-live-badge")!;
 const playerStatusText = document.getElementById("player-status-text")!;
+const playerExpanded = document.getElementById("player-expanded")!;
+const playerExpandBtn = document.getElementById("player-expand-btn")!;
+const playerExpandedTitle = document.getElementById("player-expanded-title")!;
+const playerExpandedLocation = document.getElementById("player-expanded-location")!;
+const playerExpandedDesc = document.getElementById("player-expanded-desc")!;
+const playerExpandedWebsiteLink = document.getElementById("player-expanded-website-link") as HTMLAnchorElement | null;
+const playerExpandedCover = document.getElementById("player-expanded-cover") as HTMLImageElement | null;
+const btnPrevExpanded = document.getElementById("btn-prev-expanded");
+const btnPlayPauseExpanded = document.getElementById("btn-play-pause-expanded");
+const btnNextExpanded = document.getElementById("btn-next-expanded");
+const playPauseIconExpanded = document.getElementById("play-pause-icon-expanded");
+const playPauseTextExpanded = document.getElementById("play-pause-text-expanded");
 const statTier = document.getElementById("stat-tier")!;
 const statLoss = document.getElementById("stat-loss")!;
 const statBuffer = document.getElementById("stat-buffer")!;
@@ -820,6 +948,8 @@ function showPauseButton() {
   btnPlayPause.classList.remove("hidden");
   playPauseIcon.textContent = "\u23F8"; // ⏸ Pause
   playPauseText.textContent = "Pause";
+  if (playPauseIconExpanded) playPauseIconExpanded.textContent = "\u23F8";
+  if (playPauseTextExpanded) playPauseTextExpanded.textContent = "Pause";
 }
 
 function showPlayButton(label: "Start" | "Play" = "Play") {
@@ -827,6 +957,58 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
   btnPlayPause.classList.remove("hidden");
   playPauseIcon.textContent = "\u25B6"; // ▶
   playPauseText.textContent = label;
+  if (playPauseIconExpanded) playPauseIconExpanded.textContent = "\u25B6";
+  if (playPauseTextExpanded) playPauseTextExpanded.textContent = label;
+}
+
+/** Sync expanded player panel with current station/channel and play state. */
+function updateExpandedPlayerUI(): void {
+  playerExpandedTitle.textContent = "Not playing";
+  playerExpandedLocation.textContent = "";
+  playerExpandedDesc.textContent = "";
+  if (playerExpandedWebsiteLink) {
+    playerExpandedWebsiteLink.href = "#";
+    playerExpandedWebsiteLink.classList.add("hidden");
+  }
+  if (playerExpandedCover) {
+    playerExpandedCover.removeAttribute("src");
+    playerExpandedCover.style.display = "none";
+  }
+  playerExpanded.querySelector(".player-expanded-cover-wrap")?.classList.remove("placeholder");
+  btnPrevExpanded?.classList.add("hidden");
+  btnNextExpanded?.classList.add("hidden");
+
+  if (currentExternalStation) {
+    playerExpandedTitle.textContent = currentExternalStation.name;
+    playerExpandedLocation.textContent = currentExternalStation.location ?? "";
+    playerExpandedDesc.textContent = currentExternalStation.description ?? "";
+    if (playerExpandedWebsiteLink) {
+      playerExpandedWebsiteLink.href = currentExternalStation.websiteUrl;
+      playerExpandedWebsiteLink.textContent = "Visit " + currentExternalStation.name;
+      playerExpandedWebsiteLink.classList.remove("hidden");
+    }
+    if (playerExpandedCover && currentExternalStation.logoUrl) {
+      playerExpandedCover.src = currentExternalStation.logoUrl;
+      playerExpandedCover.style.display = "";
+      playerExpandedCover.onerror = () => {
+        if (playerExpandedCover) playerExpandedCover.style.display = "none";
+      };
+    } else if (playerExpandedCover) {
+      playerExpanded.querySelector(".player-expanded-cover-wrap")?.classList.add("placeholder");
+    }
+    btnPrevExpanded?.classList.remove("hidden");
+    btnNextExpanded?.classList.remove("hidden");
+  } else if (currentChannel) {
+    playerExpandedTitle.textContent = currentChannel.title;
+    playerExpandedDesc.textContent = currentChannel.description ?? "";
+    if (playerExpandedCover && currentChannel.coverUrl) {
+      playerExpandedCover.src = currentChannel.coverUrl;
+      playerExpandedCover.style.display = "";
+    } else if (playerExpandedCover) {
+      playerExpandedCover.style.display = "none";
+      playerExpanded.querySelector(".player-expanded-cover-wrap")?.classList.add("placeholder");
+    }
+  }
 }
 
 let token: string | null = localStorage.getItem("laf_token");
@@ -1100,12 +1282,23 @@ async function toggleFavorite(kind: "laf" | "external", ref: string): Promise<vo
 }
 
 function renderUnifiedStations(): void {
+  // Show/hide view containers and clear active one
+  const mode = stationsViewMode;
+  stationsGrid.classList.toggle("hidden", mode !== "grid");
+  stationsList.classList.toggle("hidden", mode !== "list");
+  stationsDial.classList.toggle("hidden", mode !== "dial");
+  stationsMap.classList.toggle("hidden", mode !== "map");
   stationsGrid.innerHTML = "";
+  stationsList.innerHTML = "";
+  stationsDial.innerHTML = "";
+  stationsMap.innerHTML = "";
+  const activeContainer = mode === "grid" ? stationsGrid : mode === "list" ? stationsList : mode === "dial" ? stationsDial : stationsMap;
+
   if (streamCheckInProgress) {
     const urls = getAllStreamUrls();
     const liveCount = urls.filter((u) => streamStatusCache[u]?.ok).length;
     const total = urls.length;
-    stationsGrid.innerHTML = `<p class='stations-loading-message'><span class='stations-loading-text'>Looking for live radios…</span> <span class='stations-loading-count'>(${liveCount} of ${total} live so far)</span></p>`;
+    (activeContainer as HTMLElement).innerHTML = `<p class='stations-loading-message'><span class='stations-loading-text'>Looking for live radios…</span> <span class='stations-loading-count'>(${liveCount} of ${total} live so far)</span></p>`;
     return;
   }
   const q = (stationsSearchTopbar?.value ?? "").trim().toLowerCase();
@@ -1122,7 +1315,7 @@ function renderUnifiedStations(): void {
   for (const config of EXTERNAL_STATION_CONFIGS) {
     if (stationOverrides[config.streamUrl]?.hidden) continue;
     const configWithOverride = applyStationOverride(
-      { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl },
+      { name: config.name, description: config.description, websiteUrl: config.websiteUrl, logoUrl: config.logoUrl, location: config.location, lat: config.lat, lng: config.lng },
       config.streamUrl
     );
     if (config.channels && config.channels.length > 0) {
@@ -1173,7 +1366,13 @@ function renderUnifiedStations(): void {
         : item.type === "external"
           ? item.station.description || ""
           : item.config.description || "";
-    if (q && !name.toLowerCase().includes(q) && !desc.toLowerCase().includes(q)) return false;
+    const loc =
+      item.type === "laf"
+        ? ""
+        : item.type === "external"
+          ? (item.station.location || "")
+          : (item.config.location || "");
+    if (q && !name.toLowerCase().includes(q) && !desc.toLowerCase().includes(q) && !loc.toLowerCase().includes(q)) return false;
     if (onlyFavorites && token) {
       if (item.type === "laf") {
         if (!favoriteRefs.has(`laf:${item.channel.id}`)) return false;
@@ -1193,7 +1392,129 @@ function renderUnifiedStations(): void {
       b.type === "laf" ? b.channel.title : b.type === "external" ? b.station.name : b.config.name;
     return na.localeCompare(nb, undefined, { sensitivity: "base" });
   });
-  filtered.forEach((item) => {
+
+  if (mode === "list") {
+    filtered.forEach((item) => {
+      const name = item.type === "laf" ? item.channel.title : item.type === "external" ? item.station.name : item.config.name;
+      const loc = item.type === "laf" ? "" : item.type === "external" ? (item.station.location || "") : (item.config.location || "");
+      let statusText = "—";
+      let statusClass = "status-unknown";
+      if (item.type === "laf") {
+        statusText = "LIVE";
+        statusClass = "status-live";
+      } else if (item.type === "external") {
+        const cached = streamStatusCache[item.station.streamUrl];
+        const label = getStatusLabel(cached, item.station.streamUrl);
+        statusText = label.text;
+        statusClass = label.statusClass;
+      } else {
+        const first = item.liveChannels[0];
+        if (first) {
+          const cached = streamStatusCache[first.streamUrl];
+          const label = getStatusLabel(cached, first.streamUrl);
+          statusText = label.text;
+          statusClass = label.statusClass;
+        }
+      }
+      const bar = document.createElement("button");
+      bar.type = "button";
+      bar.className = "station-list-bar";
+      if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) bar.classList.add("now-playing");
+      if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) bar.classList.add("now-playing");
+      bar.innerHTML = `<span class="list-bar-name">${escapeHtml(name)}</span><span class="list-bar-location">${escapeHtml(loc)}</span><span class="list-bar-status ${statusClass}">${escapeHtml(statusText)}</span>`;
+      bar.onclick = () => {
+        if (item.type === "laf") selectChannel(item.channel);
+        else if (item.type === "external") selectExternalStation(item.station);
+        else {
+          const ch = item.liveChannels[0];
+          if (ch) selectExternalStation({ name: `${item.config.name}: ${ch.name}`, description: item.config.description, websiteUrl: item.config.websiteUrl, streamUrl: ch.streamUrl, logoUrl: item.config.logoUrl, location: item.config.location, lat: item.config.lat, lng: item.config.lng });
+        }
+      };
+      stationsList.appendChild(bar);
+    });
+  } else if (mode === "dial") {
+    const dialFace = document.createElement("div");
+    dialFace.className = "dial-face";
+    const needle = document.createElement("div");
+    needle.className = "dial-needle";
+    needle.style.left = "50%";
+    dialFace.appendChild(needle);
+    stationsDial.appendChild(dialFace);
+    const dialStations = document.createElement("div");
+    dialStations.className = "dial-stations";
+    filtered.forEach((item, idx) => {
+      const name = item.type === "laf" ? item.channel.title : item.type === "external" ? item.station.name : item.config.name;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dial-station-btn";
+      if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) btn.classList.add("playing");
+      if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) btn.classList.add("playing");
+      btn.textContent = name;
+      btn.onclick = () => {
+        if (item.type === "laf") selectChannel(item.channel);
+        else if (item.type === "external") selectExternalStation(item.station);
+        else {
+          const ch = item.liveChannels[0];
+          if (ch) selectExternalStation({ name: `${item.config.name}: ${ch.name}`, description: item.config.description, websiteUrl: item.config.websiteUrl, streamUrl: ch.streamUrl, logoUrl: item.config.logoUrl, location: item.config.location, lat: item.config.lat, lng: item.config.lng });
+        }
+        const i = filtered.indexOf(item);
+        needle.style.left = `${(i / Math.max(1, filtered.length - 1)) * 100}%`;
+      };
+      dialStations.appendChild(btn);
+    });
+    // Set initial needle to current station if any
+    const currentIdx = filtered.findIndex((item) => {
+      if (currentExternalStation) {
+        if (item.type === "external" && item.station.streamUrl === currentExternalStation.streamUrl) return true;
+        if (item.type === "external_multi" && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation.streamUrl)) return true;
+      }
+      if (currentChannel && item.type === "laf" && item.channel.id === currentChannel.id) return true;
+      return false;
+    });
+    if (currentIdx >= 0 && filtered.length > 0) {
+      needle.style.left = `${(currentIdx / Math.max(1, filtered.length - 1)) * 100}%`;
+    }
+    stationsDial.appendChild(dialStations);
+  } else if (mode === "map") {
+    const withCoords = filtered.filter((item): item is { type: "external"; station: ExternalStation } | { type: "external_multi"; config: ExternalStationConfig; liveChannels: Array<{ name: string; streamUrl: string }> } => {
+      if (item.type === "laf") return false;
+      if (item.type === "external") return item.station.lat != null && item.station.lng != null;
+      return item.config.lat != null && item.config.lng != null;
+    });
+    const w = 800;
+    const h = 400;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    const lngToX = (lng: number) => ((lng + 180) / 360) * w;
+    const latToY = (lat: number) => ((90 - lat) / 180) * h;
+    withCoords.forEach((item) => {
+      const lat = item.type === "external" ? item.station.lat! : item.config.lat!;
+      const lng = item.type === "external" ? item.station.lng! : item.config.lng!;
+      const cx = lngToX(lng);
+      const cy = latToY(lat);
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("class", "map-marker");
+      if (item.type === "external" && currentExternalStation?.streamUrl === item.station.streamUrl) circle.classList.add("playing");
+      if (item.type === "external_multi" && currentExternalStation && item.liveChannels.some((ch) => ch.streamUrl === currentExternalStation?.streamUrl)) circle.classList.add("playing");
+      circle.setAttribute("cx", String(cx));
+      circle.setAttribute("cy", String(cy));
+      circle.setAttribute("r", "6");
+      circle.setAttribute("title", item.type === "external" ? item.station.name : item.config.name);
+      circle.onclick = () => {
+        if (item.type === "external") selectExternalStation(item.station);
+        else {
+          const ch = item.liveChannels[0];
+          if (ch) selectExternalStation({ name: `${item.config.name}: ${ch.name}`, description: item.config.description, websiteUrl: item.config.websiteUrl, streamUrl: ch.streamUrl, logoUrl: item.config.logoUrl, location: item.config.location, lat: item.config.lat, lng: item.config.lng });
+        }
+      };
+      svg.appendChild(circle);
+    });
+    stationsMap.appendChild(svg);
+  }
+
+  if (mode === "grid") filtered.forEach((item) => {
     if (item.type === "laf") {
       const c = item.channel;
       const card = document.createElement("div");
@@ -1242,6 +1563,7 @@ function renderUnifiedStations(): void {
       card.innerHTML = `
         ${logoHtml}
         ${showLogoArea ? `<div class="ext-name">${escapeHtml(station.name)}</div>` : ""}
+        ${station.location ? `<div class="ext-location">${escapeHtml(station.location)}</div>` : ""}
         <div class="ext-desc">${escapeHtml(station.description)}</div>
         <a class="ext-link" href="${escapeAttr(station.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
         <div class="ext-stream-status ${statusClass}" aria-live="polite">${escapeHtml(statusText)}</div>
@@ -1296,6 +1618,7 @@ function renderUnifiedStations(): void {
       card.innerHTML = `
         ${logoHtml}
         ${showLogoArea ? `<div class="ext-name">${escapeHtml(config.name)}</div>` : ""}
+        ${config.location ? `<div class="ext-location">${escapeHtml(config.location)}</div>` : ""}
         <div class="ext-desc">${escapeHtml(config.description)}</div>
         <a class="ext-link" href="${escapeAttr(config.websiteUrl)}" target="_blank" rel="noopener">Visit website</a>
         <button type="button" class="ext-channels-toggle" aria-expanded="false">
@@ -1342,6 +1665,9 @@ function renderUnifiedStations(): void {
                 websiteUrl: config.websiteUrl,
                 streamUrl: ch.streamUrl,
                 logoUrl: config.logoUrl,
+                location: config.location,
+                lat: config.lat,
+                lng: config.lng,
               });
             }
           }
@@ -1354,9 +1680,9 @@ function renderUnifiedStations(): void {
   const uncachedCount = allUrls.filter((u) => streamStatusCache[u] === undefined).length;
   if (filtered.length === 0) {
     if (uncachedCount > 0) {
-      stationsGrid.innerHTML = "<p style='opacity: 0.7;'>Checking which stations are live…</p>";
+      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>Checking which stations are live…</p>";
     } else {
-      stationsGrid.innerHTML = "<p style='opacity: 0.7;'>No stations currently live.</p>";
+      (activeContainer as HTMLElement).innerHTML = "<p style='opacity: 0.7;'>No stations currently live.</p>";
     }
   }
 }
@@ -1545,6 +1871,9 @@ function selectExternalStation(station: ExternalStation) {
     playerCoverInitial.classList.add("hidden");
   }
   externalStreamReconnectCount = 0;
+  btnPrevStation.classList.remove("hidden");
+  btnNextStation.classList.remove("hidden");
+  updateExpandedPlayerUI();
   attachExternalStreamAudio(station);
 }
 
@@ -1711,6 +2040,7 @@ function stopExternalStream() {
   updatePlayerStatus("ready", "Ready to listen");
   showPlayButton("Start");
   playerLiveBadge.classList.add("hidden");
+  updateExpandedPlayerUI();
 }
 
 function escapeHtml(text: string): string {
@@ -1762,6 +2092,7 @@ function selectChannel(channel: LiveChannel) {
   } else {
     showPlayButton("Start");
   }
+  updateExpandedPlayerUI();
 }
 
 async function startListening() {
@@ -3082,4 +3413,30 @@ loadRuntimeConfig().then(() => {
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
   if (favoritesFilterWrap && !token) favoritesFilterWrap.classList.add("hidden");
+
+  // View mode switcher
+  document.querySelectorAll(".view-mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = (btn as HTMLElement).dataset.mode as "grid" | "list" | "dial" | "map";
+      if (!mode) return;
+      stationsViewMode = mode;
+      document.querySelectorAll(".view-mode-btn").forEach((b) => {
+        b.classList.toggle("active", (b as HTMLElement).dataset.mode === mode);
+        b.setAttribute("aria-pressed", (b as HTMLElement).dataset.mode === mode ? "true" : "false");
+      });
+      renderUnifiedStations();
+    });
+  });
+
+  // Expandable player
+  playerExpandBtn.addEventListener("click", () => {
+    const open = playerExpanded.classList.toggle("open");
+    playerExpandBtn.setAttribute("aria-expanded", String(open));
+    playerExpanded.setAttribute("aria-hidden", String(!open));
+    if (open) updateExpandedPlayerUI();
+  });
+
+  btnPrevExpanded?.addEventListener("click", () => btnPrevStation.click());
+  btnPlayPauseExpanded?.addEventListener("click", () => btnPlayPause.click());
+  btnNextExpanded?.addEventListener("click", () => btnNextStation.click());
 });
