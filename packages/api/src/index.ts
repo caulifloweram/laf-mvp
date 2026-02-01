@@ -346,20 +346,17 @@ app.get("/api/stream-check", async (req, res) => {
 });
 
 // Stream proxy: pipe radio stream through API so client avoids CORS when loading Audio()
+// No timeout on the fetch so long-running streams (e.g. Radio AlHara) are not cut off after 30s.
 app.get("/api/stream-proxy", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
     return res.status(400).send("Invalid url");
   }
   try {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(url, {
       method: "GET",
-      signal: controller.signal,
       headers: { "Icy-MetaData": "1" },
     });
-    clearTimeout(t);
     const ct = response.headers.get("content-type");
     if (ct) res.setHeader("Content-Type", ct);
     res.setHeader("Cache-Control", "no-store");
