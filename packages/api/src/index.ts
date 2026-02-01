@@ -122,6 +122,170 @@ async function checkStreamUrl(url: string): Promise<{ ok: boolean; status: strin
   }
 }
 
+const RESOLVE_FETCH_TIMEOUT_MS = 8000;
+const RESOLVE_USER_AGENT = "LAF/1.0 (Radio station resolver)";
+
+interface ResolvedStation {
+  streamUrl: string;
+  name: string;
+  description: string;
+  websiteUrl: string;
+  logoUrl: string | null;
+}
+
+/** Resolve a website or stream URL to a playable station with metadata. */
+async function resolveStationUrl(inputUrl: string): Promise<ResolvedStation> {
+  const trimmed = (inputUrl || "").trim();
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    throw new Error("URL must be http or https");
+  }
+  const baseUrl = trimmed.replace(/#.*$/, "").replace(/\/?$/, "/");
+
+  // 1) If input is already a stream, use it and try to get metadata from same-origin or Radio Browser
+  const looksLikeStream = /\.(m3u8?|pls|mp3|aac|ogg)(\?|$)/i.test(trimmed) || /\/stream|\/listen|\/live(\/|$)/i.test(trimmed);
+  if (looksLikeStream) {
+    const { ok } = await checkStreamUrl(trimmed);
+    if (ok) {
+      const origin = new URL(trimmed).origin;
+      const meta = await fetchHtmlMetadata(origin + "/");
+      return {
+        streamUrl: trimmed,
+        name: meta.name || new URL(trimmed).hostname.replace(/^www\./, ""),
+        description: meta.description || "",
+        websiteUrl: meta.websiteUrl || origin,
+        logoUrl: meta.logoUrl || null,
+      };
+    }
+  }
+
+  // 2) Try Radio Browser API: byurl (homepage) then search by name (hostname)
+  const rbBase = "https://de1.api.radio-browser.info";
+  for (const endpoint of [
+    `/json/stations/byurl/${encodeURIComponent(baseUrl.replace(/\/$/, ""))}`,
+    `/json/stations/search?name=${encodeURIComponent(new URL(baseUrl).hostname.replace(/^www\./, "").split(".")[0] || "")}&limit=5`,
+  ]) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 5000);
+      const rbRes = await fetch(rbBase + endpoint, {
+        signal: controller.signal,
+        headers: { "User-Agent": RESOLVE_USER_AGENT },
+      });
+      clearTimeout(t);
+      if (!rbRes.ok) continue;
+      const stations = (await rbRes.json()) as Array<{ url_resolved?: string; url?: string; name?: string; tags?: string; favicon?: string; homepage?: string }>;
+      for (const s of stations) {
+        const streamUrl = (s.url_resolved || s.url || "").trim();
+        if (!streamUrl) continue;
+        const { ok } = await checkStreamUrl(streamUrl);
+        if (ok) {
+          return {
+            streamUrl,
+            name: (s.name || "").trim() || "Radio station",
+            description: (s.tags || "").trim() || "",
+            websiteUrl: (s.homepage || baseUrl).trim(),
+            logoUrl: (s.favicon || "").trim() || null,
+          };
+        }
+      }
+    } catch (_) {
+      // try next endpoint or HTML scrape
+    }
+  }
+
+  // 3) Fetch page as HTML and scrape stream URLs + og:meta
+  const htmlMeta = await fetchHtmlMetadata(baseUrl);
+  const streamCandidates = htmlMeta.streamUrls.length > 0 ? htmlMeta.streamUrls : [];
+  if (streamCandidates.length === 0) {
+    throw new Error("No stream URL found on this page. Paste a direct stream URL (e.g. .mp3, .m3u) or a radio homepage that embeds a player.");
+  }
+  let workingStreamUrl: string | null = null;
+  for (const candidate of streamCandidates) {
+    const { ok } = await checkStreamUrl(candidate);
+    if (ok) {
+      workingStreamUrl = candidate;
+      break;
+    }
+  }
+  if (!workingStreamUrl) {
+    throw new Error("Found stream links on the page but none are reachable or live. Try a direct stream URL.");
+  }
+  return {
+    streamUrl: workingStreamUrl,
+    name: htmlMeta.name || new URL(baseUrl).hostname.replace(/^www\./, ""),
+    description: htmlMeta.description || "",
+    websiteUrl: baseUrl.replace(/\/$/, ""),
+    logoUrl: htmlMeta.logoUrl || null,
+  };
+}
+
+interface HtmlMetadata {
+  name: string;
+  description: string;
+  websiteUrl: string;
+  logoUrl: string | null;
+  streamUrls: string[];
+}
+
+async function fetchHtmlMetadata(pageUrl: string): Promise<HtmlMetadata> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), RESOLVE_FETCH_TIMEOUT_MS);
+  const res = await fetch(pageUrl, {
+    signal: controller.signal,
+    headers: { "User-Agent": RESOLVE_USER_AGENT },
+    redirect: "follow",
+  });
+  clearTimeout(t);
+  if (!res.ok) throw new Error(`Page returned ${res.status}`);
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.includes("text/html")) throw new Error("URL is not an HTML page");
+  const html = await res.text();
+  const base = new URL(pageUrl);
+
+  const meta: HtmlMetadata = {
+    name: "",
+    description: "",
+    websiteUrl: pageUrl.replace(/\/$/, ""),
+    logoUrl: null,
+    streamUrls: [],
+  };
+
+  // og:title, og:description, og:image
+  const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["']/i) || html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:title["']/i);
+  if (ogTitle) meta.name = ogTitle[1].trim().replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+  const ogDesc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i) || html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:description["']/i);
+  if (ogDesc) meta.description = (ogDesc[1].trim().replace(/&amp;/g, "&") || "").slice(0, 500);
+  const ogImage = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["']/i) || html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:image["']/i);
+  if (ogImage) meta.logoUrl = new URL(ogImage[1].trim(), base).href;
+  if (!meta.name) {
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    if (titleMatch) meta.name = titleMatch[1].trim().replace(/&amp;/g, "&").slice(0, 200);
+  }
+
+  // Stream URLs: audio src, source src, and hrefs to .m3u, .pls, .mp3, .aac, /stream, /listen, /live
+  const streamPatterns = [
+    /<audio[^>]+src=["']([^"']+)["']/gi,
+    /<source[^>]+src=["']([^"']+)["']/gi,
+    /(?:href|src)=["']([^"']*\.(?:m3u8?|pls|mp3|aac|ogg)(?:\?[^"']*)?)["']/gi,
+    /(?:href|src)=["']([^"']*(?:\/stream|\/listen|\/live)[^"']*)["']/gi,
+  ];
+  const seen = new Set<string>();
+  for (const re of streamPatterns) {
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(html)) !== null) {
+      const raw = m[1].trim();
+      if (!raw || raw.startsWith("data:") || raw.startsWith("blob:")) continue;
+      try {
+        const absolute = new URL(raw, base).href;
+        if (absolute.startsWith("http://") || absolute.startsWith("https://")) seen.add(absolute);
+      } catch (_) {}
+    }
+  }
+  meta.streamUrls = [...seen];
+  return meta;
+}
+
 app.get("/api/stream-check", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
   const result = await checkStreamUrl(url);
@@ -302,28 +466,62 @@ app.get("/api/external-stations", async (_req, res) => {
   }
 });
 
+// Allowed admin emails for adding external stations (comma-separated in LAF_ADMIN_EMAILS env)
+const ADMIN_EMAILS = process.env.LAF_ADMIN_EMAILS
+  ? process.env.LAF_ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+  : ["ale@forma.city"];
+
 // Protected: Submit a radio station URL to be listed (for broadcasters who already have a stream elsewhere)
 app.post("/api/external-stations", authMiddleware, async (req, res) => {
   const user = (req as any).user;
-  const { name, description, websiteUrl, streamUrl, logoUrl } = req.body;
-  if (!streamUrl || typeof streamUrl !== "string" || !streamUrl.trim()) {
-    return res.status(400).json({ error: "Stream URL is required" });
+  const email = (user?.email ?? "").toString().toLowerCase();
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "Only authorized admins can add stations" });
   }
-  const url = streamUrl.trim();
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return res.status(400).json({ error: "Stream URL must be http or https" });
+  const { url: singleUrl, name, description, websiteUrl, streamUrl, logoUrl } = req.body;
+
+  let stationName: string;
+  let desc: string;
+  let website: string;
+  let url: string;
+  let logo: string | null;
+
+  if (singleUrl && typeof singleUrl === "string" && singleUrl.trim()) {
+    // Resolve website or stream URL: scrape page / Radio Browser, find live stream, then insert
+    try {
+      const resolved = await resolveStationUrl(singleUrl.trim());
+      stationName = resolved.name || "Radio station";
+      desc = resolved.description || "";
+      website = resolved.websiteUrl || singleUrl.trim();
+      url = resolved.streamUrl;
+      logo = resolved.logoUrl;
+    } catch (err: any) {
+      return res.status(400).json({
+        error: err?.message || "Could not resolve a live stream from this URL",
+      });
+    }
+  } else {
+    // Manual form: streamUrl required
+    if (!streamUrl || typeof streamUrl !== "string" || !streamUrl.trim()) {
+      return res.status(400).json({ error: "Stream URL or website URL is required" });
+    }
+    url = streamUrl.trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      return res.status(400).json({ error: "Stream URL must be http or https" });
+    }
+    const { ok, status } = await checkStreamUrl(url);
+    if (!ok) {
+      return res.status(400).json({
+        error: "Stream is not reachable or not live. Station was not added.",
+        status: status === "timeout" ? "timeout" : status === "error" ? "error" : "unavailable",
+      });
+    }
+    website = (websiteUrl && typeof websiteUrl === "string" ? websiteUrl.trim() : url) || url;
+    stationName = (name && typeof name === "string" ? name.trim() : null) || "User station";
+    desc = (description && typeof description === "string" ? description.trim() : null) || "";
+    logo = (logoUrl && typeof logoUrl === "string" ? logoUrl.trim() : null) || null;
   }
-  const { ok, status } = await checkStreamUrl(url);
-  if (!ok) {
-    return res.status(400).json({
-      error: "Stream is not reachable or not live. Station was not added.",
-      status: status === "timeout" ? "timeout" : status === "error" ? "error" : "unavailable",
-    });
-  }
-  const website = (websiteUrl && typeof websiteUrl === "string" ? websiteUrl.trim() : url) || url;
-  const stationName = (name && typeof name === "string" ? name.trim() : null) || "User station";
-  const desc = (description && typeof description === "string" ? description.trim() : null) || "";
-  const logo = (logoUrl && typeof logoUrl === "string" ? logoUrl.trim() : null) || null;
+
   try {
     const result = await pool.query(
       `INSERT INTO external_stations (name, description, website_url, stream_url, logo_url, submitted_by)
@@ -338,16 +536,20 @@ app.post("/api/external-stations", authMiddleware, async (req, res) => {
   }
 });
 
-// Protected: Delete an external station (only the submitter can delete)
+// Protected: Delete an external station (submitter can delete; admins can delete any)
 app.delete("/api/external-stations/:id", authMiddleware, async (req, res) => {
   const user = (req as any).user;
+  const email = (user?.email ?? "").toString().toLowerCase();
+  const isAdmin = ADMIN_EMAILS.includes(email);
   const id = req.params.id;
   if (!id) return res.status(400).json({ error: "Station id is required" });
   try {
-    const result = await pool.query(
-      `DELETE FROM external_stations WHERE id = $1 AND submitted_by = $2 RETURNING id`,
-      [id, user.id]
-    );
+    const result = isAdmin
+      ? await pool.query(`DELETE FROM external_stations WHERE id = $1 RETURNING id`, [id])
+      : await pool.query(
+          `DELETE FROM external_stations WHERE id = $1 AND submitted_by = $2 RETURNING id`,
+          [id, user.id]
+        );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Station not found or you are not the submitter" });
     }

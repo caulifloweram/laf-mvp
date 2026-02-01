@@ -502,6 +502,11 @@
       .auth-error { color: var(--status-offline); font-size: 12px; margin-top: 8px; }
       .auth-tab { padding: 6px 12px; border: 1px solid var(--border); background: var(--card-hover); cursor: pointer; font-weight: bold; }
       .auth-tab.active { background: var(--surface); }
+      .admin-stations-list { display: flex; flex-direction: column; gap: 8px; }
+      .admin-station-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; }
+      .admin-station-row .name { font-weight: bold; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-station-row .stream-url { font-size: 11px; color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-station-row button { flex-shrink: 0; }
 
       .hidden { display: none !important; }
 
@@ -637,31 +642,19 @@
 
       <div id="view-admin" class="view" role="main">
         <h1 class="page-header">Add radio station</h1>
-        <p style="margin-bottom: 16px; color: var(--text-muted);">Add a radio stream to the Live Stations feed. The stream must be reachable and currently live.</p>
-        <div class="page-content" style="max-width: 480px;">
+        <p style="margin-bottom: 16px; color: var(--text-muted);">Paste a radio website URL (e.g. https://www.subtleradio.com/) or a direct stream URL. We’ll find the live stream and add it to the feed.</p>
+        <div class="page-content" style="max-width: 520px;">
           <div class="form-group">
-            <label for="admin-stream-url">Stream URL <span style="font-weight: normal; color: var(--text-muted);">(required)</span></label>
-            <input type="url" id="admin-stream-url" placeholder="https://example.com/stream.mp3" required />
-            <small>Direct audio stream URL (e.g. MP3, AAC). Must be http or https.</small>
-          </div>
-          <div class="form-group">
-            <label for="admin-name">Station name</label>
-            <input type="text" id="admin-name" placeholder="My Radio" />
-          </div>
-          <div class="form-group">
-            <label for="admin-website">Website URL</label>
-            <input type="url" id="admin-website" placeholder="https://example.com" />
-          </div>
-          <div class="form-group">
-            <label for="admin-desc">Description</label>
-            <textarea id="admin-desc" placeholder="Short description (optional)" rows="2"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="admin-logo">Logo URL</label>
-            <input type="url" id="admin-logo" placeholder="https://example.com/logo.png" />
+            <label for="admin-url">Website or stream URL</label>
+            <input type="url" id="admin-url" placeholder="https://www.example.com or https://example.com/stream.mp3" />
           </div>
           <div id="admin-status" class="status info hidden" style="margin-bottom: 12px;"></div>
           <button type="button" id="admin-submit-btn">Add station</button>
+        </div>
+        <div class="page-content" style="max-width: 720px; margin-top: 32px;">
+          <h2 class="section-title">Added stations</h2>
+          <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 13px;">Stations you’ve added. Admins can delete any.</p>
+          <div id="admin-stations-list" class="admin-stations-list"></div>
         </div>
       </div>
     </main>

@@ -789,6 +789,13 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
 let token: string | null = localStorage.getItem("laf_token");
 let userEmail: string | null = localStorage.getItem("laf_user_email");
 
+/** Emails allowed to access the admin panel and add stations. */
+const ALLOWED_ADMIN_EMAILS = ["ale@forma.city"];
+
+function isAllowedAdmin(): boolean {
+  return !!(token && userEmail && ALLOWED_ADMIN_EMAILS.includes(userEmail.trim().toLowerCase()));
+}
+
 function updateTopBarAuth() {
   const signinLink = document.getElementById("client-signin-link")!;
   const userEmailEl = document.getElementById("client-user-email")!;
@@ -798,6 +805,7 @@ function updateTopBarAuth() {
   const logoutBtnDrawer = document.getElementById("client-logout-btn-drawer");
   const navAdmin = document.getElementById("nav-admin");
   const drawerAdmin = document.getElementById("drawer-admin");
+  const showAdmin = isAllowedAdmin();
   if (token && userEmail) {
     signinLink.classList.add("hidden");
     userEmailEl.textContent = userEmail;
@@ -806,8 +814,8 @@ function updateTopBarAuth() {
     if (signinLinkDrawer) signinLinkDrawer.classList.add("hidden");
     if (userEmailDrawer) { userEmailDrawer.textContent = userEmail; userEmailDrawer.classList.remove("hidden"); }
     if (logoutBtnDrawer) logoutBtnDrawer.classList.remove("hidden");
-    if (navAdmin) navAdmin.classList.remove("hidden");
-    if (drawerAdmin) drawerAdmin.classList.remove("hidden");
+    if (navAdmin) navAdmin.classList.toggle("hidden", !showAdmin);
+    if (drawerAdmin) drawerAdmin.classList.toggle("hidden", !showAdmin);
     chatSigninPrompt.classList.add("hidden");
     chatInputRow.classList.remove("hidden");
     if (favoritesFilterWrap) favoritesFilterWrap.classList.remove("hidden");
@@ -2543,8 +2551,14 @@ document.getElementById("client-signin-link-drawer")?.addEventListener("click", 
   authOverlay.classList.add("visible");
 });
 
+let onAdminViewShow: (() => void) | null = null;
+
 // Load runtime config (API/relay URLs from /config.json) then start
 function setActiveView(route: RouteId) {
+  if (route === "admin" && !isAllowedAdmin()) {
+    window.location.hash = "live";
+    return;
+  }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   const view = document.getElementById(`view-${route}`);
   if (view) view.classList.add("active");
@@ -2555,6 +2569,7 @@ function setActiveView(route: RouteId) {
   const drawerAdmin = document.getElementById("drawer-admin");
   if (drawerAdmin) drawerAdmin.classList.toggle("active", route === "admin");
   if (topbarSearchWrap) topbarSearchWrap.classList.toggle("hidden", route !== "live");
+  if (route === "admin") onAdminViewShow?.();
 }
 
 function updateThemeButtonText() {
@@ -2608,12 +2623,9 @@ function applyStationsSearch() {
 function initAdminForm() {
   const submitBtn = document.getElementById("admin-submit-btn");
   const statusEl = document.getElementById("admin-status");
-  const streamUrlInput = document.getElementById("admin-stream-url") as HTMLInputElement | null;
-  const nameInput = document.getElementById("admin-name") as HTMLInputElement | null;
-  const websiteInput = document.getElementById("admin-website") as HTMLInputElement | null;
-  const descInput = document.getElementById("admin-desc") as HTMLTextAreaElement | null;
-  const logoInput = document.getElementById("admin-logo") as HTMLInputElement | null;
-  if (!submitBtn || !statusEl || !streamUrlInput) return;
+  const urlInput = document.getElementById("admin-url") as HTMLInputElement | null;
+  const listEl = document.getElementById("admin-stations-list");
+  if (!submitBtn || !statusEl || !urlInput) return;
 
   function showAdminStatus(message: string, isError: boolean) {
     statusEl.textContent = message;
@@ -2622,10 +2634,65 @@ function initAdminForm() {
     statusEl.classList.toggle("status-info", !isError);
   }
 
+  async function loadAdminStationsList() {
+    if (!listEl) return;
+    try {
+      const res = await fetch(`${API_URL}/api/external-stations`);
+      const rows = (await res.json()) as Array<{ id: string; name: string; streamUrl: string; websiteUrl?: string }>;
+      listEl.innerHTML = "";
+      if (!rows?.length) {
+        listEl.innerHTML = "<p style='color: var(--text-muted); font-size: 13px;'>No added stations yet.</p>";
+        return;
+      }
+      for (const row of rows) {
+        const div = document.createElement("div");
+        div.className = "admin-station-row";
+        const info = document.createElement("div");
+        info.style.cssText = "min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;";
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = row.name || "Unnamed";
+        const streamUrl = document.createElement("span");
+        streamUrl.className = "stream-url";
+        streamUrl.textContent = row.streamUrl || "";
+        info.appendChild(name);
+        info.appendChild(streamUrl);
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", async () => {
+          if (!token) return;
+          if (!confirm(`Remove "${row.name || "this station"}" from the list?`)) return;
+          delBtn.setAttribute("disabled", "true");
+          try {
+            const delRes = await fetch(`${API_URL}/api/external-stations/${row.id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (delRes.ok) {
+              await loadAdminStationsList();
+              await loadExternalStations();
+            } else {
+              const data = (await delRes.json().catch(() => ({}))) as { error?: string };
+              alert(data.error || "Failed to delete");
+            }
+          } finally {
+            delBtn.removeAttribute("disabled");
+          }
+        });
+        div.appendChild(info);
+        div.appendChild(delBtn);
+        listEl.appendChild(div);
+      }
+    } catch (_) {
+      listEl.innerHTML = "<p style='color: var(--status-offline); font-size: 13px;'>Failed to load list.</p>";
+    }
+  }
+
   submitBtn.addEventListener("click", async () => {
-    const streamUrl = (streamUrlInput.value ?? "").trim();
-    if (!streamUrl) {
-      showAdminStatus("Stream URL is required.", true);
+    const url = (urlInput.value ?? "").trim();
+    if (!url) {
+      showAdminStatus("Enter a website or stream URL.", true);
       return;
     }
     if (!token) {
@@ -2633,7 +2700,7 @@ function initAdminForm() {
       return;
     }
     submitBtn.setAttribute("disabled", "true");
-    showAdminStatus("Adding station…", false);
+    showAdminStatus("Resolving URL and checking stream…", false);
     try {
       const res = await fetch(`${API_URL}/api/external-stations`, {
         method: "POST",
@@ -2641,21 +2708,12 @@ function initAdminForm() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          streamUrl,
-          name: (nameInput?.value ?? "").trim() || undefined,
-          websiteUrl: (websiteInput?.value ?? "").trim() || undefined,
-          description: (descInput?.value ?? "").trim() || undefined,
-          logoUrl: (logoInput?.value ?? "").trim() || undefined,
-        }),
+        body: JSON.stringify({ url }),
       });
       if (res.ok) {
         showAdminStatus("Station added. It will appear in Live when the stream is reachable.", false);
-        streamUrlInput.value = "";
-        if (nameInput) nameInput.value = "";
-        if (websiteInput) websiteInput.value = "";
-        if (descInput) descInput.value = "";
-        if (logoInput) logoInput.value = "";
+        urlInput.value = "";
+        await loadAdminStationsList();
         await loadExternalStations();
       } else {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -2667,6 +2725,8 @@ function initAdminForm() {
       submitBtn.removeAttribute("disabled");
     }
   });
+
+  onAdminViewShow = loadAdminStationsList;
 }
 
 loadRuntimeConfig().then(() => {
