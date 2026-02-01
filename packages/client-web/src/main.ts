@@ -1133,6 +1133,7 @@ async function loadExternalStations(): Promise<void> {
   }
   restoreStreamStatusCacheFromStorage();
   saveStationsSnapshot();
+  tryHideInitialLoadScreen();
   renderExternalStations();
   };
   const timeoutPromise = new Promise<void>((_, reject) =>
@@ -1142,6 +1143,7 @@ async function loadExternalStations(): Promise<void> {
     allExternalStations = getBuiltInStationsFlat().slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     restoreStreamStatusCacheFromStorage();
     saveStationsSnapshot();
+    tryHideInitialLoadScreen();
     renderExternalStations();
   });
 }
