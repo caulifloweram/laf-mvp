@@ -345,17 +345,27 @@ app.get("/api/stream-check", async (req, res) => {
   res.json(result);
 });
 
+// User-Agent that many stream servers (e.g. Radiojar/Icecast) expect; avoids early disconnect.
+const STREAM_PROXY_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0";
+
 // Stream proxy: pipe radio stream through API so client avoids CORS when loading Audio()
-// No timeout on the fetch so long-running streams (e.g. Radio AlHara) are not cut off after 30s.
+// No timeout on the fetch so long-running streams (e.g. Radio AlHara) are not cut off.
 app.get("/api/stream-proxy", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
     return res.status(400).send("Invalid url");
   }
+  // Disable response timeout so long-lived streams are not closed by the server.
+  req.socket?.setTimeout(0);
+  res.setTimeout(0);
   try {
     const response = await fetch(url, {
       method: "GET",
-      headers: { "Icy-MetaData": "1" },
+      headers: {
+        "Icy-MetaData": "1",
+        "User-Agent": STREAM_PROXY_USER_AGENT,
+        "Accept": "audio/*,*/*;q=0.9",
+      },
     });
     const ct = response.headers.get("content-type");
     if (ct) res.setHeader("Content-Type", ct);
