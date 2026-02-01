@@ -989,6 +989,10 @@ const EXTERNAL_STREAM_CONNECT_GRACE_MS = 6000;
 const EXTERNAL_STREAM_CONNECT_TIMEOUT_MS = 15000;
 /** Timeout id for the connect timeout; cleared when onplaying or onerror fires. */
 let externalStreamConnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+/** Number of reconnect attempts after stream error (e.g. upstream closes ~24s); reset on onplaying. */
+let externalStreamReconnectCount = 0;
+const EXTERNAL_STREAM_MAX_RECONNECTS = 10;
+const EXTERNAL_STREAM_RECONNECT_DELAY_MS = 1500;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
@@ -1493,6 +1497,12 @@ function selectExternalStation(station: ExternalStation) {
     playerCover.removeAttribute("src");
     playerCoverInitial.classList.add("hidden");
   }
+  externalStreamReconnectCount = 0;
+  attachExternalStreamAudio(station);
+}
+
+/** Create Audio for current external station, attach handlers, and play. Used for initial start and for reconnect. */
+function attachExternalStreamAudio(station: ExternalStation): void {
   if (externalStreamConnectTimeoutId != null) {
     clearTimeout(externalStreamConnectTimeoutId);
     externalStreamConnectTimeoutId = null;
@@ -1508,27 +1518,26 @@ function selectExternalStation(station: ExternalStation) {
   const playbackUrl = getExternalStreamPlaybackUrl(station.streamUrl);
   externalAudio = new Audio(playbackUrl);
   externalStreamConnectStartTime = Date.now();
-  btnPrevStation.classList.remove("hidden");
-  btnNextStation.classList.remove("hidden");
-  nowPlayingProgramWrap.classList.add("hidden");
-  nowPlayingProgram.textContent = "";
-  Promise.all([
-    fetchStationNowPlayingViaApi(station.websiteUrl),
-    fetchStreamMetadataViaApi(station.streamUrl),
-  ]).then(([scraped, icy]) => {
-    if (currentExternalStation?.streamUrl !== station.streamUrl) return;
-    const text = (scraped && scraped.trim()) || (icy && icy.trim()) || null;
-    if (text) {
-      nowPlayingProgram.textContent = text.length > 120 ? text.slice(0, 117) + "…" : text;
-      nowPlayingProgramWrap.classList.remove("hidden");
-    }
-  }).catch(() => {});
+  if (externalStreamReconnectCount === 0) {
+    Promise.all([
+      fetchStationNowPlayingViaApi(station.websiteUrl),
+      fetchStreamMetadataViaApi(station.streamUrl),
+    ]).then(([scraped, icy]) => {
+      if (currentExternalStation?.streamUrl !== station.streamUrl) return;
+      const text = (scraped && scraped.trim()) || (icy && icy.trim()) || null;
+      if (text) {
+        nowPlayingProgram.textContent = text.length > 120 ? text.slice(0, 117) + "…" : text;
+        nowPlayingProgramWrap.classList.remove("hidden");
+      }
+    }).catch(() => {});
+  }
 
   externalAudio.onplaying = () => {
     if (externalStreamConnectTimeoutId != null) {
       clearTimeout(externalStreamConnectTimeoutId);
       externalStreamConnectTimeoutId = null;
     }
+    externalStreamReconnectCount = 0;
     updatePlayerStatus("playing", "Listening to stream");
   };
   externalAudio.onerror = () => {
@@ -1540,8 +1549,17 @@ function selectExternalStation(station: ExternalStation) {
     if (elapsed < EXTERNAL_STREAM_CONNECT_GRACE_MS) {
       updatePlayerStatus("playing", "Connecting…");
     } else {
-      updatePlayerStatus("stopped", "Stream error");
-      if (currentExternalStation?.streamUrl) markStreamUnavailable(currentExternalStation.streamUrl);
+      if (externalStreamReconnectCount < EXTERNAL_STREAM_MAX_RECONNECTS && currentExternalStation?.streamUrl === station.streamUrl) {
+        externalStreamReconnectCount++;
+        updatePlayerStatus("playing", "Reconnecting…");
+        setTimeout(() => {
+          if (!currentExternalStation || currentExternalStation.streamUrl !== station.streamUrl) return;
+          attachExternalStreamAudio(station);
+        }, EXTERNAL_STREAM_RECONNECT_DELAY_MS);
+      } else {
+        updatePlayerStatus("stopped", "Stream error");
+        if (currentExternalStation?.streamUrl) markStreamUnavailable(currentExternalStation.streamUrl);
+      }
     }
   };
   externalAudio.onended = () => {
@@ -1564,7 +1582,7 @@ function selectExternalStation(station: ExternalStation) {
     updatePlayerStatus("stopped", "Could not start stream");
     markStreamUnavailable(station.streamUrl);
   });
-  updatePlayerStatus("playing", "Connecting…");
+  updatePlayerStatus("playing", externalStreamReconnectCount > 0 ? "Reconnecting…" : "Connecting…");
   showPauseButton();
   playerLiveBadge.classList.remove("hidden");
 }
