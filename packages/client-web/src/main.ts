@@ -4155,6 +4155,46 @@ function getContrastColors(bgHex: string): {
   };
 }
 
+/** Force player bar and expanded player to black background and white text via inline styles with !important. Ensures correct appearance on all devices regardless of CSS variables or media queries. */
+function applyPlayerBarDarkStyles() {
+  const footerEl = document.getElementById("footer-player");
+  const expandedEl = document.getElementById("player-expanded");
+  const setDark = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.style.setProperty("background", "#000", "important");
+    el.style.setProperty("background-color", "#000", "important");
+    el.style.setProperty("color", "#fff", "important");
+  };
+  setDark(footerEl);
+  setDark(expandedEl);
+  const minimizeBar = expandedEl?.querySelector(".player-expanded-minimize");
+  if (minimizeBar instanceof HTMLElement) setDark(minimizeBar);
+  footerEl?.querySelectorAll(".cover-wrap").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.style.setProperty("background", "#1a1a1a", "important");
+      node.style.setProperty("background-color", "#1a1a1a", "important");
+    }
+  });
+  expandedEl?.querySelectorAll(".player-expanded-cover-wrap").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.style.setProperty("background", "#1a1a1a", "important");
+      node.style.setProperty("background-color", "#1a1a1a", "important");
+    }
+  });
+  footerEl?.querySelectorAll(".player-expand-btn, .info .title, .info .desc, .controls button, .status-text").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.style.setProperty("color", "#fff", "important");
+      if ("borderColor" in node.style) node.style.setProperty("border-color", "#fff", "important");
+    }
+  });
+  expandedEl?.querySelectorAll(".player-expanded-title, .player-expanded-location, .player-expanded-desc, .player-expanded-link, .player-expanded-buffer-hint, .player-expanded-controls button, .player-expanded-minimize-btn").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.style.setProperty("color", "#fff", "important");
+      node.style.setProperty("border-color", "#fff", "important");
+    }
+  });
+}
+
 function applyBgColor(hex: string) {
   const root = document.documentElement.style;
   const normalized = hex.replace(/^\s+|\s+$/g, "").toLowerCase();
@@ -4187,6 +4227,7 @@ function applyBgColor(hex: string) {
   root.setProperty("--footer-text", "#fff");
   root.setProperty("--topbar-bg", "#000");
   root.setProperty("--topbar-text", "#fff");
+  applyPlayerBarDarkStyles();
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", normalized);
@@ -4691,6 +4732,7 @@ function isMobileViewport(): boolean {
 }
 
 loadRuntimeConfig().then(() => {
+  applyPlayerBarDarkStyles();
   applyBroadcastLink();
   updateTopBarAuth();
   updateFooterPlayerVisibility();
