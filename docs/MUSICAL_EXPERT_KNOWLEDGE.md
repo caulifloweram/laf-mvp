@@ -263,6 +263,11 @@ Below is a **curated subset** of the current built-in list with location, short 
 6. **Candidate stations feed (external list)**  
    - `docs/candidate-stations-feed.json` is a curated subset of an external list of 250 community/underground radios. It contains stations deemed relevant to LAF (community, college, eclectic, world, etc.) with no duplicates of the built-in list. **Project owner / continuation agent:** see `docs/CANDIDATE_STATIONS_INGEST.md` for how to push these to the website (append to `EXTERNAL_STATION_CONFIGS` or add via API).
 
+7. **Complete group/tags indexing**  
+   - **Every** built-in station is indexed to at least one **group** (and optional **tags**) via `packages/client-web/public/station-tags.json`. The client fetches `/station-tags.json` and uses it as fallback when a station config has no `group`/`tags`.  
+   - To **regenerate** the full index from `EXTERNAL_STATION_CONFIGS`: run `node scripts/build-station-tags.mjs`. The script parses `packages/client-web/src/main.ts`, derives group and tags from each station’s **name** and **description** (keyword-based), and writes one entry per stream URL (including all channel URLs) to `packages/client-web/public/station-tags.json`.  
+   - Groups used: `community`, `eclectic`, `electronic`, `experimental`, `arts`, `college`, `world`, `talk`, `other`. Each station gets exactly one group; tags can be multiple.
+
 ---
 
 ## 5. Summary

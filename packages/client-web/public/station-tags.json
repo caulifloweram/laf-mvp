@@ -1,55 +1,1635 @@
 {
-  "https://streaming.radio.co/s3699c5e49/listen": { "tags": ["electronic", "community", "eclectic"], "group": "community" },
-  "https://listen.radioking.com/radio/282820/stream/328621": { "tags": ["experimental", "electronic", "folk", "eclectic"], "group": "experimental" },
-  "https://radio80k.out.airtime.pro:8000/radio80k_a": { "tags": ["eclectic", "community"], "group": "community" },
-  "https://kexp.streamguys1.com/kexp160.aac": { "tags": ["rock", "indie", "electronic", "eclectic", "community"], "group": "eclectic" },
-  "https://kexp.streamguys1.com/kexp64.aac": { "tags": ["rock", "indie", "electronic", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/live-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/groovesalad-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/dronezone-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/spacestation-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/lush-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/defcon-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/covers-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "https://ice5.somafm.com/indiepop-128-mp3": { "tags": ["electronic", "ambient", "eclectic", "community"], "group": "eclectic" },
-  "http://stream0.wfmu.org/freeform-128k": { "tags": ["freeform", "eclectic", "community"], "group": "eclectic" },
-  "http://stream0.wfmu.org/rock-128k": { "tags": ["freeform", "eclectic", "community"], "group": "eclectic" },
-  "http://stream0.wfmu.org/drummer-128k": { "tags": ["freeform", "eclectic", "community"], "group": "eclectic" },
-  "http://stream0.wfmu.org/sheena-128k": { "tags": ["freeform", "eclectic", "community"], "group": "eclectic" },
-  "https://stream-relay-geo.ntslive.net/stream": { "tags": ["electronic", "eclectic", "community"], "group": "eclectic" },
-  "https://stream-relay-geo.ntslive.net/stream2": { "tags": ["electronic", "eclectic", "community"], "group": "eclectic" },
-  "https://stream.lyl.live/live": { "tags": ["electronic", "eclectic", "community"], "group": "community" },
-  "https://stream.noodsradio.com/stream": { "tags": ["electronic", "dub", "experimental"], "group": "electronic" },
-  "https://veneno.out.airtime.pro/veneno_a": { "tags": ["electronic", "house", "techno", "world"], "group": "electronic" },
-  "https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b": { "tags": ["electronic", "eclectic", "community"], "group": "community" },
-  "http://stream.kchungradio.org:8000/stream": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://stream.tikka.live/live": { "tags": ["eclectic"], "group": "other" },
-  "https://wobc.stream/stream": { "tags": ["college", "freeform"], "group": "college" },
-  "https://stream.particle.fm/live": { "tags": ["electronic", "community", "eclectic"], "group": "community" },
-  "https://stream.hopestradio.community/live": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://netilradio.out.airtime.pro/netilradio_b": { "tags": ["electronic", "community"], "group": "community" },
-  "https://tsubakifm.out.airtime.pro/tsubakifm_a": { "tags": ["jazz", "soul", "electronic", "disco", "world"], "group": "eclectic" },
-  "https://radionopal.out.airtime.pro/radionopal_a": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://radio.goodtimesbadtimes.club/radio/8000/radio.mp3": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://radio.robidacollective.com/stream/programme": { "tags": ["ambient", "experimental", "community"], "group": "experimental" },
-  "https://yamakan.out.airtime.pro/yamakan_a": { "tags": ["community", "world"], "group": "community" },
-  "http://streams.movemedia.eu/centraal": { "tags": ["eclectic", "community", "arts"], "group": "community" },
-  "https://stream.radiocult.fm/area-3000": { "tags": ["electronic", "community"], "group": "electronic" },
-  "https://cashmereradio.out.airtime.pro/cashmereradio_b": { "tags": ["experimental", "electronic", "ambient"], "group": "experimental" },
-  "https://stream.radiocampus.be/stream": { "tags": ["jazz", "rock", "electronic", "college"], "group": "college" },
-  "https://blackrhinoradio.out.airtime.pro/blackrhinoradio_a": { "tags": ["electronic", "dub", "jazz", "hiphop"], "group": "electronic" },
-  "https://stream4.rcast.net/72355/": { "tags": ["rock", "electronic", "indie"], "group": "eclectic" },
-  "https://dublab.out.airtime.pro/dublab_a": { "tags": ["experimental", "electronic", "jazz", "hiphop", "dub"], "group": "eclectic" },
-  "https://rukh.out.airtime.pro/rukh_a": { "tags": ["experimental", "community"], "group": "experimental" },
-  "https://live.helsinki.at:8088/live160.mp3": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://stream.hkcr.live/stream": { "tags": ["community", "eclectic"], "group": "community" },
-  "https://n02.radiojar.com/78cxy6wkxtzuv": { "tags": ["community", "world", "experimental"], "group": "community" },
-  "https://thelakeradio.out.airtime.pro/thelakeradio_a": { "tags": ["experimental", "arts"], "group": "experimental" },
-  "http://anonradio.net:8000/anonradio": { "tags": ["experimental", "community", "eclectic"], "group": "experimental" },
-  "http://213.133.109.221:8205/dfm_1": { "tags": ["experimental", "electronic"], "group": "experimental" },
-  "https://s3.radio.co/sb713b671e/listen": { "tags": ["electronic", "community", "eclectic"], "group": "community" },
-  "http://104.63.241.231:8000/listen": { "tags": ["community", "eclectic"], "group": "community" },
-  "http://stream.resonance.fm:8000/resonance": { "tags": ["arts", "experimental", "community"], "group": "arts" },
-  "http://stream.resonance.fm:8000/resonance-extra": { "tags": ["arts", "experimental", "community"], "group": "arts" },
-  "https://flujos.mazorca.org/violetaradio.mp3": { "tags": ["feminist", "community"], "group": "community" }
+  "_comment": "Map streamUrl -> { tags, group }. Every built-in station indexed. See scripts/build-station-tags.mjs.",
+  "https://streaming.radio.co/s3699c5e49/listen": {
+    "tags": [
+      "world",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://listen.radioking.com/radio/282820/stream/328621": {
+    "tags": [
+      "electronic",
+      "experimental",
+      "folk",
+      "world"
+    ],
+    "group": "experimental"
+  },
+  "https://radio80k.out.airtime.pro:8000/radio80k_a": {
+    "tags": [
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://kexp.streamguys1.com/kexp160.aac": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://kexp.streamguys1.com/kexp64.aac": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/live-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/groovesalad-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/dronezone-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/spacestation-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/lush-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/defcon-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/covers-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://ice5.somafm.com/indiepop-128-mp3": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://stream0.wfmu.org/freeform-128k": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream0.wfmu.org/rock-128k": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream0.wfmu.org/drummer-128k": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream0.wfmu.org/sheena-128k": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://stream-relay-geo.ntslive.net/stream": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://stream-relay-geo.ntslive.net/stream2": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://stream.lyl.live/live": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://stream.noodsradio.com/stream": {
+    "tags": [
+      "electronic",
+      "dub",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://veneno.out.airtime.pro/veneno_a": {
+    "tags": [
+      "electronic",
+      "house",
+      "techno"
+    ],
+    "group": "electronic"
+  },
+  "https://kioskradiobxl.out.airtime.pro/kioskradiobxl_b": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream.kchungradio.org:8000/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://stream.tikka.live/live": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://wobc.stream/stream": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://stream.particle.fm/live": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://stream.hopestradio.community/live": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://netilradio.out.airtime.pro/netilradio_b": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://tsubakifm.out.airtime.pro/tsubakifm_a": {
+    "tags": [
+      "electronic",
+      "jazz",
+      "soul",
+      "world",
+      "disco"
+    ],
+    "group": "electronic"
+  },
+  "https://radionopal.out.airtime.pro/radionopal_a": {
+    "tags": [
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://radio.goodtimesbadtimes.club/radio/8000/radio.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://radio.robidacollective.com/stream/programme": {
+    "tags": [
+      "ambient",
+      "talk",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "https://yamakan.out.airtime.pro/yamakan_a": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://streams.movemedia.eu/centraal": {
+    "tags": [
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://stream.radiocult.fm/area-3000": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://cashmereradio.out.airtime.pro/cashmereradio_b": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://stream.radiocampus.be/stream": {
+    "tags": [
+      "electronic",
+      "jazz",
+      "hiphop",
+      "rock",
+      "folk",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://blackrhinoradio.out.airtime.pro/blackrhinoradio_a": {
+    "tags": [
+      "electronic",
+      "techno",
+      "dub",
+      "jazz",
+      "hiphop"
+    ],
+    "group": "electronic"
+  },
+  "https://stream4.rcast.net/72355/": {
+    "tags": [
+      "electronic",
+      "rock",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://dublab.out.airtime.pro/dublab_a": {
+    "tags": [
+      "electronic",
+      "dub",
+      "experimental",
+      "jazz",
+      "soul",
+      "hiphop",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "https://rukh.out.airtime.pro/rukh_a": {
+    "tags": [
+      "experimental",
+      "community"
+    ],
+    "group": "experimental"
+  },
+  "https://live.helsinki.at:8088/live160.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://stream.hkcr.live/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://n02.radiojar.com/78cxy6wkxtzuv": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://thelakeradio.out.airtime.pro/thelakeradio_a": {
+    "tags": [
+      "experimental",
+      "community"
+    ],
+    "group": "experimental"
+  },
+  "http://anonradio.net:8000/anonradio": {
+    "tags": [
+      "experimental",
+      "eclectic",
+      "community"
+    ],
+    "group": "experimental"
+  },
+  "http://213.133.109.221:8205/dfm_1": {
+    "tags": [
+      "electronic",
+      "experimental",
+      "arts",
+      "underground"
+    ],
+    "group": "experimental"
+  },
+  "https://s3.radio.co/sb713b671e/listen": {
+    "tags": [
+      "community",
+      "underground"
+    ],
+    "group": "community"
+  },
+  "https://dejavufm.radioca.st/": {
+    "tags": [
+      "eclectic",
+      "underground"
+    ],
+    "group": "eclectic"
+  },
+  "https://uk2.internet-radio.com/proxy/divinestream?mp=/stream": {
+    "tags": [
+      "electronic",
+      "underground"
+    ],
+    "group": "electronic"
+  },
+  "https://s2.radio.co/s7649837db/listen": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://104.63.241.231:8000/listen": {
+    "tags": [
+      "eclectic",
+      "community",
+      "underground"
+    ],
+    "group": "community"
+  },
+  "https://ice66.securenetsystems.net/ABUSIA": {
+    "tags": [
+      "house",
+      "techno",
+      "jazz",
+      "soul",
+      "disco",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "http://streamplus52.leonex.de:10894/": {
+    "tags": [
+      "punk",
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://radiostream.neotel.mk/kanal103": {
+    "tags": [
+      "electronic",
+      "freeform",
+      "rock",
+      "dance"
+    ],
+    "group": "electronic"
+  },
+  "https://radioadmin.kwsx.online/listen/kwsx/radio.mp3": {
+    "tags": [
+      "techno",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://lumbungradio.stationofcommons.org:8000/128.mp3": {
+    "tags": [
+      "electronic",
+      "community",
+      "arts"
+    ],
+    "group": "arts"
+  },
+  "https://movementathens.out.airtime.pro/movementathens_a": {
+    "tags": [
+      "ambient",
+      "experimental",
+      "jazz",
+      "hiphop",
+      "world",
+      "underground"
+    ],
+    "group": "experimental"
+  },
+  "http://uk5.internet-radio.com:8055/stream": {
+    "tags": [
+      "talk",
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream4.nadaje.com:13332/offradiokrakow": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://stream.laut.fm/playground": {
+    "tags": [
+      "underground",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "http://live.canstream.co.uk:8000/10radio.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream.laut.fm/ad_infinitum": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental",
+      "metal"
+    ],
+    "group": "experimental"
+  },
+  "https://radio.basspistol.com/radio.mp3": {
+    "tags": [
+      "electronic",
+      "experimental",
+      "hiphop",
+      "rock",
+      "dance"
+    ],
+    "group": "experimental"
+  },
+  "http://bauhaus.fm:8000/_a": {
+    "tags": [
+      "experimental",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://streams.greenhost.nl:8080/concertzenderlive": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://stream.zeno.fm/es9h0crh74zuv": {
+    "tags": [
+      "ambient",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://dwrstream.eu/": {
+    "tags": [
+      "experimental",
+      "punk"
+    ],
+    "group": "experimental"
+  },
+  "http://server.badradio.biz:8000/stream": {
+    "tags": [
+      "experimental",
+      "eclectic"
+    ],
+    "group": "experimental"
+  },
+  "http://listen.mrg.fm:8888/stream": {
+    "tags": [
+      "ambient",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://flujos.mazorca.org/violetaradio.mp3": {
+    "tags": [
+      "community",
+      "feminist"
+    ],
+    "group": "community"
+  },
+  "http://stream.resonance.fm:8000/resonance": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream.resonance.fm:8000/resonance-extra": {
+    "tags": [
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://giss.tv:666/diffusionfm919.mp3": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://streaming.bitexpress.de:8010/heaac": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://akademieradio.de/play": {
+    "tags": [
+      "experimental",
+      "arts"
+    ],
+    "group": "experimental"
+  },
+  "https://stream.zeno.fm/pjktyby8dn5tv": {
+    "tags": [
+      "electronic",
+      "house",
+      "underground"
+    ],
+    "group": "electronic"
+  },
+  "https://stream.zeno.fm/cpnv07rjvp0vv": {
+    "tags": [
+      "electronic",
+      "house",
+      "underground"
+    ],
+    "group": "electronic"
+  },
+  "http://stream.laut.fm/ultradarkradio": {
+    "tags": [
+      "eclectic",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "http://69.162.73.34:8124/;stream.nsv": {
+    "tags": [
+      "freeform",
+      "rock",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://stream.zeno.fm/rp1swb5pgzzuv": {
+    "tags": [
+      "jazz",
+      "soul",
+      "rock",
+      "metal",
+      "punk",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://s1.slotex.pl:7604/": {
+    "tags": [
+      "punk",
+      "underground",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://eteris.startfm.lt/startfm.mp3": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://nr14.newradio.it:8707/stream": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream.laut.fm/80er-zone": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://79.111.14.76:8000/undergroundrap": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://149.255.60.195:8085/stream": {
+    "tags": [
+      "house",
+      "underground",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "http://stream.laut.fm/snakedance": {
+    "tags": [
+      "electronic",
+      "dance"
+    ],
+    "group": "electronic"
+  },
+  "https://nl4.mystreaming.net/er/rem/icecast.audio": {
+    "tags": [
+      "rock",
+      "college",
+      "underground"
+    ],
+    "group": "college"
+  },
+  "https://listen.radioking.com/radio/263218/stream/308365": {
+    "tags": [
+      "metal",
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream2.soundflux.eu:8440/stream": {
+    "tags": [
+      "house",
+      "techno",
+      "dance",
+      "underground",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "http://radiosputnik.nl:8002/flac": {
+    "tags": [
+      "electronic",
+      "house",
+      "techno",
+      "underground"
+    ],
+    "group": "electronic"
+  },
+  "https://radios.rtbf.be/wr-c21-underground-128.mp3": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://stream.radiojar.com/65s5r7weh24tv.mp3": {
+    "tags": [
+      "electronic",
+      "hiphop",
+      "dance",
+      "underground"
+    ],
+    "group": "electronic"
+  },
+  "https://flouka.out.airtime.pro/flouka_a": {
+    "tags": [
+      "underground",
+      "world"
+    ],
+    "group": "world"
+  },
+  "http://icecast2.play.cz/Underground128.mp3": {
+    "tags": [
+      "underground",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "https://stream.laut.fm/rundfunkautist": {
+    "tags": [
+      "experimental",
+      "soul",
+      "eclectic",
+      "underground"
+    ],
+    "group": "experimental"
+  },
+  "http://gdsfm.out.airtime.pro:8000/gdsfm_a": {
+    "tags": [
+      "house",
+      "experimental",
+      "jazz",
+      "hiphop",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "https://nr9.newradio.it/proxy/ebaruffa?mp=/stream": {
+    "tags": [
+      "ambient",
+      "experimental",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "http://uk4-vn.webcast-server.net:9270/": {
+    "tags": [
+      "ambient",
+      "experimental",
+      "classical"
+    ],
+    "group": "experimental"
+  },
+  "https://stream.laut.fm/ebm": {
+    "tags": [
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "https://whsh4u-clients.com:18323/proxy/ndhfnbqx?mp=/stream": {
+    "tags": [
+      "experimental",
+      "jazz",
+      "world"
+    ],
+    "group": "experimental"
+  },
+  "http://s.streampunk.cc/wombat.ogg": {
+    "tags": [
+      "experimental",
+      "soul",
+      "punk"
+    ],
+    "group": "experimental"
+  },
+  "http://79.111.119.111:8004/experimentalmusic": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://nabamp0.latvijasradio.lv:8016/;": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.laut.fm/path_through_the_forest": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.skylab-radio.com:8000/live": {
+    "tags": [
+      "ambient",
+      "house",
+      "techno",
+      "experimental",
+      "hiphop",
+      "rock",
+      "eclectic"
+    ],
+    "group": "experimental"
+  },
+  "https://s4.radio.co/s421105570/listen": {
+    "tags": [
+      "experimental",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "http://213.141.131.10:8000/experimentaltechno": {
+    "tags": [
+      "techno",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://broadcast.modular-station.com/radio/8000/radio.aac": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.laut.fm/experimentalgems": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental",
+      "jazz"
+    ],
+    "group": "experimental"
+  },
+  "http://streams.movemedia.eu:8530/": {
+    "tags": [
+      "experimental",
+      "community"
+    ],
+    "group": "experimental"
+  },
+  "https://radiopunctum.cz:8001/radio": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://radio.aporee.org:8000/aporee": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://audio.wavefarm.org:8000/transmissionarts.mp3": {
+    "tags": [
+      "experimental",
+      "community"
+    ],
+    "group": "experimental"
+  },
+  "https://systrum.net:8443/SSR1": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.p-node.org/dab.mp3": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://uk3.internet-radio.com:8113/stream": {
+    "tags": [
+      "experimental",
+      "rock",
+      "world",
+      "punk"
+    ],
+    "group": "experimental"
+  },
+  "https://orf-live.ors-shoutcast.at/campus-q2a": {
+    "tags": [
+      "experimental",
+      "world",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://stream.yammat.fm/radio/8000/yammat.mp3": {
+    "tags": [
+      "experimental",
+      "soul",
+      "disco",
+      "dance"
+    ],
+    "group": "experimental"
+  },
+  "https://pantano.ovh:8444/pantano": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.laut.fm/befreite-musik": {
+    "tags": [
+      "electronic",
+      "experimental",
+      "jazz"
+    ],
+    "group": "experimental"
+  },
+  "http://213.141.131.10:8004/avantrock": {
+    "tags": [
+      "experimental",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "https://radio.syg.ma/audio": {
+    "tags": [
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://station.waveradio.org/witch": {
+    "tags": [
+      "house",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://s22.myradiostream.com/15152/listen.mp3": {
+    "tags": [
+      "experimental",
+      "freeform",
+      "metal",
+      "punk"
+    ],
+    "group": "experimental"
+  },
+  "http://stream.tilos.hu/tilos": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://live.kboo.fm:8000/high": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://wprb.streamguys1.com/live": {
+    "tags": [
+      "freeform",
+      "rock",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://listen.wxnafm.org:8000/stream": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://www.ednixon.com:8120/stream": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://listen.freeformportland.org:8000/stream": {
+    "tags": [
+      "freeform",
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://uncertain.fm/streams/direct": {
+    "tags": [
+      "freeform",
+      "rock",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://radio8k.out.airtime.pro:8000/radio8k_a": {
+    "tags": [
+      "freeform",
+      "rock",
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://theglobalvoice.info:8000/broadband": {
+    "tags": [
+      "freeform",
+      "talk",
+      "world"
+    ],
+    "group": "world"
+  },
+  "http://radioboise-ice.streamguys1.com/live": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://floyd.wcbn.org:8000/wcbn-hi.mp3": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://rblmedia.out.airtime.pro/rblmedia_a": {
+    "tags": [
+      "freeform",
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://new-webstream.wmfo.org/;": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://ais-edge105-live365-dal02.cdnstream.com/a02627?filetype=.mp3&_=1": {
+    "tags": [
+      "house",
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://kwvaradio.uoregon.edu:8000/;": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://stream.wusb.stonybrook.edu:8090/;.mp3": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://perseus.shoutca.st:9679/stream": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://janus.cdnstream.com:5140/live": {
+    "tags": [
+      "freeform",
+      "rock",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://ice3.securenetsystems.net/WHCM": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://streaming.wayofm.org:8000/wayo-192": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://streaming.live365.com/a18444": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://138.197.2.189:8000/kuzu.mp3": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://s30.myradiostream.com:31904/listen.m4a": {
+    "tags": [
+      "freeform",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://crosstown.streamguys1.com:80/live": {
+    "tags": [
+      "freeform",
+      "arts"
+    ],
+    "group": "arts"
+  },
+  "http://barix.streamguys.net/barix_hi": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://eightball.out.airtime.pro/eightball_a": {
+    "tags": [
+      "freeform",
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://radio.goodtimesbadtimes.club/radio/8020/radio.mp3": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://streaming.live365.com/a46702": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://streaming.radio.co/s8a8d7b49a/listen": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://radiolaurier.out.airtime.pro/radiolaurier_a": {
+    "tags": [
+      "freeform",
+      "rock",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://audio-mp3.ibiblio.org/wxyc.mp3": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://wowd.broadcasttool.stream/stream": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://stream.wrct.org/wrct-hi.mp3": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "http://s2.radio.co/sec5fa6199/listen": {
+    "tags": [
+      "experimental",
+      "eclectic",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://listen.mrg.fm:8070/stream": {
+    "tags": [
+      "ambient",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://streamer.radio.co/sd6131729c/listen": {
+    "tags": [
+      "ambient",
+      "electronic",
+      "experimental"
+    ],
+    "group": "experimental"
+  },
+  "https://stream.radiojar.com/nvvyes7gud5tv": {
+    "tags": [
+      "ambient",
+      "experimental",
+      "rock"
+    ],
+    "group": "experimental"
+  },
+  "https://streaming.radio.co/s0d090ee43/listen": {
+    "tags": [
+      "electronic",
+      "experimental",
+      "disco",
+      "dance"
+    ],
+    "group": "experimental"
+  },
+  "http://war.str3am.com:8310/live": {
+    "tags": [
+      "freeform",
+      "jazz",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://aurora.shoutca.st/radio/8200/radio.mp3?": {
+    "tags": [
+      "freeform",
+      "eclectic"
+    ],
+    "group": "eclectic"
+  },
+  "https://wcwm.broadcasttool.stream/wcwm-onair": {
+    "tags": [
+      "freeform",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://streams.kpfa.org:8443/kpfa": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://wowza.iwi.radio/icecast-to-hls/ngrp:NgatiPorou.stream/playlist.m3u8": {
+    "tags": [
+      "community",
+      "world"
+    ],
+    "group": "world"
+  },
+  "https://live.fresh927.com.au/freshaac": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://streaming.radiouniversidad.pr:8062/;": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://s1.voscast.com:9906/;stream1523840050300/1": {
+    "tags": [
+      "community",
+      "talk"
+    ],
+    "group": "community"
+  },
+  "http://streaming.radiobolivarianavirtual.com:7630/": {
+    "tags": [
+      "jazz",
+      "classical",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://kruljo.radiostudent.si:8000/hiq": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://stream.radiosar.pl/hdmain.mp3": {
+    "tags": [
+      "jazz",
+      "metal",
+      "eclectic"
+    ],
+    "group": "other"
+  },
+  "http://engine.wuvt.vt.edu:8000/wuvt.ogg": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://stream.radioblau.de/": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://streamer.fbiradio.com/stream": {
+    "tags": [
+      "rock",
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://icecast.infini.fr:8000/mutine": {
+    "tags": [
+      "hiphop",
+      "punk",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://wncu.streamguys1.com/live": {
+    "tags": [
+      "jazz",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://tv.radiohosting.online:9484/stream": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://stream.whrb.org:8000/whrb-mp3": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://us1.internet-radio.com:8155/live": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://realtime.rrr.org.au/p1l": {
+    "tags": [
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://s.streampunk.cc/almaina.ogg": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://radiocavolo.org/stream": {
+    "tags": [
+      "electronic",
+      "rock",
+      "eclectic",
+      "community"
+    ],
+    "group": "electronic"
+  },
+  "https://streaming.fabrik.fm/izwi/echocast/audio/index.m3u8": {
+    "tags": [
+      "folk",
+      "community",
+      "world"
+    ],
+    "group": "world"
+  },
+  "http://listen.xray.fm:8000/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://subtle.out.airtime.pro/subtle_a": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream.compassfm.org.nz:8000/Compass_FM_104.9": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://beryl.streamguys.com:5010/live": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://oroko-radio.radiocult.fm/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream.vocalo.org/vocalo128": {
+    "tags": [
+      "world",
+      "community"
+    ],
+    "group": "world"
+  },
+  "http://ecoutez.chyz.ca:8000/;": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://streaming.fueralle.org:8000/coloradio_160.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://live.citr.ca:8000/live.mp3": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://sounds.threedradio.com:8000/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://tektite.streamguys1.com:5140/wwnojazz-mp3": {
+    "tags": [
+      "jazz",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://vdl.stream-lat.org:8000/voixdulat_mp3": {
+    "tags": [
+      "eclectic",
+      "talk"
+    ],
+    "group": "talk"
+  },
+  "https://streams.95bfm.com/stream95": {
+    "tags": [
+      "eclectic",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://fmsub.radioca.st/stream?type=http&nocache=140": {
+    "tags": [
+      "dub",
+      "electronic"
+    ],
+    "group": "electronic"
+  },
+  "https://streamer.radio.co/s0628bdd53/listen": {
+    "tags": [
+      "electronic",
+      "hiphop",
+      "rock",
+      "community"
+    ],
+    "group": "electronic"
+  },
+  "http://cjsr.streamon.fm:8000/CJSR-24k.aac": {
+    "tags": [
+      "eclectic",
+      "community",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://amber.streamguys.com:4020/live": {
+    "tags": [
+      "jazz",
+      "hiphop",
+      "college"
+    ],
+    "group": "college"
+  },
+  "https://stream2.statsradio.com:8150/stream": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://ice8.securenetsystems.net/KAZI": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream1.datenkollektiv.net/fsk.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://direct.rfpp.net/fpp.mp3": {
+    "tags": [
+      "talk"
+    ],
+    "group": "talk"
+  },
+  "http://peace.str3am.com:6030/;.mp3": {
+    "tags": [
+      "eclectic",
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://streams.wkdu.org/listen.mp3": {
+    "tags": [
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://pacificaservice.org:8000/kepw_128": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://iheart.4zzz.org.au/4zzz": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://streaming.koop.org/stream.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://stream.radio-unicc.de:8000/unicc_hq.mp3": {
+    "tags": [
+      "rock",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://lpm.streamguys1.com/wfpk-web": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://live.sheffieldlive.org:8000/shefflive.mp3": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://radio123-gecko.radioca.st/radioactivefm": {
+    "tags": [
+      "rock",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://ice.rosebud-media.de:8000/88vier": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "http://trentradio.ca:8800/hi-fi": {
+    "tags": [
+      "community",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://rosetta.shoutca.st:8883/stream": {
+    "tags": [
+      "eclectic",
+      "community",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://205.134.192.90:8930/;.mp3": {
+    "tags": [
+      "community",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://cfuv.streamon.fm:8000/CFUV-64k.aac": {
+    "tags": [
+      "community",
+      "college"
+    ],
+    "group": "college"
+  },
+  "http://playerservices.streamtheworld.com/api/livestream-redirect/3PBS_FMAAC.aac": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://live.rtrfm.com.au/stream1": {
+    "tags": [
+      "community"
+    ],
+    "group": "community"
+  },
+  "https://wowza.iwi.radio/icecast-to-hls/ngrp:Kahungunu.stream/playlist.m3u8": {
+    "tags": [
+      "community",
+      "world"
+    ],
+    "group": "world"
+  }
 }
