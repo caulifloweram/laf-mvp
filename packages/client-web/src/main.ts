@@ -3172,7 +3172,11 @@ function initColorPicker() {
   }
 
   const stored = localStorage.getItem("laf_bg_color");
-  if (stored) applyBgColor(stored);
+  if (stored) {
+    applyBgColor(stored);
+  } else {
+    applyBgColor("#f1c40f"); // default: yellow
+  }
 
   const pickerDropdown = document.getElementById("color-picker-dropdown");
   const btn = document.getElementById("color-picker-btn");
