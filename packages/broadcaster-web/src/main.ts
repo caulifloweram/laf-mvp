@@ -60,11 +60,9 @@ function applyClientAppUrls() {
     if (el && "href" in el) (el as HTMLAnchorElement).href = href;
   };
   set("nav-logo", home);
-  set("nav-live-stations", home);
   set("nav-about", about);
   set("nav-broadcast", broadcastHref);
   set("drawer-logo", home);
-  set("drawer-live-stations", home);
   set("drawer-about", about);
   set("drawer-broadcast", broadcastHref);
   set("footer-live-stations", home);
