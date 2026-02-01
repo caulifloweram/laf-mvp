@@ -87,6 +87,10 @@ interface ExternalStation {
   lat?: number;
   /** Longitude for world map mode (e.g. 13.405). */
   lng?: number;
+  /** Music/style tags for filtering (e.g. electronic, community, freeform). See docs/MUSICAL_EXPERT_KNOWLEDGE.md. */
+  tags?: string[];
+  /** Group for sorting (e.g. community, eclectic, electronic). */
+  group?: string;
 }
 
 /** Station config: single stream or multiple channels (e.g. SomaFM). */
@@ -104,6 +108,10 @@ interface ExternalStationConfig {
   lng?: number;
   /** If set, one card per channel; otherwise one card using streamUrl. */
   channels?: Array<{ name: string; streamUrl: string }>;
+  /** Music/style tags for filtering. See docs/MUSICAL_EXPERT_KNOWLEDGE.md. */
+  tags?: string[];
+  /** Group for sorting (community, eclectic, electronic, etc.). */
+  group?: string;
 }
 
 const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
@@ -835,6 +843,8 @@ function getBuiltInStationsFlat(): ExternalStation[] {
           location: s.location,
           lat: s.lat,
           lng: s.lng,
+          tags: s.tags,
+          group: s.group,
         });
       }
     } else {
@@ -847,6 +857,8 @@ function getBuiltInStationsFlat(): ExternalStation[] {
         location: s.location,
         lat: s.lat,
         lng: s.lng,
+        tags: s.tags,
+        group: s.group,
       });
     }
   }
