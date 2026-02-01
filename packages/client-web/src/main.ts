@@ -3161,15 +3161,18 @@ function applyBgColor(hex: string) {
   });
   const customInput = document.getElementById("color-picker-custom-input") as HTMLInputElement | null;
   if (customInput) customInput.value = hex;
+  const drawerCustomInput = document.getElementById("drawer-color-custom-input") as HTMLInputElement | null;
+  if (drawerCustomInput) drawerCustomInput.value = hex;
 }
 
 function initColorPicker() {
+  const swatchHtml = PRESET_BG_COLORS.map(
+    (hex) => `<button type="button" class="color-swatch" data-color="${hex}" style="background:${hex};" aria-label="Background ${hex}" role="menuitem"></button>`
+  ).join("");
   const swatchesEl = document.getElementById("color-picker-swatches");
-  if (swatchesEl) {
-    swatchesEl.innerHTML = PRESET_BG_COLORS.map(
-      (hex) => `<button type="button" class="color-swatch" data-color="${hex}" style="background:${hex};" aria-label="Background ${hex}" role="menuitem"></button>`
-    ).join("");
-  }
+  if (swatchesEl) swatchesEl.innerHTML = swatchHtml;
+  const drawerSwatchesEl = document.getElementById("drawer-color-swatches");
+  if (drawerSwatchesEl) drawerSwatchesEl.innerHTML = swatchHtml;
 
   const stored = localStorage.getItem("laf_bg_color");
   if (stored) {
@@ -3182,6 +3185,7 @@ function initColorPicker() {
   const btn = document.getElementById("color-picker-btn");
   const btnDrawer = document.getElementById("color-picker-btn-drawer");
   const customInput = document.getElementById("color-picker-custom-input") as HTMLInputElement | null;
+  const drawerCustomInput = document.getElementById("drawer-color-custom-input") as HTMLInputElement | null;
 
   const closePicker = () => {
     pickerDropdown?.classList.remove("open");
@@ -3199,10 +3203,13 @@ function initColorPicker() {
     const open = pickerDropdown?.classList.toggle("open");
     btn?.setAttribute("aria-expanded", String(!!open));
   });
-  btnDrawer?.addEventListener("click", () => {
-    pickerDropdown?.classList.add("open");
-    btn?.setAttribute("aria-expanded", "true");
-    closeMobileNav();
+  btnDrawer?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (window.matchMedia("(min-width: 769px)").matches) {
+      pickerDropdown?.classList.add("open");
+      btn?.setAttribute("aria-expanded", "true");
+      closeMobileNav();
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -3225,8 +3232,20 @@ function initColorPicker() {
     });
   });
 
+  drawerSwatchesEl?.querySelectorAll("[data-color]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const hex = (el as HTMLElement).getAttribute("data-color");
+      if (hex) chooseColor(hex);
+    });
+  });
+
   customInput?.addEventListener("input", () => {
     const hex = customInput.value;
+    if (hex) chooseColor(hex);
+  });
+
+  drawerCustomInput?.addEventListener("input", () => {
+    const hex = drawerCustomInput.value;
     if (hex) chooseColor(hex);
   });
 }

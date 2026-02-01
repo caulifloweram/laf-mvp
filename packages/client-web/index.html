@@ -317,7 +317,7 @@
       .menu-toggle {
         display: none;
         background: transparent;
-        border: 1px solid rgba(255,255,255,0.5);
+        border: none;
         color: var(--topbar-text);
         width: 40px;
         height: 40px;
@@ -327,7 +327,6 @@
         cursor: pointer;
         font-size: 18px;
         font-family: inherit;
-        border-radius: 4px;
         flex-shrink: 0;
         -webkit-tap-highlight-color: transparent;
       }
@@ -363,6 +362,12 @@
       }
       .nav-drawer .topbar-nav-item { display: block; padding: 12px 14px; min-height: 44px; box-sizing: border-box; }
       .nav-drawer .color-picker-btn { width: 100%; justify-content: center; min-height: 44px; border-radius: 4px; }
+      .drawer-color-swatches { display: none; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+      .drawer-color-swatches .color-swatch { width: 100%; max-width: 44px; height: 44px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.4); cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; }
+      .drawer-color-swatches .color-swatch:hover { border-color: #fff; }
+      .drawer-color-custom { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
+      .drawer-color-custom label { font-size: 11px; color: var(--topbar-text); opacity: 0.9; display: block; margin-bottom: 6px; }
+      .drawer-color-custom input[type="color"] { width: 100%; height: 36px; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; cursor: pointer; background: transparent; }
       body.nav-open .nav-backdrop { display: block; opacity: 1; }
       body.nav-open .nav-drawer { transform: translateX(0); }
 
@@ -411,9 +416,11 @@
       .channel-card {
         background: var(--surface);
         border: 1px solid var(--border);
+        border-radius: 10px;
         padding: 0;
         cursor: pointer;
         transition: background 0.15s;
+        overflow: hidden;
       }
       .channel-card:hover { background: var(--card-hover); }
       .channel-card.now-playing { border-width: 2px; }
@@ -467,9 +474,11 @@
       .external-station-card {
         background: var(--surface);
         border: 1px solid var(--border);
+        border-radius: 10px;
         padding: 12px 14px;
         cursor: pointer;
         transition: background 0.15s;
+        overflow: hidden;
       }
       .external-station-card:hover { background: var(--card-hover); }
       .external-station-card.now-playing { border-width: 2px; }
@@ -687,9 +696,9 @@
       .player-expanded-cover-wrap { width: 140px; height: 140px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; border-radius: 4px; }
       .player-expanded-cover-wrap img { width: 100%; height: 100%; object-fit: contain; }
       .player-expanded-info { text-align: center; min-width: 0; width: 100%; }
-      .player-expanded-title { font-size: 18px; font-weight: bold; margin-bottom: 6px; word-wrap: break-word; overflow-wrap: break-word; }
-      .player-expanded-location { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-      .player-expanded-desc { font-size: 13px; line-height: 1.45; margin-bottom: 12px; max-height: 4.5em; overflow-y: auto; }
+      .player-expanded-title { font-size: 18px; font-weight: bold; margin-bottom: 6px; word-wrap: break-word; overflow-wrap: break-word; color: var(--footer-text); }
+      .player-expanded-location { font-size: 12px; color: var(--footer-text); opacity: 0.9; margin-bottom: 6px; }
+      .player-expanded-desc { font-size: 13px; line-height: 1.45; margin-bottom: 12px; max-height: 4.5em; overflow-y: auto; color: var(--footer-text); opacity: 0.9; }
       .player-expanded-link { font-size: 13px; color: var(--footer-text); text-decoration: underline; display: inline-block; padding: 4px 0; }
       .player-expanded-controls { display: flex; gap: 16px; align-items: center; justify-content: center; flex-shrink: 0; }
       .player-expanded-controls button {
@@ -740,8 +749,8 @@
       }
       .footer-player .cover-initial.hidden { display: none; }
       .footer-player .info { min-width: 0; }
-      .footer-player .info .title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .footer-player .info .desc { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .footer-player .info .title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--footer-text); }
+      .footer-player .info .desc { font-size: 11px; color: var(--footer-text); opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .footer-player .controls {
         display: flex;
         align-items: center;
@@ -762,7 +771,7 @@
       }
       .footer-player .controls button:hover { background: rgba(255,255,255,0.15); }
       .footer-player .controls button:disabled { opacity: 0.5; cursor: not-allowed; }
-      .footer-player .status-text { font-size: 11px; color: var(--text-muted); max-width: 120px; text-align: right; }
+      .footer-player .status-text { font-size: 11px; color: var(--footer-text); opacity: 0.9; max-width: 120px; text-align: right; }
       .play-pause-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; }
       .play-pause-icon svg { width: 100%; height: 100%; }
 
@@ -923,6 +932,8 @@
         .confirm-dialog { max-width: calc(100vw - 24px); margin: 0 12px; }
         .ext-channel-row { border-width: 1px; }
         .ext-channel-row.now-playing { border-width: 2px; }
+        .drawer-color-swatches { display: grid; }
+        .drawer-color-custom { display: block; }
       }
       @media (max-width: 480px) {
         :root { --topbar-height: 44px; }
@@ -998,6 +1009,11 @@
         <span class="color-picker-preview" style="background: var(--bg);"></span>
         Color
       </button>
+      <div class="drawer-color-swatches" id="drawer-color-swatches" aria-label="Background color swatches"></div>
+      <div class="drawer-color-custom" id="drawer-color-custom">
+        <label for="drawer-color-custom-input">Custom</label>
+        <input type="color" id="drawer-color-custom-input" value="#f1c40f" aria-label="Custom color" />
+      </div>
       <a href="#" id="client-signin-link-drawer" class="topbar-nav-item">Sign in</a>
       <span id="client-user-email-drawer" class="topbar-nav-item hidden"></span>
       <button type="button" id="client-logout-btn-drawer" class="hidden" style="background:transparent;border:1px solid currentColor;color:inherit;padding:10px 14px;width:100%;text-align:left;font-weight:bold;cursor:pointer;">Logout</button>
