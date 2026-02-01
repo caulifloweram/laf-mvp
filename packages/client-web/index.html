@@ -486,13 +486,19 @@
       .confirm-dialog .confirm-buttons { display: flex; gap: 10px; justify-content: flex-end; }
       .form-group { margin-bottom: 10px; }
       .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
-      .form-group input {
+      .form-group input,
+      .form-group textarea {
         width: 100%;
         padding: 8px 10px;
         border: 1px solid var(--border);
         background: var(--surface);
         color: var(--text);
+        font-family: inherit;
       }
+      .form-group textarea { resize: vertical; min-height: 60px; }
+      .status { font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); }
+      .status.status-info { background: var(--card-hover); color: var(--text); }
+      .status.status-error { background: rgba(200,0,0,0.1); color: var(--status-offline); border-color: var(--status-offline); }
       .auth-error { color: var(--status-offline); font-size: 12px; margin-top: 8px; }
       .auth-tab { padding: 6px 12px; border: 1px solid var(--border); background: var(--card-hover); cursor: pointer; font-weight: bold; }
       .auth-tab.active { background: var(--surface); }
@@ -580,6 +586,7 @@
         <div class="topbar-nav">
           <a href="#about" class="topbar-nav-item" id="nav-about">About</a>
           <a href="/broadcaster/" class="topbar-nav-item" id="nav-broadcast">Broadcast</a>
+          <a href="#admin" class="topbar-nav-item hidden" id="nav-admin">Admin</a>
         </div>
       </div>
       <div class="topbar-right" id="client-topbar-right">
@@ -596,6 +603,7 @@
       <a href="/" class="topbar-nav-item" data-nav="live">LAF</a>
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item" id="drawer-broadcast">Broadcast</a>
+      <a href="#admin" class="topbar-nav-item hidden" id="drawer-admin">Admin</a>
       <button type="button" class="theme-toggle" id="theme-toggle-drawer">Dark</button>
       <a href="#" id="client-signin-link-drawer" class="topbar-nav-item">Sign in</a>
       <span id="client-user-email-drawer" class="topbar-nav-item hidden"></span>
@@ -624,6 +632,36 @@
           <p>Browse stations that are currently live. Click to listen, sign in to participate in live chat.</p>
           <h2>Technology</h2>
           <p>LAF uses low-latency WebSocket streaming for real-time audio delivery.</p>
+        </div>
+      </div>
+
+      <div id="view-admin" class="view" role="main">
+        <h1 class="page-header">Add radio station</h1>
+        <p style="margin-bottom: 16px; color: var(--text-muted);">Add a radio stream to the Live Stations feed. The stream must be reachable and currently live.</p>
+        <div class="page-content" style="max-width: 480px;">
+          <div class="form-group">
+            <label for="admin-stream-url">Stream URL <span style="font-weight: normal; color: var(--text-muted);">(required)</span></label>
+            <input type="url" id="admin-stream-url" placeholder="https://example.com/stream.mp3" required />
+            <small>Direct audio stream URL (e.g. MP3, AAC). Must be http or https.</small>
+          </div>
+          <div class="form-group">
+            <label for="admin-name">Station name</label>
+            <input type="text" id="admin-name" placeholder="My Radio" />
+          </div>
+          <div class="form-group">
+            <label for="admin-website">Website URL</label>
+            <input type="url" id="admin-website" placeholder="https://example.com" />
+          </div>
+          <div class="form-group">
+            <label for="admin-desc">Description</label>
+            <textarea id="admin-desc" placeholder="Short description (optional)" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="admin-logo">Logo URL</label>
+            <input type="url" id="admin-logo" placeholder="https://example.com/logo.png" />
+          </div>
+          <div id="admin-status" class="status info hidden" style="margin-bottom: 12px;"></div>
+          <button type="button" id="admin-submit-btn">Add station</button>
         </div>
       </div>
     </main>

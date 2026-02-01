@@ -1,10 +1,10 @@
 /**
- * Hash-based routing: #live (homepage), #about. Default #live.
+ * Hash-based routing: #live (homepage), #about, #admin. Default #live.
  */
 
-export type RouteId = "live" | "about";
+export type RouteId = "live" | "about" | "admin";
 
-const ROUTES: RouteId[] = ["live", "about"];
+const ROUTES: RouteId[] = ["live", "about", "admin"];
 const DEFAULT_ROUTE: RouteId = "live";
 
 export function getRoute(): RouteId {

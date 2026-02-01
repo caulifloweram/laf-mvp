@@ -796,6 +796,8 @@ function updateTopBarAuth() {
   const signinLinkDrawer = document.getElementById("client-signin-link-drawer");
   const userEmailDrawer = document.getElementById("client-user-email-drawer");
   const logoutBtnDrawer = document.getElementById("client-logout-btn-drawer");
+  const navAdmin = document.getElementById("nav-admin");
+  const drawerAdmin = document.getElementById("drawer-admin");
   if (token && userEmail) {
     signinLink.classList.add("hidden");
     userEmailEl.textContent = userEmail;
@@ -804,6 +806,8 @@ function updateTopBarAuth() {
     if (signinLinkDrawer) signinLinkDrawer.classList.add("hidden");
     if (userEmailDrawer) { userEmailDrawer.textContent = userEmail; userEmailDrawer.classList.remove("hidden"); }
     if (logoutBtnDrawer) logoutBtnDrawer.classList.remove("hidden");
+    if (navAdmin) navAdmin.classList.remove("hidden");
+    if (drawerAdmin) drawerAdmin.classList.remove("hidden");
     chatSigninPrompt.classList.add("hidden");
     chatInputRow.classList.remove("hidden");
     if (favoritesFilterWrap) favoritesFilterWrap.classList.remove("hidden");
@@ -815,6 +819,8 @@ function updateTopBarAuth() {
     if (signinLinkDrawer) signinLinkDrawer.classList.remove("hidden");
     if (userEmailDrawer) { userEmailDrawer.classList.add("hidden"); }
     if (logoutBtnDrawer) logoutBtnDrawer.classList.add("hidden");
+    if (navAdmin) navAdmin.classList.add("hidden");
+    if (drawerAdmin) drawerAdmin.classList.add("hidden");
     chatSigninPrompt.classList.remove("hidden");
     chatInputRow.classList.add("hidden");
     if (favoritesFilterWrap) favoritesFilterWrap.classList.add("hidden");
@@ -2544,6 +2550,10 @@ function setActiveView(route: RouteId) {
   if (view) view.classList.add("active");
   const navAbout = document.getElementById("nav-about");
   if (navAbout) navAbout.classList.toggle("active", route === "about");
+  const navAdmin = document.getElementById("nav-admin");
+  if (navAdmin) navAdmin.classList.toggle("active", route === "admin");
+  const drawerAdmin = document.getElementById("drawer-admin");
+  if (drawerAdmin) drawerAdmin.classList.toggle("active", route === "admin");
   if (topbarSearchWrap) topbarSearchWrap.classList.toggle("hidden", route !== "live");
 }
 
@@ -2594,11 +2604,77 @@ function applyStationsSearch() {
   if (stationsSearchTopbar) stationsSearchTopbar.value = v;
   renderUnifiedStations();
 }
+
+function initAdminForm() {
+  const submitBtn = document.getElementById("admin-submit-btn");
+  const statusEl = document.getElementById("admin-status");
+  const streamUrlInput = document.getElementById("admin-stream-url") as HTMLInputElement | null;
+  const nameInput = document.getElementById("admin-name") as HTMLInputElement | null;
+  const websiteInput = document.getElementById("admin-website") as HTMLInputElement | null;
+  const descInput = document.getElementById("admin-desc") as HTMLTextAreaElement | null;
+  const logoInput = document.getElementById("admin-logo") as HTMLInputElement | null;
+  if (!submitBtn || !statusEl || !streamUrlInput) return;
+
+  function showAdminStatus(message: string, isError: boolean) {
+    statusEl.textContent = message;
+    statusEl.classList.toggle("hidden", !message);
+    statusEl.classList.toggle("status-error", isError);
+    statusEl.classList.toggle("status-info", !isError);
+  }
+
+  submitBtn.addEventListener("click", async () => {
+    const streamUrl = (streamUrlInput.value ?? "").trim();
+    if (!streamUrl) {
+      showAdminStatus("Stream URL is required.", true);
+      return;
+    }
+    if (!token) {
+      showAdminStatus("Sign in to add stations.", true);
+      return;
+    }
+    submitBtn.setAttribute("disabled", "true");
+    showAdminStatus("Adding station…", false);
+    try {
+      const res = await fetch(`${API_URL}/api/external-stations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          streamUrl,
+          name: (nameInput?.value ?? "").trim() || undefined,
+          websiteUrl: (websiteInput?.value ?? "").trim() || undefined,
+          description: (descInput?.value ?? "").trim() || undefined,
+          logoUrl: (logoInput?.value ?? "").trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        showAdminStatus("Station added. It will appear in Live when the stream is reachable.", false);
+        streamUrlInput.value = "";
+        if (nameInput) nameInput.value = "";
+        if (websiteInput) websiteInput.value = "";
+        if (descInput) descInput.value = "";
+        if (logoInput) logoInput.value = "";
+        await loadExternalStations();
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        showAdminStatus(data.error || res.statusText || "Failed to add station.", true);
+      }
+    } catch (e) {
+      showAdminStatus(e instanceof Error ? e.message : "Network error.", true);
+    } finally {
+      submitBtn.removeAttribute("disabled");
+    }
+  });
+}
+
 loadRuntimeConfig().then(() => {
   applyBroadcastLink();
   updateTopBarAuth();
   initTheme();
   initMobileNav();
+  initAdminForm();
   initRouter((route) => setActiveView(route));
   setActiveView(getRoute());
   loadExternalStations();
