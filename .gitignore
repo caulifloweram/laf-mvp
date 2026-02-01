@@ -8,3 +8,5 @@ packages/*/node_modules
 packages/*/dist
 .railway
 .vercel
+# Resolver output (generated; run resolve-are-na-streams.mjs to regenerate)
+scripts/are-na-resolved-new.json

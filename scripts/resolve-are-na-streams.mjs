@@ -4,14 +4,15 @@
  * - Excludes are.na, social (twitter/instagram/facebook/twitch), aggregators, app store, etc.
  * - Dedupes by domain.
  * - Resolves streams via Radio Browser API + manual overrides.
- * Usage: node scripts/resolve-are-na-streams.mjs
+ * Usage: node scripts/resolve-are-na-streams.mjs [input.json]
+ *   Default input: are-na-links.json. Use scripts/are-na-radios-discovered.json for Musical Expert discovery output.
  */
 
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ARE_NA_JSON = join(__dirname, "are-na-links.json");
+const ARE_NA_JSON = process.argv[2] || join(__dirname, "are-na-links.json");
 const RB_API = "https://de1.api.radio-browser.info";
 
 // Domains already in EXTERNAL_STATION_CONFIGS (from main.ts)
