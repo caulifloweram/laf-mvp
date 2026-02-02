@@ -635,7 +635,9 @@
       .ext-channel-row .ext-channel-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .ext-channel-row .ext-stream-status { margin: 0; font-size: 10px; flex-shrink: 0; }
 
-      /* Fixed footer player – source: fixed black/white (no CSS variables) so it never follows theme */
+      /* Fixed footer player – source: fixed black/white (no CSS variables) so it never follows theme.
+         Breakpoints: mobile layout at max-width 768px and 480px; bar stays black at all widths. */
+      #footer-player.footer-player,
       .footer-player {
         position: fixed;
         bottom: 0;
@@ -643,6 +645,7 @@
         right: 0;
         height: 72px;
         background: #000;
+        background-color: #000;
         color: #fff;
         border-top: 1px solid rgba(255,255,255,0.2);
         display: grid;
@@ -676,6 +679,7 @@
       .player-expand-btn:hover { opacity: 1; color: #fff; }
       .player-expand-btn[aria-expanded="true"] { transform: rotate(180deg); opacity: 1; color: #fff; }
       /* Expanded player panel – source: fixed black/white (no CSS variables) */
+      #player-expanded.player-expanded,
       .player-expanded {
         position: fixed;
         bottom: 72px;
@@ -686,6 +690,7 @@
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
         background: #000;
+        background-color: #000;
         color: #fff;
         border-top: 1px solid rgba(255,255,255,0.2);
         padding: 20px 16px;
@@ -974,7 +979,15 @@
 
       .hidden { display: none !important; }
 
-      /* Mobile: less busy topbar + optimized fullscreen player */
+      /* Player bar: force black background at all viewport widths (IDs win over any variable-based rule). */
+      #footer-player,
+      #player-expanded {
+        background: #000;
+        background-color: #000;
+        color: #fff;
+      }
+
+      /* Mobile: less busy topbar + optimized fullscreen player. Breakpoint: viewport width ≤ 768px. */
       @media (max-width: 768px) {
         :root { --topbar-height: 48px; }
         body.nav-open { overflow: hidden; }
@@ -1038,6 +1051,7 @@
         .drawer-color-swatches { display: grid; }
         .drawer-color-custom { display: block; }
       }
+      /* Smaller phones: viewport width ≤ 480px. */
       @media (max-width: 480px) {
         :root { --topbar-height: 44px; }
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
