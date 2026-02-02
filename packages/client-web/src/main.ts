@@ -2411,7 +2411,9 @@ const STREAM_CHECK_MOBILE_CONCURRENT = 2;
 const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 15000;
 /** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
-const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
+/** Long-interval re-check: full research of all radios. Trust API result (no browser verify) so more stations stay LIVE. */
+const STREAM_RECHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 min
+const STREAM_RECHECK_BATCH_TIMEOUT_MS = 18000; // 18s for periodic research so slow streams have time
 
 /** Forced loading screen: run as many stream checks as possible for this long, then reveal channel cards. */
 const INITIAL_LOAD_MS = 10000; // 10 seconds: loading screen stays up; stream checks run in background; only then reveal
@@ -2649,8 +2651,11 @@ function updateCheckingBanner(): void {
 const INITIAL_LOAD_STREAM_CHUNK = 25;
 const INITIAL_LOAD_STREAM_CONCURRENT = 8;
 
-/** Run stream checks via batch API (fast) with limited concurrency. If urlList omitted, uses getAllStreamUrls(). During initial load phase uses higher concurrency to maximize checks in 10s. */
-function runFullStreamCheck(urlList?: string[]) {
+/** Run stream checks via batch API with limited concurrency.
+ * If urlList omitted, uses getAllStreamUrls().
+ * During initial load phase uses higher concurrency to maximize checks in 10s.
+ * When trustApiOnly is true (e.g. periodic long-interval re-check), treat API "ok" as LIVE without browser verify so more stations stay visible. */
+function runFullStreamCheck(urlList?: string[], trustApiOnly = false) {
   const urls = urlList ?? getAllStreamUrls();
   const toCheck = urls.filter((u) => streamStatusCache[u] === undefined);
   if (toCheck.length === 0) return;
@@ -2659,7 +2664,9 @@ function runFullStreamCheck(urlList?: string[]) {
   const useAggressive = initialLoadPhase;
   const chunkSize = useAggressive ? INITIAL_LOAD_STREAM_CHUNK : (isMobile ? STREAM_CHECK_MOBILE_CHUNK : STREAM_CHECK_BATCH_CHUNK);
   const concurrent = useAggressive ? INITIAL_LOAD_STREAM_CONCURRENT : (isMobile ? STREAM_CHECK_MOBILE_CONCURRENT : STREAM_CHECK_BATCH_CONCURRENT);
-  const batchTimeout = isMobile && !useAggressive ? STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS : undefined;
+  let batchTimeout: number | undefined;
+  if (trustApiOnly) batchTimeout = STREAM_RECHECK_BATCH_TIMEOUT_MS;
+  else if (isMobile && !useAggressive) batchTimeout = STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS;
   const chunks: string[][] = [];
   for (let i = 0; i < toCheck.length; i += chunkSize) {
     chunks.push(toCheck.slice(i, i + chunkSize));
@@ -2677,10 +2684,10 @@ function runFullStreamCheck(urlList?: string[]) {
       .then((resultMaps) => {
         resultMaps.forEach((results) => {
           for (const [streamUrl, { ok, status }] of Object.entries(results)) {
-            if (ok && initialLoadPhase) {
+            if (ok && (initialLoadPhase || trustApiOnly)) {
               streamStatusCache[streamUrl] = { ok: true, status: "live" };
               updateCardStatus(streamUrl, true, "live");
-            } else if (ok && !initialLoadPhase) {
+            } else if (ok && !initialLoadPhase && !trustApiOnly) {
               streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
               updateCardStatus(streamUrl, false, "verifying");
               verifyStreamInBrowser(streamUrl).then((verified) => {
@@ -4786,7 +4793,7 @@ loadRuntimeConfig().then(() => {
   setInterval(loadChannels, 15000);
   setInterval(() => {
     clearStreamStatusCache();
-    runFullStreamCheck();
+    runFullStreamCheck(undefined, true);
   }, STREAM_RECHECK_INTERVAL_MS);
   stationsSearchTopbar?.addEventListener("input", applyStationsSearch);
   favoritesFilter?.addEventListener("change", () => renderUnifiedStations());
