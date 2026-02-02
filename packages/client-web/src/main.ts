@@ -1154,6 +1154,12 @@ async function loadExternalStations(): Promise<void> {
     for (const o of overrides || []) {
       if (o.streamUrl) stationOverrides[o.streamUrl] = { name: o.name, description: o.description, websiteUrl: o.websiteUrl, logoUrl: o.logoUrl, location: o.location, lat: o.lat, lng: o.lng, hidden: !!o.hidden };
     }
+    if (currentExternalStation && stationOverrides[currentExternalStation.streamUrl]?.hidden) {
+      stopExternalStream();
+      currentExternalStation = null;
+      renderUnifiedStations();
+      updateFooterPlayerVisibility();
+    }
     const userStations: ExternalStation[] = (rows || []).map((r) => ({
       id: r.id,
       name: r.name || "Station",
@@ -3888,12 +3894,27 @@ btnPlayPause.onclick = () => {
   });
 };
 
-btnPrevStation.onclick = () => {
-  const allStations = allExternalStations.filter((s) => {
+/** Visible external stations for prev/next: exclude hidden (deleted in admin) and optionally bad streams. */
+function getVisibleExternalStationsForPlayer(onlyWorking = true): ExternalStation[] {
+  return allExternalStations.filter((s) => {
+    if (stationOverrides[s.streamUrl]?.hidden) return false;
+    if (!onlyWorking) return true;
     const c = streamStatusCache[s.streamUrl];
     return !c || c.ok;
   });
-  if (!currentExternalStation || allStations.length === 0) return;
+}
+
+btnPrevStation.onclick = () => {
+  const allStations = getVisibleExternalStationsForPlayer();
+  if (!currentExternalStation) return;
+  if (stationOverrides[currentExternalStation.streamUrl]?.hidden) {
+    stopExternalStream();
+    currentExternalStation = null;
+    renderUnifiedStations();
+    updateFooterPlayerVisibility();
+    return;
+  }
+  if (allStations.length === 0) return;
   const idx = allStations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
   if (idx < 0) return;
   const prevIdx = (idx - 1 + allStations.length) % allStations.length;
@@ -3901,11 +3922,16 @@ btnPrevStation.onclick = () => {
 };
 
 btnNextStation.onclick = () => {
-  const allStations = allExternalStations.filter((s) => {
-    const c = streamStatusCache[s.streamUrl];
-    return !c || c.ok;
-  });
-  if (!currentExternalStation || allStations.length === 0) return;
+  const allStations = getVisibleExternalStationsForPlayer();
+  if (!currentExternalStation) return;
+  if (stationOverrides[currentExternalStation.streamUrl]?.hidden) {
+    stopExternalStream();
+    currentExternalStation = null;
+    renderUnifiedStations();
+    updateFooterPlayerVisibility();
+    return;
+  }
+  if (allStations.length === 0) return;
   const idx = allStations.findIndex((s) => s.streamUrl === currentExternalStation!.streamUrl);
   if (idx < 0) return;
   const nextIdx = (idx + 1) % allStations.length;
