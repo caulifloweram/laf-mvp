@@ -2014,17 +2014,10 @@ function renderUnifiedStations(): void {
         if (!anyFav) return false;
       }
     }
-    // Hide offline/error; show unknown and timeout (timeout = slow response, may still work)
+    // Show all stations (live, offline, unknown). Offline/error ones stay visible with badge.
     if (item.type === "laf") return true;
-    if (item.type === "external") {
-      const c = streamStatusCache[item.station.streamUrl];
-      return !c || c.ok || (c && c.status === "timeout");
-    }
-    const allBad = item.liveChannels.every((ch) => {
-      const c = streamStatusCache[ch.streamUrl];
-      return c && !c.ok && c.status !== "timeout";
-    });
-    return !allBad;
+    if (item.type === "external") return true;
+    return true;
   });
   filtered.sort((a, b) => {
     const na =
@@ -2427,7 +2420,7 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
   scheduleSaveStreamStatusCache();
   const isBad = !ok && BAD_STATUSES.has(status);
-  const hideWhenOffline = true; // Offline/error stations are never shown to the user
+  const hideWhenOffline = false; // Show all stations; offline/error show with badge
 
   document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
     const el = card.querySelector(".ext-stream-status");
