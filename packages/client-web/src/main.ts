@@ -4757,6 +4757,42 @@ function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
 }
 
+/** Inject a dedicated stylesheet for the player bar so it always renders black with white text. Runs once at load; the sheet is appended last so it overrides any other CSS (including theme variables). */
+function injectPlayerBarDarkStylesheet(): void {
+  if (typeof document === "undefined" || !document.head) return;
+  const id = "player-bar-dark-styles";
+  if (document.getElementById(id)) return;
+  const css = `
+#footer-player, .footer-player, #player-expanded, .player-expanded,
+.player-expanded.fullscreen-mobile .player-expanded-minimize {
+  background: #000 !important; background-color: #000 !important; color: #fff !important;
+}
+.footer-player .cover-wrap, .footer-player .cover-wrap.placeholder,
+.player-expanded-cover-wrap, .player-expanded-inner .player-expanded-cover-wrap {
+  background: #1a1a1a !important; background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.2) !important;
+}
+.footer-player .player-expand-btn, .footer-player .info .title, .footer-player .info .desc,
+.footer-player .controls button, .footer-player .status-text,
+.player-expanded .player-expanded-title, .player-expanded .player-expanded-location,
+.player-expanded .player-expanded-desc, .player-expanded .player-expanded-link,
+.player-expanded .player-expanded-buffer-hint, .player-expanded-controls button,
+.player-expanded.fullscreen-mobile .player-expanded-minimize-btn {
+  color: #fff !important; border-color: #fff !important;
+}
+.footer-player .controls button:hover, .player-expanded-controls button:hover {
+  background: rgba(255,255,255,0.15) !important; color: #fff !important;
+}
+.footer-player, .player-expanded { border-top-color: rgba(255,255,255,0.2) !important; }
+`;
+  const style = document.createElement("style");
+  style.id = id;
+  style.setAttribute("data-name", "player-bar-dark");
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
+injectPlayerBarDarkStylesheet();
+
 loadRuntimeConfig().then(() => {
   applyPlayerBarDarkStyles();
   applyBroadcastLink();
