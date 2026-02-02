@@ -1,0 +1,294 @@
+[
+  {
+    "url": "http://nabamp0.latvijasradio.lv:8016/;",
+    "status": "error"
+  },
+  {
+    "url": "http://peace.str3am.com:6030/;.mp3",
+    "status": "error"
+  },
+  {
+    "url": "http://stream.kchungradio.org:8000/stream",
+    "status": "error"
+  },
+  {
+    "url": "http://stream0.wfmu.org/drummer-128k",
+    "status": "unavailable"
+  },
+  {
+    "url": "http://stream0.wfmu.org/rock-128k",
+    "status": "unavailable"
+  },
+  {
+    "url": "http://stream0.wfmu.org/sheena-128k",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://barparttime.out.airtime.pro/barparttime_a",
+    "status": "error"
+  },
+  {
+    "url": "https://broadcast.modular-station.com/radio/8000/radio.aac",
+    "status": "error"
+  },
+  {
+    "url": "https://clubnightclub.out.airtime.pro/clubnightclub_a",
+    "status": "error"
+  },
+  {
+    "url": "https://decayfm.com/stream",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://djfullmoon.out.airtime.pro/djfullmoon_a",
+    "status": "error"
+  },
+  {
+    "url": "https://echobox.out.airtime.pro/echobox_a",
+    "status": "error"
+  },
+  {
+    "url": "https://frilo.cool/stream",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://giss.tv:666/diffusionfm919.mp3",
+    "status": "error"
+  },
+  {
+    "url": "https://goodtimesbadtimes.out.airtime.pro/goodtimesbadtimes_a",
+    "status": "error"
+  },
+  {
+    "url": "https://hydefm.out.airtime.pro/hydefm_a",
+    "status": "error"
+  },
+  {
+    "url": "https://idaidaida.out.airtime.pro/idaidaida_a",
+    "status": "error"
+  },
+  {
+    "url": "https://indiastreetradio.out.airtime.pro/indiastreetradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://internetpublicradio.out.airtime.pro/internetpublicradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://lowergrandradio.out.airtime.pro/lowergrandradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://lumbungradio.out.airtime.pro/lumbungradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://manilacommunityradio.out.airtime.pro/manilacommunityradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://media.rinse.fm:443/stream",
+    "status": "timeout"
+  },
+  {
+    "url": "https://moonglowradio.out.airtime.pro/moonglowradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://mountaintown.out.airtime.pro/mountaintown_a",
+    "status": "error"
+  },
+  {
+    "url": "https://movement.out.airtime.pro/movement_a",
+    "status": "error"
+  },
+  {
+    "url": "https://oddityradio.out.airtime.pro/oddityradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://olaradio.out.airtime.pro/olaradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://pantano.ovh:8444/pantano",
+    "status": "error"
+  },
+  {
+    "url": "https://pretendradio.out.airtime.pro/pretendradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://publicrecords.out.airtime.pro/publicrecords_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radarlisboa.out.airtime.pro/radarlisboa_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radio-tnp.out.airtime.pro/radio-tnp_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radio.robidacollective.com/stream/programme",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://radioamnion.out.airtime.pro/radioamnion_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radiomushroom.out.airtime.pro/radiomushroom_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radionopal.out.airtime.pro/radionopal_a",
+    "status": "error"
+  },
+  {
+    "url": "https://radiorageuses.out.airtime.pro/radiorageuses_a",
+    "status": "error"
+  },
+  {
+    "url": "https://rtm.out.airtime.pro/rtm_a",
+    "status": "error"
+  },
+  {
+    "url": "https://rukh.out.airtime.pro/rukh_a",
+    "status": "error"
+  },
+  {
+    "url": "https://secousse.out.airtime.pro/secousse_a",
+    "status": "error"
+  },
+  {
+    "url": "https://sfsound.org/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.balamii.com/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.bff.fm/stream",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://stream.chirpradio.org/chirpradio",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.datafruits.fm/stream",
+    "status": "timeout"
+  },
+  {
+    "url": "https://stream.dublab.com/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.dublab.es/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.hkcr.live/stream",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://stream.hopestradio.community/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.iso.fm/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.lyl.live/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.methodsofmellow.com/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.noodsradio.com/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.particle.fm/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.radiocampus.be/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.radiocult.fm/area-3000",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.radioradio.radio/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.radiostudent.si/radiostudent",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.thelotradio.com/thelotradio",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.tikka.live/live",
+    "status": "error"
+  },
+  {
+    "url": "https://stream.ynotradio.net/stream",
+    "status": "error"
+  },
+  {
+    "url": "https://streaming.fabrik.fm/izwi/echocast/audio/index.m3u8",
+    "status": "error"
+  },
+  {
+    "url": "https://sutrofm.out.airtime.pro/sutrofm_a",
+    "status": "error"
+  },
+  {
+    "url": "https://thelakeradio.out.airtime.pro/thelakeradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://tincanradio.out.airtime.pro/tincanradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://trnstnradio.out.airtime.pro/trnstnradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://tsubakifm.out.airtime.pro/tsubakifm_a",
+    "status": "error"
+  },
+  {
+    "url": "https://vincentradio.out.airtime.pro/vincentradio_a",
+    "status": "error"
+  },
+  {
+    "url": "https://wax.out.airtime.pro/wax_a",
+    "status": "error"
+  },
+  {
+    "url": "https://wobc.stream/stream",
+    "status": "unavailable"
+  },
+  {
+    "url": "https://worldwidefm.out.airtime.pro/worldwidefm_a",
+    "status": "error"
+  },
+  {
+    "url": "https://yamakan.out.airtime.pro/yamakan_a",
+    "status": "error"
+  }
+]

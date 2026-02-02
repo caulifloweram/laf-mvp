@@ -141,7 +141,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lat: 48.1351,
     lng: 11.582,
   },
-  // From Are.na channel online-radios-zlvblzsstly; stream URLs from Radio Browser API / official sites
   {
     name: "KEXP 90.3 FM",
     description: "Where the Music Matters. Seattle-based listener-supported radio. Two stream qualities.",
@@ -186,11 +185,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lat: 40.7178,
     lng: -74.0431,
     channels: [
-      { name: "Freeform", streamUrl: "http://stream0.wfmu.org/freeform-128k" },
-      { name: "Rock'n'Soul Radio", streamUrl: "http://stream0.wfmu.org/rock-128k" },
-      { name: "Give the Drummer Radio", streamUrl: "http://stream0.wfmu.org/drummer-128k" },
-      { name: "Sheena's Jungle Room", streamUrl: "http://stream0.wfmu.org/sheena-128k" },
-    ],
+      { name: "Freeform", streamUrl: "http://stream0.wfmu.org/freeform-128k" },    ],
   },
   {
     name: "NTS Radio",
@@ -210,7 +205,7 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     name: "LYL Radio",
     description: "We're the rest. Independent webradio from Lyon, Paris, Brussels, Marseille.",
     websiteUrl: "https://lyl.live/",
-    streamUrl: "https://stream.lyl.live/live",
+    streamUrl: "https://icecast.lyl.live/live",
     logoUrl: "https://lyl.live/favicon.ico",
     location: "Lyon, France",
     lat: 45.764,
@@ -220,11 +215,21 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     name: "Noods Radio",
     description: "Independent radio broadcasting from Bristol. Electronic, experimental, dub.",
     websiteUrl: "https://noodsradio.com/",
-    streamUrl: "https://stream.noodsradio.com/stream",
+    streamUrl: "https://noods-radio.radiocult.fm/stream",
     logoUrl: "https://noodsradio.com/favicon.ico",
     location: "Bristol, UK",
     lat: 51.4545,
     lng: -2.5879,
+  },
+  {
+    name: "KCHUNG Radio",
+    description: "Artist-run community radio. Chinatown, Los Angeles. 1630 AM.",
+    websiteUrl: "https://www.kchungradio.org/",
+    streamUrl: "https://kchungradio.out.airtime.pro/kchungradio_a",
+    logoUrl: "https://www.kchungradio.org/favicon.ico",
+    location: "Los Angeles, USA",
+    lat: 34.0673,
+    lng: -118.2355,
   },
   {
     name: "Veneno",
@@ -247,50 +252,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lng: 4.3517,
   },
   {
-    name: "KCHUNG Radio",
-    description: "1630 AM Chinatown Los Angeles. Community radio.",
-    websiteUrl: "http://kchungradio.org/",
-    streamUrl: "http://stream.kchungradio.org:8000/stream",
-    logoUrl: "http://kchungradio.org/favicon.ico",
-    location: "Los Angeles, USA",
-    lat: 34.0522,
-    lng: -118.2437,
-  },
-  {
-    name: "Tikka Radio",
-    description: "Online radio.",
-    websiteUrl: "https://tikka.live/",
-    streamUrl: "https://stream.tikka.live/live",
-    logoUrl: "https://tikka.live/favicon.ico",
-    location: "Tokyo, Japan",
-    lat: 35.6762,
-    lng: 139.6503,
-  },
-  {
-    name: "WOBC Chameleon Radio",
-    description: "Oberlin College student-run freeform radio. 91.5 FM, 24/7.",
-    websiteUrl: "https://wobc.stream/",
-    streamUrl: "https://wobc.stream/stream",
-    logoUrl: "https://wobc.stream/favicon.ico",
-    location: "Oberlin, USA",
-    lat: 41.2932,
-    lng: -82.2174,
-  },
-  {
-    name: "Particle FM",
-    description: "DIY community internet radio based in San Diego. Underrepresented artists, wild tastes.",
-    websiteUrl: "https://www.particle.fm/",
-    streamUrl: "https://stream.particle.fm/live",
-    logoUrl: "https://www.particle.fm/favicon.ico",
-  },
-  {
-    name: "Hope St Radio",
-    description: "Community radio and wine bar. Live from 35 Johnston St, Collingwood, Melbourne.",
-    websiteUrl: "https://www.hopestradio.community/",
-    streamUrl: "https://stream.hopestradio.community/live",
-    logoUrl: "https://www.hopestradio.community/favicon.ico",
-  },
-  {
     name: "Netil Radio",
     description: "Community broadcasting from Hackney, London. Converted shipping container at Netil Market.",
     websiteUrl: "https://netilradio.com/",
@@ -301,48 +262,12 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lng: -0.1278,
   },
   {
-    name: "Tsubaki FM",
-    description: "Internet radio from Tokyo, Kyoto, Nagoya. Funk, jazz, soul, electronic, disco, world music.",
-    websiteUrl: "https://tsubakifm.com/",
-    streamUrl: "https://tsubakifm.out.airtime.pro/tsubakifm_a",
-    logoUrl: "https://tsubakifm.com/favicon.ico",
-    location: "Tokyo, Japan",
-    lat: 35.6762,
-    lng: 139.6503,
-  },
-  {
-    name: "Radio Nopal",
-    description: "Community radio. Eclectic sounds and voices.",
-    websiteUrl: "https://www.radionopal.com/",
-    streamUrl: "https://radionopal.out.airtime.pro/radionopal_a",
-    logoUrl: "https://www.radionopal.com/favicon.ico",
-    location: "Online",
-  },
-  {
     name: "Good Times Bad Times",
     description: "Community radio at Extra Practice. Good times, bad times.",
     websiteUrl: "https://goodtimesbadtimes.club/",
     streamUrl: "https://radio.goodtimesbadtimes.club/radio/8000/radio.mp3",
     logoUrl: "https://goodtimesbadtimes.club/favicon.ico",
     location: "Online",
-  },
-  {
-    name: "Radio Robida",
-    description: "Robida collective radio. Ambient, programme and walkie-talkie channels.",
-    websiteUrl: "https://radio.robidacollective.com/",
-    streamUrl: "https://radio.robidacollective.com/stream/programme",
-    logoUrl: "https://radio.robidacollective.com/favicon.ico",
-    location: "Slovenia",
-  },
-  {
-    name: "Yamakan Palestine",
-    description: "Radio from Yamakan. Palestine.",
-    websiteUrl: "https://yamakan.place/palestine/",
-    streamUrl: "https://yamakan.out.airtime.pro/yamakan_a",
-    logoUrl: "https://yamakan.place/favicon.ico",
-    location: "Bethlehem, Palestine",
-    lat: 31.7054,
-    lng: 35.2022,
   },
   {
     name: "Radio Centraal",
@@ -355,16 +280,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lng: 4.4055,
   },
   {
-    name: "Area 3000",
-    description: "24/7 digital radio from Naarm/Melbourne. Underground music, DJ sets, podcasts. Revolver Lane, Wurundjeri land.",
-    websiteUrl: "https://area3000.radio/",
-    streamUrl: "https://stream.radiocult.fm/area-3000",
-    logoUrl: "https://area3000.radio/cdn/shop/files/Area_3000_Logo_Black.png?v=1704440747",
-    location: "Melbourne, Australia",
-    lat: -37.8136,
-    lng: 144.9631,
-  },
-  {
     name: "Cashmere Radio",
     description: "Experimental radio station, Berlin. 88.4 FM Berlin, 90.7 Potsdam. Electronic, ambient, experimental.",
     websiteUrl: "https://cashmereradio.com/",
@@ -373,16 +288,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     location: "Berlin, Germany",
     lat: 52.52,
     lng: 13.405,
-  },
-  {
-    name: "Radio Campus Brussels",
-    description: "Student radio. Brussels 92.1 FM. Jazz, alternative, rock, electronic, folk, hip-hop.",
-    websiteUrl: "https://www.radiocampus.be/",
-    streamUrl: "https://stream.radiocampus.be/stream",
-    logoUrl: "https://www.radiocampus.be/favicon.ico",
-    location: "Brussels, Belgium",
-    lat: 50.8503,
-    lng: 4.3517,
   },
   {
     name: "Black Rhino Radio",
@@ -413,16 +318,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lng: -118.2437,
   },
   {
-    name: "RUKH",
-    description: "Non-commercial DIY community radio from Odesa, Ukraine. Alternative and experimental music, subcultures.",
-    websiteUrl: "https://rukh.live/",
-    streamUrl: "https://rukh.out.airtime.pro/rukh_a",
-    logoUrl: "https://rukh.live/favicon.ico",
-    location: "Odesa, Ukraine",
-    lat: 46.4825,
-    lng: 30.7233,
-  },
-  {
     name: "Radio Helsinki",
     description: "Community radio. Graz, Austria 92.6 MHz. Independent, non-commercial.",
     websiteUrl: "https://helsinki.at/",
@@ -431,13 +326,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     location: "Graz, Austria",
     lat: 47.0707,
     lng: 15.4395,
-  },
-  {
-    name: "HKCR",
-    description: "Hong Kong Community Radio. Community platform and independent station. Creators, musicians, artists.",
-    websiteUrl: "https://hkcr.live/",
-    streamUrl: "https://stream.hkcr.live/stream",
-    logoUrl: "https://hkcr.live/favicon.ico",
   },
   {
     name: "Radio AlHara",
@@ -449,17 +337,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lat: 31.7054,
     lng: 35.2022,
   },
-  {
-    name: "The Lake Radio",
-    description: "Independent online community radio from Copenhagen. Experimental, alternative, avant-garde music and sound art 24/7.",
-    websiteUrl: "https://thelakeradio.com/",
-    streamUrl: "https://thelakeradio.out.airtime.pro/thelakeradio_a",
-    logoUrl: "https://thelakeradio.com/favicon.ico",
-    location: "Copenhagen, Denmark",
-    lat: 55.6761,
-    lng: 12.5683,
-  },
-  // 30 more underground/community/experimental stations (Radio Browser API, station sites)
   {
     name: "aNONradio",
     description: "Community-run station from the SDF Public Access UNIX System. Eclectic, experimental, non-commercial.",
@@ -697,14 +574,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     ],
   },
   {
-    name: "Diffusion FM",
-    description: "DIY experimental, sound art, soundscape. Australia.",
-    websiteUrl: "https://diffusionfm.wordpress.com/",
-    streamUrl: "https://giss.tv:666/diffusionfm919.mp3",
-    logoUrl: "https://diffusionfm.wordpress.com/favicon.ico",
-    location: "Australia",
-  },
-  {
     name: "Bit Express Digital Radio",
     description: "Experimental radio from Erlangen, Germany.",
     websiteUrl: "https://www.bitexpress.de/",
@@ -720,7 +589,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     logoUrl: "http://akademieradio.de/favicon.ico",
     location: "Germany",
   },
-  // 100 underground/community/experimental/freeform stations from Radio Browser API
   {
     name: "WeRave Music Radio",
     description: "Electronic radio from New York. Dark/underground and melodic house channels.",
@@ -760,12 +628,10 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "Polushon", description: "Experimental, jazz, world music. Sweden.", websiteUrl: "http://polushon.com/", streamUrl: "https://whsh4u-clients.com:18323/proxy/ndhfnbqx?mp=/stream", logoUrl: "https://thumbnailer.mixcloud.com/unsafe/300x300/profile/5/d/0/1/aa1b-e4e6-48e8-9128-75506e38dd92.jpg", location: "Sweden" },
   { name: "Radio Wombat", description: "Experimental, punk, soul. Toscana.", websiteUrl: "https://wombat.noblogs.org/", streamUrl: "http://s.streampunk.cc/wombat.ogg", logoUrl: "", location: "Italy" },
   { name: "Radio Caprice – Experimental", description: "Avant-garde, experimental music.", websiteUrl: "http://radcap.ru/playback-history/4/experimental-ph.php", streamUrl: "http://79.111.119.111:8004/experimentalmusic", logoUrl: "http://radcap.ru/apple-touch-icon.png", location: "" },
-  { name: "Radio NABA", description: "Alternative, avant-garde, experimental. Latvia.", websiteUrl: "http://www.naba.lv/", streamUrl: "http://nabamp0.latvijasradio.lv:8016/;", logoUrl: "", location: "Latvia" },
   { name: "Path through the Forest", description: "Alternative, avant-garde, experimental, psychedelic, stoner. Hamburg.", websiteUrl: "http://laut.fm/path_through_the_forest", streamUrl: "http://stream.laut.fm/path_through_the_forest", logoUrl: "", location: "Germany" },
   { name: "Skylab Radio", description: "Ambient, eclectic, experimental, hip-hop, house, rock, techno. Melbourne.", websiteUrl: "http://skylab-radio.com/", streamUrl: "http://stream.skylab-radio.com:8000/live", logoUrl: "", location: "Melbourne, Australia" },
   { name: "Super45.fm", description: "Experimental, indie. Chile.", websiteUrl: "https://super45.fm/", streamUrl: "https://s4.radio.co/s421105570/listen", logoUrl: "https://super45.fm/favicon.ico", location: "Chile" },
   { name: "Radio Caprice – Experimental Techno", description: "Experimental techno. Russia.", websiteUrl: "http://radcap.ru/exptechno.html", streamUrl: "http://213.141.131.10:8000/experimentaltechno", logoUrl: "http://radcap.ru/apple-touch-icon.png", location: "Russia" },
-  { name: "Modular-Station", description: "Ambient, electronic, experimental, modular synthesis. France.", websiteUrl: "https://modular-station.com/", streamUrl: "https://broadcast.modular-station.com/radio/8000/radio.aac", logoUrl: "https://modular-station.com/app/themes/modular-station/dist/images/modular-station-192_3bcbc4e6.png", location: "France" },
   { name: "Experimentalgems", description: "Ambient, avantgarde, drone, electronic, experimental, jazz.", websiteUrl: "https://laut.fm/experimentalgems", streamUrl: "http://stream.laut.fm/experimentalgems", logoUrl: "", location: "Germany" },
   { name: "Radio Centraal 106.7", description: "Avant-garde, community, experimental, situationist. Belgium.", websiteUrl: "https://www.radiocentraal.be/", streamUrl: "http://streams.movemedia.eu:8530/", logoUrl: "https://www.radiocentraal.be/favicon.ico", location: "Belgium" },
   { name: "Radio Punctum", description: "Alternative, ambient, electronic, experimental. Prague.", websiteUrl: "https://radiopunctum.cz/", streamUrl: "https://radiopunctum.cz:8001/radio", logoUrl: "https://radiopunctum.cz/favicon/android-chrome-512x512.png", location: "Prague, Czechia" },
@@ -776,7 +642,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "Radio Gugelhopf", description: "Experimental rock, punk, ska, world. Switzerland.", websiteUrl: "http://radiogugelhopf.ch/", streamUrl: "http://uk3.internet-radio.com:8113/stream", logoUrl: "", location: "Switzerland" },
   { name: "ORF Ö1 Campus", description: "Campus, experimental, pop, world. Vienna.", websiteUrl: "https://oe1.orf.at/campus", streamUrl: "https://orf-live.ors-shoutcast.at/campus-q2a", logoUrl: "https://oe1.orf.at/static/img/logo_oe1.png", location: "Vienna, Austria" },
   { name: "Yammat FM", description: "Alternative, dance, disco, experimental, funk. Croatia.", websiteUrl: "https://www.yammat.fm/", streamUrl: "https://stream.yammat.fm/radio/8000/yammat.mp3", logoUrl: "", location: "Croatia" },
-  { name: "Fango Radio", description: "Experimental. Italy.", websiteUrl: "https://www.fangoradio.com/", streamUrl: "https://pantano.ovh:8444/pantano", logoUrl: "https://www.fangoradio.com/img/fango-logo.png", location: "Italy" },
   { name: "Laut.FM Befreite-Musik", description: "Electronic, experimental, jazz, minimal. Germany.", websiteUrl: "https://www.befreitemusik.de/iradio/", streamUrl: "http://stream.laut.fm/befreite-musik", logoUrl: "https://www.befreitemusik.de/favicon.ico", location: "Germany" },
   { name: "Radio Caprice – Avant Rock", description: "Avant-garde rock, experimental rock.", websiteUrl: "http://radcap.ru/avantrock.html", streamUrl: "http://213.141.131.10:8004/avantrock", logoUrl: "http://radcap.ru/graf2/radcaplogo.png", location: "Russia" },
   { name: "syg.ma", description: "Experimental. Russia.", websiteUrl: "https://radio.syg.ma/", streamUrl: "https://radio.syg.ma/audio", logoUrl: "https://radio.syg.ma/icons/apple-icon-120x120.png", location: "Russia" },
@@ -824,7 +689,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "WZBT 91.1 Gettysburg", description: "College, freeform, jazz. Pennsylvania.", websiteUrl: "http://www.wzbt.org/", streamUrl: "http://war.str3am.com:8310/live", logoUrl: "https://www.wzbt.org/wp-content/uploads/2016/09/wzbt_ipad_retna.png", location: "USA" },
   { name: "WMMT", description: "Freeform. Kentucky.", websiteUrl: "https://www.wmmt.org/", streamUrl: "https://aurora.shoutca.st/radio/8200/radio.mp3?", logoUrl: "https://www.wmmt.org/apple-touch-icon.png", location: "USA" },
   { name: "WCWM", description: "College, freeform. Virginia.", websiteUrl: "https://wcwm.wm.edu/", streamUrl: "https://wcwm.broadcasttool.stream/wcwm-onair", logoUrl: "https://wcwm.wm.edu/wp-content/uploads/2023/12/wcwm_website_headerlogo-1.svg", location: "USA" },
-  // Musical Expert candidate stations (docs/candidate-stations-feed.json)
   { name: "KPFA 94.1 FM", description: "Community-supported radio from Berkeley, California. Pacifica network.", websiteUrl: "https://kpfa.org/", streamUrl: "https://streams.kpfa.org:8443/kpfa", logoUrl: "", location: "Berkeley, California, USA" },
   { name: "Radio Ngāti Porou", description: "Community radio from Ngāti Porou, Aotearoa. Iwi, kapa haka, Māori culture.", websiteUrl: "https://radiongatiporou.com/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:NgatiPorou.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Porou, New Zealand" },
   { name: "Fresh 92.7", description: "Community radio from South Australia. Music, pop, local.", websiteUrl: "https://fresh927.com.au/", streamUrl: "https://live.fresh927.com.au/freshaac", logoUrl: "", location: "South Australia, Australia" },
@@ -844,7 +708,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "3RRR Triple R 102.7 FM", description: "Community radio from Melbourne. Independent, eclectic.", websiteUrl: "http://www.rrr.org.au/", streamUrl: "http://realtime.rrr.org.au/p1l", logoUrl: "", location: "Melbourne, Australia" },
   { name: "Radio Almaina", description: "Community free radio from Granada, Spain.", websiteUrl: "https://radioalmaina.org/", streamUrl: "http://s.streampunk.cc/almaina.ogg", logoUrl: "", location: "Granada, Spain" },
   { name: "Radio Cavolo", description: "Community radio from Italy. Eclectic, electronic, pop, rock.", websiteUrl: "https://www.radiocavolo.org/", streamUrl: "https://radiocavolo.org/stream", logoUrl: "", location: "Italy" },
-  { name: "Izwi LoMzansi", description: "Community radio from KwaZulu-Natal. African music, folk, kwaito.", websiteUrl: "https://izwi98fm.co.za/", streamUrl: "https://streaming.fabrik.fm/izwi/echocast/audio/index.m3u8", logoUrl: "", location: "KwaZulu-Natal, South Africa" },
   { name: "KXRY 91.1 X Ray FM", description: "Community radio from Portland, Oregon.", websiteUrl: "https://xray.fm/", streamUrl: "http://listen.xray.fm:8000/stream", logoUrl: "", location: "Portland, Oregon, USA" },
   { name: "Subtle Radio", description: "Community radio from London. Music, variety.", websiteUrl: "https://www.subtleradio.com/", streamUrl: "https://subtle.out.airtime.pro/subtle_a", logoUrl: "", location: "London, UK" },
   { name: "Compass FM", description: "Community radio from New Zealand. Local news, variety.", websiteUrl: "http://compassfm.org.nz/", streamUrl: "http://stream.compassfm.org.nz:8000/Compass_FM_104.9", logoUrl: "", location: "New Zealand" },
@@ -866,7 +729,6 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "KAZI 88.7", description: "Community radio from Austin, Texas. Urban contemporary.", websiteUrl: "http://www.kazifm.org/", streamUrl: "http://ice8.securenetsystems.net/KAZI", logoUrl: "", location: "Austin, Texas, USA" },
   { name: "Freies Sender Kombinat Hamburg", description: "Community free radio from Hamburg. FSK.", websiteUrl: "https://www.fsk-hh.org/", streamUrl: "http://stream1.datenkollektiv.net/fsk.mp3", logoUrl: "", location: "Hamburg, Germany" },
   { name: "FPP Fréquence Paris Plurielle", description: "Radio associative, radio libre from Paris. Political talk, plural.", websiteUrl: "https://rfpp.net/", streamUrl: "https://direct.rfpp.net/fpp.mp3", logoUrl: "", location: "Paris, France" },
-  { name: "WEVL 89.9 Memphis", description: "Community radio from Memphis. Alternative, eclectic.", websiteUrl: "http://www.wevl.org/", streamUrl: "http://peace.str3am.com:6030/;.mp3", logoUrl: "", location: "Memphis, Tennessee, USA" },
   { name: "WKDU 91.7 Drexel University", description: "College radio from Philadelphia.", websiteUrl: "http://wkdu.org/", streamUrl: "http://streams.wkdu.org/listen.mp3", logoUrl: "", location: "Philadelphia, Pennsylvania, USA" },
   { name: "KEPW Eugene PeaceWorks", description: "Community-supported radio from Eugene, Oregon. Local news, community.", websiteUrl: "https://kepw.org/", streamUrl: "http://pacificaservice.org:8000/kepw_128", logoUrl: "", location: "Eugene, Oregon, USA" },
   { name: "4zzz", description: "Independent community radio from Brisbane.", websiteUrl: "https://4zzz.org.au/", streamUrl: "https://iheart.4zzz.org.au/4zzz", logoUrl: "", location: "Brisbane, Australia" },
@@ -883,61 +745,12 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
   { name: "PBS FM 106.7 Melbourne", description: "Community radio from Melbourne. Australian music, independent.", websiteUrl: "https://www.pbsfm.org.au/", streamUrl: "http://playerservices.streamtheworld.com/api/livestream-redirect/3PBS_FMAAC.aac", logoUrl: "", location: "Melbourne, Australia" },
   { name: "RTRFM", description: "Community radio from Western Australia.", websiteUrl: "https://rtrfm.com.au/", streamUrl: "https://live.rtrfm.com.au/stream1", logoUrl: "", location: "Western Australia, Australia" },
   { name: "Te Reo Irirangi O Ngāti Kahungunu", description: "Iwi radio from Ngāti Kahungunu, Aotearoa. Māori culture, community.", websiteUrl: "https://www.radiokahungunu.nz/", streamUrl: "https://wowza.iwi.radio/icecast-to-hls/ngrp:Kahungunu.stream/playlist.m3u8", logoUrl: "", location: "Ngāti Kahungunu, New Zealand" },
-  // Are.na resolved (scripts/are-na-resolved-new.json) – deduped by streamUrl
-  { name: "Manila Community Radio", description: "Manila Community Radio is an independent, not-for-profit radio platform made by the community for the community.", websiteUrl: "https://manilacommunityradio.live/", streamUrl: "https://manilacommunityradio.out.airtime.pro/manilacommunityradio_a", logoUrl: "https://manilacommunityradio.live/favicon.ico" },
   { name: "N10.AS® RADIO - WORLD WIDE WADIO", description: "Web site created using create-react-app", websiteUrl: "https://n10.as/", streamUrl: "https://n10.as/stream", logoUrl: "https://n10.as/favicon.ico" },
-  { name: "ISO", description: "ISO is an online radio station broadcasting from downtown Toronto. Underground music and untold stories, streaming five days a week. Connecting..... Connecting.... Online :)", websiteUrl: "https://iso.fm/", streamUrl: "https://stream.iso.fm/live", logoUrl: "https://iso.fm/favicon.ico" },
-  { name: "Rinse FM", description: "Rinse FM has dominated London's radio airwaves for 20 years as a hub of the capital's thriving urban music community.", websiteUrl: "https://rinse.fm/", streamUrl: "https://media.rinse.fm:443/stream", logoUrl: "https://rinse.fm/favicon.ico" },
-  { name: "dublab", description: "Online radio from dublab.com.", websiteUrl: "https://www.dublab.com/", streamUrl: "https://stream.dublab.com/live", logoUrl: "https://dublab.com/favicon.ico" },
-  { name: "Worldwide FM", description: "An award winning radio station with a global audience", websiteUrl: "https://worldwidefm.net/", streamUrl: "https://worldwidefm.out.airtime.pro/worldwidefm_a", logoUrl: "https://worldwidefm.net/favicon.ico" },
-  { name: "DKFM Shoegaze Radio", description: "Shoegaze and dream pop radio.", websiteUrl: "https://decayfm.com/", streamUrl: "https://decayfm.com/stream", logoUrl: "https://decayfm.com/favicon.ico" },
   { name: "Radio WORM", description: "Worm – A Rotterdam based organisation working at the intersection of culture and arts.", websiteUrl: "https://worm.org/projects/radio-worm/", streamUrl: "https://worm.org/stream/radio-worm", logoUrl: "https://worm.org/favicon.ico" },
   { name: "Fip", description: "Jazz, Reggae, Rock, Electro, Soul. Radio France.", websiteUrl: "https://www.fip.fr/", streamUrl: "https://icecast.radiofrance.fr/fip-midfi.mp3", logoUrl: "https://fip.fr/favicon.ico" },
-  { name: "RADAR Lisboa", description: "RADAR 97.8 FM Lisboa.", websiteUrl: "https://radarlisboa.fm/", streamUrl: "https://radarlisboa.out.airtime.pro/radarlisboa_a", logoUrl: "https://radarlisboa.fm/favicon.ico" },
-  { name: "Radio Študent", description: "Cultural public student radio from Slovenia.", websiteUrl: "https://radiostudent.si/", streamUrl: "https://stream.radiostudent.si/radiostudent", logoUrl: "https://radiostudent.si/favicon.ico" },
-  { name: "Methods of Mellow", description: "Instagram: @methodsofmellow", websiteUrl: "https://methodsofmellow.com/", streamUrl: "https://stream.methodsofmellow.com/stream", logoUrl: "https://methodsofmellow.com/favicon.ico" },
-  { name: "Balamii", description: "Underground Music First", websiteUrl: "https://www.balamii.com/", streamUrl: "https://stream.balamii.com/live", logoUrl: "https://balamii.com/favicon.ico" },
-  { name: "Mushroom Radio", description: "Mushroom Radio", websiteUrl: "https://radiomushroom.org/", streamUrl: "https://radiomushroom.out.airtime.pro/radiomushroom_a", logoUrl: "https://radiomushroom.org/favicon.ico" },
-  { name: "BFF.fm", description: "San Francisco-based community radio. Emerging and underground artists, Bay Area music scene.", websiteUrl: "https://bff.fm/", streamUrl: "https://stream.bff.fm/stream", logoUrl: "https://bff.fm/favicon.ico" },
-  { name: "YNot Radio", description: "Philadelphia's Real Alternative", websiteUrl: "https://www.ynotradio.net/", streamUrl: "https://stream.ynotradio.net/stream", logoUrl: "https://ynotradio.net/favicon.ico" },
-  { name: "Echobox Radio", description: "Independent, online radio maintaining DIY enthusiasm with the quality of FM.", websiteUrl: "https://echobox.radio/", streamUrl: "https://echobox.out.airtime.pro/echobox_a", logoUrl: "https://echobox.radio/favicon.ico" },
-  { name: "Radio Radio", description: "Pop-up DJ bar in Amsterdam's Westerpark and online curated global radio shows.", websiteUrl: "https://radioradio.radio/", streamUrl: "https://stream.radioradio.radio/stream", logoUrl: "https://radioradio.radio/favicon.ico" },
-  { name: "Radio Tempo Não Pára", description: "Independent online radio based in Amsterdam. Guest mixes and radio.", websiteUrl: "https://radio-tnp.com/", streamUrl: "https://radio-tnp.out.airtime.pro/radio-tnp_a", logoUrl: "https://radio-tnp.com/favicon.ico" },
-  { name: "Pretend Radio", description: "Online radio.", websiteUrl: "https://pretendradio.club/", streamUrl: "https://pretendradio.out.airtime.pro/pretendradio_a", logoUrl: "https://pretendradio.club/favicon.ico" },
-  { name: "DJ FULL MOON", description: "Online radio.", websiteUrl: "https://www.djfullmoon.com/", streamUrl: "https://djfullmoon.out.airtime.pro/djfullmoon_a", logoUrl: "https://djfullmoon.com/favicon.ico" },
-  { name: "Radio Amnion", description: "Sonic Transmissions of Care In Oceanic Space", websiteUrl: "https://radioamnion.net/", streamUrl: "https://radioamnion.out.airtime.pro/radioamnion_a", logoUrl: "https://radioamnion.net/favicon.ico" },
-  { name: "Internet Public Radio", description: "Independent cultural platform and radio broadcasting from Guadalajara, Latin America, Europe and more.", websiteUrl: "https://internetpublicradio.live/", streamUrl: "https://internetpublicradio.out.airtime.pro/internetpublicradio_a", logoUrl: "https://internetpublicradio.live/favicon.ico" },
   { name: "Frisky Radio", description: "Electronic music internet radio and DJ mix subscription service.", websiteUrl: "https://www.friskyradio.com/", streamUrl: "https://stream.friskyradio.com/stream", logoUrl: "https://friskyradio.com/favicon.ico" },
-  { name: "Good Times Bad Times", description: "Online radio.", websiteUrl: "https://goodtimesbadtimes.club/", streamUrl: "https://goodtimesbadtimes.out.airtime.pro/goodtimesbadtimes_a", logoUrl: "https://goodtimesbadtimes.club/favicon.ico" },
   { name: "Montez Press Radio", description: "Radio and archive. Reading and poetry, the sounded word.", websiteUrl: "https://radio.montezpress.com/", streamUrl: "https://stream.montezpress.com/icecast/reading-and-poetry-the-sounded-word", logoUrl: "https://radio.montezpress.com/favicon.ico" },
-  { name: "Club Night Club", description: "Club Night Club", websiteUrl: "https://clubnightclub.com/", streamUrl: "https://clubnightclub.out.airtime.pro/clubnightclub_a", logoUrl: "https://clubnightclub.com/favicon.ico" },
-  { name: "Public Records", description: "Public Access – community broadcasting platform from Public Records.", websiteUrl: "https://publicrecords.tv/", streamUrl: "https://publicrecords.out.airtime.pro/publicrecords_a", logoUrl: "https://publicrecords.tv/favicon.ico" },
-  { name: "Wax Radio", description: "Internet radio from Wax Studios, Greenpoint, Brooklyn.", websiteUrl: "https://wax.radio/", streamUrl: "https://wax.out.airtime.pro/wax_a", logoUrl: "https://wax.radio/favicon.ico" },
-  { name: "Bar Part Time", description: "Radio from Bar Part Time.", websiteUrl: "https://www.barparttime.com/radio", streamUrl: "https://barparttime.out.airtime.pro/barparttime_a", logoUrl: "https://barparttime.com/favicon.ico" },
-  { name: "India Street Radio", description: "Independent radio – balearic, jazz-funk, vinyl.", websiteUrl: "https://indiastreetradio.com/", streamUrl: "https://indiastreetradio.out.airtime.pro/indiastreetradio_a", logoUrl: "https://indiastreetradio.com/favicon.ico" },
-  { name: "The Lot Radio", description: "Independent online radio live streaming 24/7 from NYC.", websiteUrl: "https://www.thelotradio.com/", streamUrl: "https://stream.thelotradio.com/thelotradio", logoUrl: "https://thelotradio.com/favicon.ico" },
-  { name: "dublab BCN", description: "dublab Barcelona.", websiteUrl: "https://dublab.es/", streamUrl: "https://stream.dublab.es/live", logoUrl: "https://dublab.es/favicon.ico" },
-  { name: "Oddity Radio", description: "Online platform and soundtrack for Oddity, cultural space in Paris.", websiteUrl: "https://oddityradio.fm/", streamUrl: "https://oddityradio.out.airtime.pro/oddityradio_a", logoUrl: "https://oddityradio.fm/favicon.ico" },
-  { name: "datafruits.fm", description: "The world wide web's wackiest radio station.", websiteUrl: "https://www.datafruits.fm/", streamUrl: "https://stream.datafruits.fm/stream", logoUrl: "https://datafruits.fm/favicon.ico" },
-  { name: "Secousse", description: "Radio.", websiteUrl: "https://secousse.tv/", streamUrl: "https://secousse.out.airtime.pro/secousse_a", logoUrl: "https://secousse.tv/favicon.ico" },
-  { name: "Vincent Radio", description: "Online radio.", websiteUrl: "https://vincentradio.com/", streamUrl: "https://vincentradio.out.airtime.pro/vincentradio_a", logoUrl: "https://vincentradio.com/favicon.ico" },
-  { name: "RADIORAGEUSES", description: "Émissions radiophoniques féministes, gouines, trans, femmes.", websiteUrl: "https://www.radiorageuses.net/", streamUrl: "https://radiorageuses.out.airtime.pro/radiorageuses_a", logoUrl: "https://radiorageuses.net/favicon.ico" },
-  { name: "TRNSTN RADIO", description: "Lieu de création, rencontre, expérimentation et réflexion.", websiteUrl: "https://trnstnradio.com/", streamUrl: "https://trnstnradio.out.airtime.pro/trnstnradio_a", logoUrl: "https://trnstnradio.com/favicon.ico" },
-  { name: "IDA Radio", description: "Online community radio based in Tallinn and Helsinki.", websiteUrl: "https://idaidaida.net/", streamUrl: "https://idaidaida.out.airtime.pro/idaidaida_a", logoUrl: "https://idaidaida.net/favicon.ico" },
-  { name: "HydeFM", description: "More Than Radio", websiteUrl: "https://hydefm.com/", streamUrl: "https://hydefm.out.airtime.pro/hydefm_a", logoUrl: "https://hydefm.com/favicon.ico" },
-  { name: "CHIRP Radio", description: "Listener-supported music and arts community radio in Chicago.", websiteUrl: "https://chirpradio.org/", streamUrl: "https://stream.chirpradio.org/chirpradio", logoUrl: "https://chirpradio.org/favicon.ico" },
-  { name: "lumbung Radio", description: "Inter-local online community radio, documenta fifteen. Station of Commons.", websiteUrl: "https://lumbungradio.stationofcommons.org/", streamUrl: "https://lumbungradio.out.airtime.pro/lumbungradio_a", logoUrl: "https://lumbungradio.stationofcommons.org/favicon.ico" },
-  { name: "RTM.FM", description: "Radio station in Thamesmead, SE London, run by TACO!. Community culture, debate, art and music.", websiteUrl: "https://rtm.fm/", streamUrl: "https://rtm.out.airtime.pro/rtm_a", logoUrl: "https://rtm.fm/favicon.ico" },
-  { name: "Ola Radio", description: "Webradio culturelle, musiques électroniques, scène locale.", websiteUrl: "https://olaradio.fr/", streamUrl: "https://olaradio.out.airtime.pro/olaradio_a", logoUrl: "https://olaradio.fr/favicon.ico" },
-  { name: "SutroFM", description: "Independent online radio based in San Francisco, CA.", websiteUrl: "https://www.sutrofm.net/", streamUrl: "https://sutrofm.out.airtime.pro/sutrofm_a", logoUrl: "https://sutrofm.net/favicon.ico" },
-  { name: "Lower Grand Radio", description: "Live stream and recorded radio from Oakland and beyond.", websiteUrl: "https://www.lowergrandradio.com/", streamUrl: "https://lowergrandradio.out.airtime.pro/lowergrandradio_a", logoUrl: "https://lowergrandradio.com/favicon.ico" },
-  { name: "sfSoundRadio", description: "San Francisco Bay Area New Music", websiteUrl: "https://sfsound.org/", streamUrl: "https://sfsound.org/stream", logoUrl: "https://sfsound.org/favicon.ico" },
-  { name: "movement.radio", description: "Online radio.", websiteUrl: "https://movement.radio/", streamUrl: "https://movement.out.airtime.pro/movement_a", logoUrl: "https://movement.radio/favicon.ico" },
-  { name: "Moon Glow Radio", description: "DIY radio from Los Angeles highlighting BIPOC and marginalized voices.", websiteUrl: "https://moonglowradio.net/", streamUrl: "https://moonglowradio.out.airtime.pro/moonglowradio_a", logoUrl: "https://moonglowradio.net/favicon.ico" },
-  { name: "Tin Can Radio", description: "24/7 uncurated, eclectic online radio – poetry, art, music, home recordings.", websiteUrl: "https://www.tincanradio.co.uk/", streamUrl: "https://tincanradio.out.airtime.pro/tincanradio_a", logoUrl: "https://tincanradio.co.uk/favicon.ico" },
   { name: "Resonance Extra", description: "24/7 digital platform for global music, sound art and radio art. Resonance, London.", websiteUrl: "https://extra.resonance.fm/", streamUrl: "https://stream.resonance.fm/resonance-extra", logoUrl: "https://extra.resonance.fm/favicon.ico" },
-  { name: "Mountain Town Radio", description: "Broadcasting from Ellijay Georgia. Local music, garage rock, blues, jazz, rockabilly.", websiteUrl: "https://mountaintown.fm/", streamUrl: "https://mountaintown.out.airtime.pro/mountaintown_a", logoUrl: "https://mountaintown.fm/favicon.ico" },
-  { name: "Frilo Radio", description: "Online radio from frilo.cool.", websiteUrl: "https://frilo.cool/", streamUrl: "https://frilo.cool/stream", logoUrl: "https://frilo.cool/favicon.ico" },
   { name: "5K RADIO", description: "Alternative webradio", websiteUrl: "https://5kradio.github.io/", streamUrl: "https://stream.r5k.net/", logoUrl: "https://5kradio.github.io/favicon.ico" },
   { name: "NIGHT FM", description: "The cyberpunk radio station for netrunners", websiteUrl: "https://night.fm/", streamUrl: "https://stream.radio.co/s35e4926a1/listen", logoUrl: "https://night.fm/favicon.ico" },
   { name: "tilderadio", description: "Online radio.", websiteUrl: "https://www.tilderadio.org/", streamUrl: "https://azuracast.tilderadio.org/radio/8000/radio.mp3", logoUrl: "https://tilderadio.org/favicon.ico" },
@@ -1871,9 +1684,10 @@ const logoLoadFailed = new Set<string>();
 let externalAudio: HTMLAudioElement | null = null;
 /** When we started connecting to the current external stream (for grace period before showing "Stream error"). */
 let externalStreamConnectStartTime = 0;
-const EXTERNAL_STREAM_CONNECT_GRACE_MS = 6000;
+/** Grace period before showing "Stream error" on stall; longer helps slow/buffering streams. */
+const EXTERNAL_STREAM_CONNECT_GRACE_MS = 8000;
 /** Timeout after which we consider the stream failed if still "Connecting…". */
-const EXTERNAL_STREAM_CONNECT_TIMEOUT_MS = 15000;
+const EXTERNAL_STREAM_CONNECT_TIMEOUT_MS = 20000;
 /** Timeout id for the connect timeout; cleared when onplaying or onerror fires. */
 let externalStreamConnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
 /** Number of reconnect attempts after stream error (e.g. upstream closes ~24s); reset on onplaying. */
@@ -1881,8 +1695,9 @@ let externalStreamReconnectCount = 0;
 const EXTERNAL_STREAM_MAX_RECONNECTS = 10;
 const EXTERNAL_STREAM_RECONNECT_DELAY_MS = 1500;
 /** Wait for buffer before starting play to reduce lag/glitches. Fallback if canplaythrough doesn't fire (e.g. Safari live streams). */
-const EXTERNAL_STREAM_BUFFER_WAIT_MS = 600;
-const EXTERNAL_STREAM_PLAY_FALLBACK_MS = 6000;
+const EXTERNAL_STREAM_BUFFER_WAIT_MS = 800;
+/** Max wait before forcing play() so slow streams still start. */
+const EXTERNAL_STREAM_PLAY_FALLBACK_MS = 8000;
 let playheadTime = 0;
 let loopRunning = false;
 let isStopping = false; // Flag to prevent audio scheduling during stop
@@ -2489,15 +2304,17 @@ function getStatusLabel(
   return { text: label, statusClass };
 }
 
-const STREAM_CHECK_TIMEOUT_MS = 2500;
+/** Client timeout for single stream-check API call; API uses 8s so allow enough for slow streams. */
+const STREAM_CHECK_TIMEOUT_MS = 5000;
 const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_BATCH_CHUNK = 25;
 const STREAM_CHECK_BATCH_CONCURRENT = 4;
-const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 6000;
+/** Batch request waits for API to check many URLs; increased so slow streams aren't marked error. */
+const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 12000;
 /** Mobile: lower concurrency and smaller chunks to avoid connection saturation and timeouts on slow/high-latency networks. */
 const STREAM_CHECK_MOBILE_CHUNK = 15;
 const STREAM_CHECK_MOBILE_CONCURRENT = 2;
-const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 9000;
+const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 15000;
 /** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
 const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 const STREAM_RECHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 min
