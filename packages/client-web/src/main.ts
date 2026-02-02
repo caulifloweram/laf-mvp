@@ -186,6 +186,20 @@ const EXTERNAL_STATION_CONFIGS: ExternalStationConfig[] = [
     lng: 11.582,
   },
   {
+    name: "Radio Nopal",
+    description: "Collective internet radio from Mexico City (San Rafael). Broadcasts via mensajito.mx. Residencies, workshops, community.",
+    websiteUrl: "https://www.radionopal.com/",
+    streamUrl: "https://radio.mensajito.mx/nopalA",
+    logoUrl: "https://www.radionopal.com/static/media/logo.07b0039be91560fc507e4abd92e0bce3.svg",
+    location: "Mexico City, Mexico",
+    lat: 19.4326,
+    lng: -99.1332,
+    channels: [
+      { name: "Nocturnx", streamUrl: "https://radio.mensajito.mx/nopalA" },
+      { name: "Música Nopal", streamUrl: "https://radio.mensajito.mx/nopalVentana" },
+    ],
+  },
+  {
     name: "KEXP 90.3 FM",
     description: "Where the Music Matters. Seattle-based listener-supported radio. Two stream qualities.",
     websiteUrl: "https://www.kexp.org/",
