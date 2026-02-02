@@ -1579,10 +1579,29 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
   setPlayPauseIcons(true, label);
 }
 
+/** Force footer player and expanded panel to black/white via inline style so it wins on mobile (e.g. S25 Ultra). */
+function applyPlayerBarDarkStyle(): void {
+  const el = footerPlayer as HTMLElement;
+  const exp = playerExpanded as HTMLElement;
+  el.style.setProperty("background", "#000", "important");
+  el.style.setProperty("background-color", "#000", "important");
+  el.style.setProperty("color", "#fff", "important");
+  exp.style.setProperty("background", "#000", "important");
+  exp.style.setProperty("background-color", "#000", "important");
+  exp.style.setProperty("color", "#fff", "important");
+  const minBar = playerExpanded.querySelector(".player-expanded-minimize") as HTMLElement | null;
+  if (minBar) {
+    minBar.style.setProperty("background", "#000", "important");
+    minBar.style.setProperty("background-color", "#000", "important");
+    minBar.style.setProperty("color", "#fff", "important");
+  }
+}
+
 function updateFooterPlayerVisibility(): void {
   const playing = !!(currentChannel || currentExternalStation);
   footerPlayer.classList.toggle("hidden", !playing);
   document.body.classList.toggle("footer-player-hidden", !playing);
+  applyPlayerBarDarkStyle();
 }
 
 /** Sync expanded player panel with current station/channel and play state. */
@@ -4719,6 +4738,7 @@ loadRuntimeConfig().then(() => {
   applyBroadcastLink();
   updateTopBarAuth();
   updateFooterPlayerVisibility();
+  applyPlayerBarDarkStyle();
   setPlayPauseIcons(true, "Start");
   initColorPicker();
   initTopbarClock();
@@ -4780,6 +4800,7 @@ loadRuntimeConfig().then(() => {
     }
     playerExpandBtn.setAttribute("aria-expanded", "true");
     playerExpanded.setAttribute("aria-hidden", "false");
+    applyPlayerBarDarkStyle();
     updateExpandedPlayerUI();
   }
   function closeExpandedPlayer() {
@@ -4789,6 +4810,8 @@ loadRuntimeConfig().then(() => {
     playerExpandBtn.setAttribute("aria-expanded", "false");
     playerExpanded.setAttribute("aria-hidden", "true");
   }
+  window.addEventListener("resize", applyPlayerBarDarkStyle);
+  window.addEventListener("orientationchange", () => setTimeout(applyPlayerBarDarkStyle, 100));
   playerExpandBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (playerExpanded.classList.contains("open")) {
