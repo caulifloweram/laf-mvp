@@ -36,6 +36,50 @@ async function loadRuntimeConfig(): Promise<void> {
   }
 }
 
+const ANALYTICS_LISTEN_INTERVAL_MS = 30_000; // 30 seconds
+let analyticsListenIntervalId: ReturnType<typeof setInterval> | null = null;
+
+function getOrCreateVisitorId(): string {
+  const key = "laf_visitor_id";
+  let id = localStorage.getItem(key);
+  if (!id || id.length > 120) {
+    id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 15)}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function sendAnalyticsEvent(payload: { eventType: "visit" | "tune" | "listen"; stationKind?: "laf" | "external"; stationRef?: string; valueSeconds?: number }) {
+  const visitorId = getOrCreateVisitorId();
+  fetch(`${API_URL}/api/analytics/event`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visitorId, ...payload }),
+  }).catch(() => {});
+}
+
+function sendVisitOnce(): void {
+  try {
+    if (sessionStorage.getItem("laf_visit_sent")) return;
+    sessionStorage.setItem("laf_visit_sent", "1");
+    sendAnalyticsEvent({ eventType: "visit" });
+  } catch (_) {}
+}
+
+function startAnalyticsListenInterval(stationKind: "laf" | "external", stationRef: string): void {
+  clearAnalyticsListenInterval();
+  analyticsListenIntervalId = setInterval(() => {
+    sendAnalyticsEvent({ eventType: "listen", stationKind, stationRef, valueSeconds: ANALYTICS_LISTEN_INTERVAL_MS / 1000 });
+  }, ANALYTICS_LISTEN_INTERVAL_MS);
+}
+
+function clearAnalyticsListenInterval(): void {
+  if (analyticsListenIntervalId != null) {
+    clearInterval(analyticsListenIntervalId);
+    analyticsListenIntervalId = null;
+  }
+}
+
 /** Set Broadcast link href from config (same-origin /broadcaster/ or BROADCASTER_APP_URL when client is deployed alone). */
 function applyBroadcastLink() {
   const href = BROADCASTER_APP_URL || "/broadcaster/";
@@ -2697,6 +2741,7 @@ function selectExternalStation(station: ExternalStation) {
   btnNextStation.classList.remove("hidden");
   updateExpandedPlayerUI();
   updateFooterPlayerVisibility();
+  sendAnalyticsEvent({ eventType: "tune", stationKind: "external", stationRef: station.streamUrl });
   attachExternalStreamAudio(station);
 }
 
@@ -2754,6 +2799,7 @@ function attachExternalStreamAudio(station: ExternalStation): void {
   const tryPlay = () => {
     if (playStarted || !externalAudio || currentExternalStation?.streamUrl !== station.streamUrl) return;
     playStarted = true;
+    startAnalyticsListenInterval("external", station.streamUrl);
     clearBufferWait();
     externalAudio.play().catch((err) => {
       if (externalStreamConnectTimeoutId != null) {
@@ -2903,6 +2949,7 @@ function resumeExternalStream() {
 }
 
 function stopExternalStream() {
+  clearAnalyticsListenInterval();
   if (externalStreamConnectTimeoutId != null) {
     clearTimeout(externalStreamConnectTimeoutId);
     externalStreamConnectTimeoutId = null;
@@ -2991,6 +3038,7 @@ function selectChannel(channel: LiveChannel) {
 
 async function startListening() {
   if (!currentChannel) return;
+  sendAnalyticsEvent({ eventType: "tune", stationKind: "laf", stationRef: currentChannel.id });
   btnPlayPause.disabled = true;
 
   console.log("[Listen] Starting - initializing fresh state...");
@@ -3067,6 +3115,7 @@ async function startListening() {
     updatePlayerStatus("playing", "Listening live");
     showPauseButton();
     playerLiveBadge.classList.remove("hidden");
+    if (currentChannel) startAnalyticsListenInterval("laf", currentChannel.id);
   };
 
   ws.onerror = (err) => {
@@ -3074,6 +3123,7 @@ async function startListening() {
   };
 
   ws.onclose = (event) => {
+    clearAnalyticsListenInterval();
     console.log("[WS] Closed");
     console.log(`   Code: ${event.code}`);
     console.log(`   Reason: ${event.reason || "No reason"}`);
@@ -4014,6 +4064,7 @@ function setActiveView(route: RouteId) {
     if (route !== "live") topbarSearchWrap.classList.remove("expanded");
   }
   if (route === "admin") onAdminViewShow?.();
+  if (route === "live") sendVisitOnce();
 }
 
 const PRESET_BG_COLORS = [
@@ -4612,7 +4663,74 @@ function initAdminForm() {
     }
   });
 
-  onAdminViewShow = loadAdminStationsList;
+  async function loadAdminAnalytics() {
+    const loadingEl = document.getElementById("admin-analytics-loading");
+    const statsEl = document.getElementById("admin-analytics-stats");
+    const visitorsEl = document.getElementById("admin-analytics-visitors");
+    const hoursEl = document.getElementById("admin-analytics-hours");
+    const mostTunedEl = document.getElementById("admin-analytics-most-tuned");
+    const mostTunedLabel = document.getElementById("admin-analytics-most-tuned-label");
+    if (!loadingEl || !statsEl || !visitorsEl || !hoursEl || !mostTunedEl) return;
+    loadingEl.classList.remove("hidden");
+    statsEl.classList.add("hidden");
+    mostTunedEl.innerHTML = "";
+    if (mostTunedLabel) mostTunedLabel.classList.add("hidden");
+    if (!token) {
+      loadingEl.textContent = "Sign in to view analytics.";
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/analytics/summary`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 403) {
+        loadingEl.textContent = "Only admins can view analytics.";
+        return;
+      }
+      if (!res.ok) {
+        loadingEl.textContent = "Failed to load analytics.";
+        return;
+      }
+      const data = (await res.json()) as {
+        uniqueVisitors: number;
+        mostTunedRadios: Array<{ name: string; stationRef?: string; count: number }>;
+        totalHoursTransmitted: number;
+      };
+      loadingEl.classList.add("hidden");
+      statsEl.classList.remove("hidden");
+      visitorsEl.textContent = String(data.uniqueVisitors ?? 0);
+      hoursEl.textContent = String(data.totalHoursTransmitted ?? 0);
+      if (mostTunedLabel) mostTunedLabel.classList.remove("hidden");
+      if (data.mostTunedRadios && data.mostTunedRadios.length > 0) {
+        const table = document.createElement("table");
+        table.className = "admin-analytics-table";
+        table.setAttribute("aria-label", "Most tuned radios");
+        table.innerHTML = "<thead><tr><th>Radio</th><th class=\"count\">Tunes</th></tr></thead><tbody></tbody>";
+        const tbody = table.querySelector("tbody")!;
+        for (const row of data.mostTunedRadios) {
+          const tr = document.createElement("tr");
+          const nameCell = document.createElement("td");
+          nameCell.textContent = row.name ?? row.stationRef ?? "—";
+          const countCell = document.createElement("td");
+          countCell.className = "count";
+          countCell.textContent = String(row.count ?? 0);
+          tr.append(nameCell, countCell);
+          tbody.appendChild(tr);
+        }
+        mostTunedEl.appendChild(table);
+      } else {
+        mostTunedEl.textContent = "No tune data yet.";
+      }
+    } catch {
+      loadingEl.textContent = "Failed to load analytics.";
+    }
+  }
+
+  onAdminViewShow = () => {
+    loadAdminStationsList();
+    loadAdminAnalytics();
+  };
 }
 
 function isMobileViewport(): boolean {

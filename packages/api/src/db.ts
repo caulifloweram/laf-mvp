@@ -115,5 +115,23 @@ export async function initDb() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      visitor_id TEXT NOT NULL,
+      event_type TEXT NOT NULL CHECK (event_type IN ('visit', 'tune', 'listen')),
+      station_kind TEXT CHECK (station_kind IN ('laf', 'external')),
+      station_ref TEXT,
+      value_seconds NUMERIC,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_event_type ON analytics_events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_station ON analytics_events(station_kind, station_ref);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON analytics_events(visitor_id);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);
+  `).catch(() => {});
+
   console.log("✅ Database tables initialized");
 }

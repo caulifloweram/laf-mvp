@@ -983,6 +983,19 @@
       .admin-station-row .admin-station-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
       .admin-station-row button { flex-shrink: 0; }
       .admin-station-row .admin-btn-play { padding: 6px 10px; font-size: 12px; }
+      .admin-analytics-section { margin-bottom: 32px; max-width: 900px; }
+      .admin-analytics-section .section-title { margin-bottom: 12px; }
+      .admin-analytics-loading { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+      .admin-analytics-stats { display: flex; flex-wrap: wrap; gap: 24px 32px; margin-bottom: 20px; }
+      .admin-analytics-stat { display: flex; flex-direction: column; gap: 4px; }
+      .admin-analytics-stat-value { font-size: 24px; font-weight: bold; color: var(--text); }
+      .admin-analytics-stat-label { font-size: 12px; color: var(--text-muted); }
+      .admin-analytics-subtitle { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: var(--text); }
+      .admin-analytics-table-wrap { overflow-x: auto; }
+      .admin-analytics-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .admin-analytics-table th, .admin-analytics-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+      .admin-analytics-table th { font-weight: bold; color: var(--text-muted); }
+      .admin-analytics-table td.count { text-align: right; }
 
       .hidden { display: none !important; }
 
@@ -1220,6 +1233,18 @@
       </div>
 
       <div id="view-admin" class="view" role="main">
+        <section class="admin-analytics-section" aria-labelledby="admin-analytics-heading">
+          <h2 id="admin-analytics-heading" class="section-title">Analytics</h2>
+          <div id="admin-analytics" class="admin-analytics-content">
+            <p class="admin-analytics-loading" id="admin-analytics-loading">Loading…</p>
+            <div class="admin-analytics-stats hidden" id="admin-analytics-stats">
+              <div class="admin-analytics-stat"><span class="admin-analytics-stat-value" id="admin-analytics-visitors">—</span><span class="admin-analytics-stat-label">Unique visitors</span></div>
+              <div class="admin-analytics-stat"><span class="admin-analytics-stat-value" id="admin-analytics-hours">—</span><span class="admin-analytics-stat-label">Hours of audio transmitted</span></div>
+            </div>
+            <h3 class="admin-analytics-subtitle" id="admin-analytics-most-tuned-label">Most tuned radios</h3>
+            <div id="admin-analytics-most-tuned" class="admin-analytics-table-wrap"></div>
+          </div>
+        </section>
         <h1 class="page-header">Add radio station</h1>
         <p style="margin-bottom: 16px; color: var(--text-muted);">Paste a radio website URL (e.g. https://www.subtleradio.com/) or a direct stream URL. We’ll find the live stream and add it to the feed.</p>
         <div class="page-content" style="max-width: 520px;">

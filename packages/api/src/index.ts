@@ -790,6 +790,106 @@ app.post("/api/suggest-station", async (req, res) => {
   }
 });
 
+// Public: Record analytics event (visit, tune, listen) – no auth
+const ANALYTICS_VISITOR_ID_MAX = 128;
+const ANALYTICS_STATION_REF_MAX = 2048;
+app.post("/api/analytics/event", async (req, res) => {
+  const { visitorId, eventType, stationKind, stationRef, valueSeconds } = req.body;
+  const visitorIdStr = typeof visitorId === "string" && visitorId.trim() ? visitorId.trim().slice(0, ANALYTICS_VISITOR_ID_MAX) : null;
+  if (!visitorIdStr) {
+    return res.status(400).json({ error: "visitorId is required" });
+  }
+  const eventTypeStr = typeof eventType === "string" && ["visit", "tune", "listen"].includes(eventType) ? eventType : null;
+  if (!eventTypeStr) {
+    return res.status(400).json({ error: "eventType must be 'visit', 'tune', or 'listen'" });
+  }
+  const stationKindStr = stationKind === "laf" || stationKind === "external" ? stationKind : null;
+  const stationRefStr = typeof stationRef === "string" && stationRef.trim() ? stationRef.trim().slice(0, ANALYTICS_STATION_REF_MAX) : null;
+  const valueNum = typeof valueSeconds === "number" && !Number.isNaN(valueSeconds) && valueSeconds >= 0 ? valueSeconds : null;
+  try {
+    await pool.query(
+      `INSERT INTO analytics_events (visitor_id, event_type, station_kind, station_ref, value_seconds) VALUES ($1, $2, $3, $4, $5)`,
+      [visitorIdStr, eventTypeStr, stationKindStr, stationRefStr, valueNum]
+    );
+    res.status(201).json({ ok: true });
+  } catch (err: any) {
+    console.error("Error recording analytics event:", err);
+    res.status(500).json({ error: "Failed to record event", details: err.message });
+  }
+});
+
+// Protected: Analytics summary (admin only)
+app.get("/api/analytics/summary", authMiddleware, async (req, res) => {
+  const user = (req as any).user;
+  const email = (user?.email ?? "").toString().toLowerCase();
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "Only admins can view analytics" });
+  }
+  try {
+    const uniqueVisitorsResult = await pool.query(
+      `SELECT COUNT(DISTINCT visitor_id) as count FROM analytics_events`
+    );
+    const uniqueVisitors = parseInt(uniqueVisitorsResult.rows[0]?.count ?? "0", 10);
+
+    const tuneCounts = await pool.query(`
+      SELECT station_kind as "stationKind", station_ref as "stationRef", COUNT(*) as count
+      FROM analytics_events
+      WHERE event_type = 'tune' AND station_ref IS NOT NULL
+      GROUP BY station_kind, station_ref
+      ORDER BY count DESC
+      LIMIT 100
+    `);
+
+    const hoursResult = await pool.query(`
+      SELECT COALESCE(SUM(value_seconds), 0)::numeric as total_seconds
+      FROM analytics_events
+      WHERE event_type = 'listen'
+    `);
+    const totalSeconds = parseFloat(hoursResult.rows[0]?.total_seconds ?? "0");
+    const totalHoursTransmitted = Math.round((totalSeconds / 3600) * 100) / 100;
+
+    const channelIds = tuneCounts.rows.filter((r: any) => r.stationKind === "laf").map((r: any) => r.stationRef);
+    const streamUrls = tuneCounts.rows.filter((r: any) => r.stationKind === "external").map((r: any) => r.stationRef);
+    const nameByChannelId = new Map<string, string>();
+    const nameByStreamUrl = new Map<string, string>();
+    if (channelIds.length > 0) {
+      const channels = await pool.query(
+        `SELECT id, title FROM channels WHERE id = ANY($1::uuid[])`,
+        [channelIds]
+      );
+      channels.rows.forEach((r: any) => nameByChannelId.set(r.id, r.title || r.id));
+    }
+    if (streamUrls.length > 0) {
+      const ext = await pool.query(
+        `SELECT stream_url, name FROM external_stations WHERE stream_url = ANY($1::text[])`,
+        [streamUrls]
+      );
+      ext.rows.forEach((r: any) => nameByStreamUrl.set(r.stream_url, r.name || r.stream_url));
+      const overrides = await pool.query(
+        `SELECT stream_url, name FROM station_overrides WHERE stream_url = ANY($1::text[]) AND name IS NOT NULL`,
+        [streamUrls]
+      );
+      overrides.rows.forEach((r: any) => nameByStreamUrl.set(r.stream_url, r.name || r.stream_url));
+    }
+
+    const mostTunedRadios = tuneCounts.rows.map((r: any) => ({
+      stationKind: r.stationKind,
+      stationRef: r.stationRef,
+      name: r.stationKind === "laf" ? (nameByChannelId.get(r.stationRef) ?? r.stationRef) : (nameByStreamUrl.get(r.stationRef) ?? r.stationRef),
+      count: parseInt(r.count, 10),
+    }));
+
+    res.json({
+      uniqueVisitors: uniqueVisitors,
+      mostTunedRadios,
+      totalHoursTransmitted,
+    });
+  } catch (err: any) {
+    console.error("Error fetching analytics summary:", err);
+    res.status(500).json({ error: "Failed to fetch analytics", details: err.message });
+  }
+});
+
 // Protected: Favorites (requires login)
 app.get("/api/me/favorites", authMiddleware, async (req, res) => {
   const user = (req as any).user;
