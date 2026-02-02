@@ -975,8 +975,11 @@
 
       .hidden { display: none !important; }
 
-      /* Mobile: less busy topbar + optimized fullscreen player. Breakpoint: viewport width ≤ 768px. */
+      /* Mobile: less busy topbar + optimized fullscreen player. Breakpoint: viewport width ≤ 768px.
+         S25 Ultra portrait = 480px; ID rule ensures bar stays black when something else overrides. */
       @media (max-width: 768px) {
+        #footer-player,
+        #player-expanded { background: #000; background-color: #000; color: #fff; }
         :root { --topbar-height: 48px; }
         body.nav-open { overflow: hidden; }
         .site-topbar {
@@ -1039,8 +1042,10 @@
         .drawer-color-swatches { display: grid; }
         .drawer-color-custom { display: block; }
       }
-      /* Smaller phones: viewport width ≤ 480px. */
+      /* Smaller phones: viewport width ≤ 480px (e.g. S25 Ultra portrait = 480px). */
       @media (max-width: 480px) {
+        #footer-player,
+        #player-expanded { background: #000; background-color: #000; color: #fff; }
         :root { --topbar-height: 44px; }
         .site-topbar { height: 44px; min-height: 44px; padding: 0 10px; }
         .topbar-right .topbar-nav-item,
