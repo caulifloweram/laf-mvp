@@ -4799,6 +4799,9 @@ loadRuntimeConfig().then(() => {
       playerExpanded.classList.add("fullscreen-mobile");
       const minBar = playerExpanded.querySelector(".player-expanded-minimize");
       if (minBar) (minBar as HTMLElement).style.display = "flex";
+      /* Close hamburger menu so fullscreen player is the only overlay (avoids stacking conflict). */
+      document.body.classList.remove("nav-open");
+      document.getElementById("menu-toggle")?.setAttribute("aria-expanded", "false");
     }
     playerExpandBtn.setAttribute("aria-expanded", "true");
     playerExpanded.setAttribute("aria-hidden", "false");
