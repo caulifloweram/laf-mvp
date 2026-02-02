@@ -2014,10 +2014,17 @@ function renderUnifiedStations(): void {
         if (!anyFav) return false;
       }
     }
-    // Show all stations (live, offline, unknown). Offline/error ones stay visible with badge.
+    // Exclude only confirmed offline/error; show unknown and timeout (slow streams may still work).
     if (item.type === "laf") return true;
-    if (item.type === "external") return true;
-    return true;
+    if (item.type === "external") {
+      const c = streamStatusCache[item.station.streamUrl];
+      return !c || c.ok || (c && c.status === "timeout");
+    }
+    const allBad = item.liveChannels.every((ch) => {
+      const c = streamStatusCache[ch.streamUrl];
+      return c && !c.ok && c.status !== "timeout";
+    });
+    return !allBad;
   });
   filtered.sort((a, b) => {
     const na =
@@ -2391,13 +2398,13 @@ function getStatusLabel(
   return { text: label, statusClass };
 }
 
-/** Client timeout for single stream-check API call; API uses 8s so allow enough for slow streams. */
-const STREAM_CHECK_TIMEOUT_MS = 5000;
+/** Client timeout for single stream-check API call; API uses 12s so allow enough for slow streams (e.g. Radio Jar). */
+const STREAM_CHECK_TIMEOUT_MS = 10000;
 const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_BATCH_CHUNK = 25;
 const STREAM_CHECK_BATCH_CONCURRENT = 4;
-/** Batch request waits for API to check many URLs; increased so slow streams aren't marked error. */
-const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 12000;
+/** Batch request waits for API to check many URLs; increased so slow streams (e.g. Radio AlHara) aren't marked error. */
+const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 20000;
 /** Mobile: lower concurrency and smaller chunks to avoid connection saturation and timeouts on slow/high-latency networks. */
 const STREAM_CHECK_MOBILE_CHUNK = 15;
 const STREAM_CHECK_MOBILE_CONCURRENT = 2;
@@ -2420,7 +2427,7 @@ function updateCardStatus(streamUrl: string, ok: boolean, status: string) {
   streamStatusCache[streamUrl] = { ok, status };
   scheduleSaveStreamStatusCache();
   const isBad = !ok && BAD_STATUSES.has(status);
-  const hideWhenOffline = false; // Show all stations; offline/error show with badge
+  const hideWhenOffline = true; // Hide confirmed offline/error; show live, unknown, timeout
 
   document.querySelectorAll<HTMLElement>(`.external-station-card[data-stream-url="${CSS.escape(streamUrl)}"]`).forEach((card) => {
     const el = card.querySelector(".ext-stream-status");
@@ -2568,23 +2575,15 @@ function checkStreamBatchApi(urls: string[], timeoutMs?: number): Promise<Record
 
 const STREAM_CHECK_RETRY_TIMEOUT_MS = Math.round(STREAM_CHECK_TIMEOUT_MS * 1.5);
 
-/** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. During initial load we trust API only (no browser verify) to avoid blocking. */
+/** Check a single stream; retries API once with longer timeout on failure. Skips if already cached unless force. Trust API "ok" as LIVE so more working radios (e.g. Radio AlHara) show. */
 function checkOneStream(streamUrl: string, force = false): Promise<void> {
   if (!force && streamStatusCache[streamUrl] !== undefined) return Promise.resolve();
 
   const doCheck = (timeoutMs: number): Promise<void> =>
     checkOneStreamApi(streamUrl, timeoutMs).then(({ ok, status }) => {
       if (ok) {
-        if (initialLoadPhase) {
-          streamStatusCache[streamUrl] = { ok: true, status: "live" };
-          updateCardStatus(streamUrl, true, "live");
-        } else {
-          streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
-          updateCardStatus(streamUrl, false, "verifying");
-          verifyStreamInBrowser(streamUrl).then((verified) => {
-            updateCardStatus(streamUrl, verified, verified ? "live" : "error");
-          });
-        }
+        streamStatusCache[streamUrl] = { ok: true, status: "live" };
+        updateCardStatus(streamUrl, true, "live");
       } else {
         updateCardStatus(streamUrl, false, status);
       }
@@ -2677,15 +2676,9 @@ function runFullStreamCheck(urlList?: string[], trustApiOnly = false) {
       .then((resultMaps) => {
         resultMaps.forEach((results) => {
           for (const [streamUrl, { ok, status }] of Object.entries(results)) {
-            if (ok && (initialLoadPhase || trustApiOnly)) {
+            if (ok) {
               streamStatusCache[streamUrl] = { ok: true, status: "live" };
               updateCardStatus(streamUrl, true, "live");
-            } else if (ok && !initialLoadPhase && !trustApiOnly) {
-              streamStatusCache[streamUrl] = { ok: false, status: "verifying" };
-              updateCardStatus(streamUrl, false, "verifying");
-              verifyStreamInBrowser(streamUrl).then((verified) => {
-                updateCardStatus(streamUrl, verified, verified ? "live" : "error");
-              });
             } else {
               streamStatusCache[streamUrl] = { ok, status };
               updateCardStatus(streamUrl, ok, status);

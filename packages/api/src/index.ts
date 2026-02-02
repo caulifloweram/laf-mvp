@@ -100,8 +100,8 @@ app.get("/", (req, res) => {
   });
 });
 
-/** Allow slow-responding streams (e.g. Icecast, radio.co, airtime) more time to respond. */
-const STREAM_CHECK_TIMEOUT_MS = 8000;
+/** Allow slow-responding streams (e.g. Radio Jar, Icecast, radio.co) more time to respond. */
+const STREAM_CHECK_TIMEOUT_MS = 12000;
 const STREAM_CHECK_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0";
 
 /** Check if a stream URL is reachable (fast; does not read full body). */
