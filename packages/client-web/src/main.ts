@@ -4799,7 +4799,8 @@ loadRuntimeConfig().then(() => {
       playerExpanded.classList.add("fullscreen-mobile");
       const minBar = playerExpanded.querySelector(".player-expanded-minimize");
       if (minBar) (minBar as HTMLElement).style.display = "flex";
-      /* Close hamburger menu so fullscreen player is the only overlay (avoids stacking conflict). */
+      /* Minimal top bar: only logo + clock (hide menu, search, etc.). */
+      document.body.classList.add("fullscreen-player-active");
       document.body.classList.remove("nav-open");
       document.getElementById("menu-toggle")?.setAttribute("aria-expanded", "false");
     }
@@ -4810,6 +4811,7 @@ loadRuntimeConfig().then(() => {
   }
   function closeExpandedPlayer() {
     playerExpanded.classList.remove("open", "fullscreen-mobile");
+    document.body.classList.remove("fullscreen-player-active");
     const minBar = playerExpanded.querySelector(".player-expanded-minimize");
     if (minBar) (minBar as HTMLElement).style.display = "none";
     playerExpandBtn.setAttribute("aria-expanded", "false");

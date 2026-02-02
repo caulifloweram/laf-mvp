@@ -436,6 +436,18 @@
       body.nav-open .nav-backdrop { display: block; opacity: 1; }
       body.nav-open .nav-drawer { transform: translateX(0); }
 
+      /* Fullscreen player active: minimal top bar – logo left, clock right only */
+      body.fullscreen-player-active .site-topbar .menu-toggle,
+      body.fullscreen-player-active .site-topbar .topbar-nav,
+      body.fullscreen-player-active .site-topbar .topbar-search-wrap,
+      body.fullscreen-player-active .site-topbar .topbar-chat-toggle,
+      body.fullscreen-player-active .site-topbar .color-picker-wrap,
+      body.fullscreen-player-active .site-topbar .topbar-nav-item,
+      body.fullscreen-player-active .site-topbar #client-logout-btn { display: none !important; }
+      body.fullscreen-player-active .site-topbar .topbar-clock { display: block !important; }
+      body.fullscreen-player-active .site-topbar .topbar-left { gap: 0; }
+      body.fullscreen-player-active .site-topbar .topbar-right { gap: 0; }
+
       /* Main content: 98% of screen width on desktop */
       .main {
         max-width: 98%;
