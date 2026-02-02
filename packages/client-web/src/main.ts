@@ -1627,20 +1627,7 @@ let opusDecoder: OpusDecoder | null = null;
 let analyserNode: AnalyserNode | null = null;
 let lafGain: GainNode | null = null;
 let mediaSource: MediaElementAudioSourceNode | null = null;
-/** Gain node for external stream; routes through Web Audio for volume leveling. */
-let externalGainNode: GainNode | null = null;
-/** Leveling interval id; cleared when external stream stops or is replaced. */
-let externalLevelingIntervalId: ReturnType<typeof setInterval> | null = null;
-/** Leveling interval for LAF stream; cleared when LAF stops. */
-let lafLevelingIntervalId: ReturnType<typeof setInterval> | null = null;
 const FREQ_BIN_COUNT = 256;
-
-/** Lightweight volume leveling: target RMS (0–1), gain clamp, smoothing, interval. No heavy libs. */
-const LEVELING_TARGET_RMS = 0.12;
-const LEVELING_GAIN_MIN = 0.2;
-const LEVELING_GAIN_MAX = 3;
-const LEVELING_SMOOTH_ALPHA = 0.12;
-const LEVELING_INTERVAL_MS = 400;
 
 const tiers = new Map<number, JitterBuffer>();
 // Create jitter buffers with larger initial delay and buffer for smooth streaming
@@ -1764,76 +1751,6 @@ async function getOrCreateAudioContext(): Promise<AudioContext | null> {
   analyserNode.connect(audioCtx.destination);
   if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
   return audioCtx;
-}
-
-/** Compute RMS from analyser time-domain data (0–1). Returns 0 if no data. */
-function getAnalyserRms(analyser: AnalyserNode, buffer: Uint8Array): number {
-  analyser.getByteTimeDomainData(buffer);
-  let sum = 0;
-  for (let i = 0; i < buffer.length; i++) {
-    const n = (buffer[i] - 128) / 128;
-    sum += n * n;
-  }
-  return buffer.length > 0 ? Math.sqrt(sum / buffer.length) : 0;
-}
-
-/** Start leveling loop: read analyser RMS and smoothly adjust gain to target. Lightweight, no heavy libs. */
-function startLevelingLoop(gainNode: GainNode, isExternal: boolean): void {
-  if (!analyserNode || !audioCtx) return;
-  const buffer = new Uint8Array(analyserNode.fftSize);
-  const id = setInterval(() => {
-    if (!gainNode || !analyserNode) return;
-    const rms = getAnalyserRms(analyserNode, buffer);
-    if (rms < 1e-6) return;
-    const targetGain = LEVELING_TARGET_RMS / (rms + 1e-6);
-    const clamped = Math.max(LEVELING_GAIN_MIN, Math.min(LEVELING_GAIN_MAX, targetGain));
-    const current = gainNode.gain.value;
-    gainNode.gain.value = LEVELING_SMOOTH_ALPHA * clamped + (1 - LEVELING_SMOOTH_ALPHA) * current;
-  }, LEVELING_INTERVAL_MS);
-  if (isExternal) externalLevelingIntervalId = id;
-  else lafLevelingIntervalId = id;
-}
-
-function stopExternalLeveling(): void {
-  if (externalLevelingIntervalId != null) {
-    clearInterval(externalLevelingIntervalId);
-    externalLevelingIntervalId = null;
-  }
-  if (externalGainNode) {
-    try { externalGainNode.disconnect(); } catch (_) {}
-    externalGainNode = null;
-  }
-  if (mediaSource) {
-    try { mediaSource.disconnect(); } catch (_) {}
-    mediaSource = null;
-  }
-}
-
-/** Connect external Audio element through Web Audio gain node and start leveling. Call before play(). */
-async function setupExternalStreamGraph(): Promise<void> {
-  if (!externalAudio || !currentExternalStation) return;
-  const ctx = await getOrCreateAudioContext();
-  if (!ctx || !analyserNode) return;
-  stopExternalLeveling();
-  try {
-    mediaSource = ctx.createMediaElementSource(externalAudio);
-    externalGainNode = ctx.createGain();
-    externalGainNode.gain.value = 1;
-    mediaSource.connect(externalGainNode);
-    externalGainNode.connect(analyserNode);
-    if (ctx.state === "suspended") await ctx.resume().catch(() => {});
-    startLevelingLoop(externalGainNode, true);
-  } catch (err) {
-    console.warn("[Volume leveling] Setup failed, playing without leveling:", err);
-    if (mediaSource) {
-      try { mediaSource.disconnect(); } catch (_) {}
-      mediaSource = null;
-    }
-    if (externalGainNode) {
-      try { externalGainNode.disconnect(); } catch (_) {}
-      externalGainNode = null;
-    }
-  }
 }
 
 async function loadChannels() {
@@ -2791,7 +2708,10 @@ function attachExternalStreamAudio(station: ExternalStation): void {
     externalAudio.pause();
     externalAudio.src = "";
   }
-  stopExternalLeveling();
+  if (mediaSource) {
+    try { mediaSource.disconnect(); } catch (_) {}
+    mediaSource = null;
+  }
   const playbackUrl = getExternalStreamPlaybackUrl(station.streamUrl);
   externalAudio = new Audio(playbackUrl);
   externalAudio.preload = "auto";
@@ -2829,12 +2749,10 @@ function attachExternalStreamAudio(station: ExternalStation): void {
       playFallbackTimeoutId = null;
     }
   };
-  const tryPlay = async () => {
+  const tryPlay = () => {
     if (playStarted || !externalAudio || currentExternalStation?.streamUrl !== station.streamUrl) return;
     playStarted = true;
     clearBufferWait();
-    await setupExternalStreamGraph();
-    if (!externalAudio || currentExternalStation?.streamUrl !== station.streamUrl) return;
     externalAudio.play().catch((err) => {
       if (externalStreamConnectTimeoutId != null) {
         clearTimeout(externalStreamConnectTimeoutId);
@@ -2992,7 +2910,10 @@ function stopExternalStream() {
     externalAudio.src = "";
     externalAudio = null;
   }
-  stopExternalLeveling();
+  if (mediaSource) {
+    try { mediaSource.disconnect(); } catch (_) {}
+    mediaSource = null;
+  }
   currentExternalStation = null;
   btnPrevStation.classList.add("hidden");
   btnNextStation.classList.add("hidden");
@@ -3139,8 +3060,7 @@ async function startListening() {
     
     loopRunning = true; // Start the loop
     loop(); // Start processing
-    if (lafGain) startLevelingLoop(lafGain, false);
-
+    
     // Update UI
     updatePlayerStatus("playing", "Listening live");
     showPauseButton();
@@ -3829,10 +3749,6 @@ function stopListening() {
   lastStatsTime = performance.now();
   lastLoopTime = performance.now();
   
-  if (lafLevelingIntervalId != null) {
-    clearInterval(lafLevelingIntervalId);
-    lafLevelingIntervalId = null;
-  }
   if (lafGain) {
     try { lafGain.disconnect(); } catch (_) {}
     lafGain = null;
