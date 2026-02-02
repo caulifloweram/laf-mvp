@@ -897,7 +897,9 @@ function getExternalStationsFlat(): ExternalStation[] {
     (s) =>
       s.name.toLowerCase().includes(q) ||
       (s.description && s.description.toLowerCase().includes(q)) ||
-      (s.location && s.location.toLowerCase().includes(q))
+      (s.location && s.location.toLowerCase().includes(q)) ||
+      (s.streamUrl && s.streamUrl.toLowerCase().includes(q)) ||
+      (s.websiteUrl && s.websiteUrl.toLowerCase().includes(q))
   );
 }
 
@@ -4348,6 +4350,7 @@ function initAdminForm() {
         (r) =>
           (r.name && r.name.toLowerCase().includes(searchQ)) ||
           (r.streamUrl && r.streamUrl.toLowerCase().includes(searchQ)) ||
+          (r.websiteUrl && r.websiteUrl.toLowerCase().includes(searchQ)) ||
           (r.description && r.description.toLowerCase().includes(searchQ)) ||
           (r.bundleName && r.bundleName.toLowerCase().includes(searchQ))
       );
