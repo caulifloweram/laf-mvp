@@ -4241,6 +4241,8 @@ function applyBgColor(hex: string) {
   if (customInput) customInput.value = normalized;
   const drawerCustomInput = document.getElementById("drawer-color-custom-input") as HTMLInputElement | null;
   if (drawerCustomInput) drawerCustomInput.value = normalized;
+  /* Re-apply black player bar so it never follows theme (light bg = white bar bug). */
+  applyPlayerBarDarkStyle();
 }
 
 function initColorPicker() {
