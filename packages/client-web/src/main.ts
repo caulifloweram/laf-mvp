@@ -1694,8 +1694,10 @@ let externalStreamConnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let externalStreamReconnectCount = 0;
 const EXTERNAL_STREAM_MAX_RECONNECTS = 10;
 const EXTERNAL_STREAM_RECONNECT_DELAY_MS = 1500;
-/** Wait for buffer before starting play to reduce lag/glitches. Fallback if canplaythrough doesn't fire (e.g. Safari live streams). */
-const EXTERNAL_STREAM_BUFFER_WAIT_MS = 800;
+/** Wait for buffer before starting play to reduce lag/glitches (e.g. choppy streams like psyradio.fm). Fallback if canplaythrough doesn't fire (e.g. Safari live streams). */
+const EXTERNAL_STREAM_BUFFER_WAIT_MS = 1500;
+/** Minimum buffered seconds we prefer before starting (reduces chop when stream sends in bursts). */
+const EXTERNAL_STREAM_MIN_BUFFERED_SECONDS = 1.2;
 /** Max wait before forcing play() so slow streams still start. */
 const EXTERNAL_STREAM_PLAY_FALLBACK_MS = 8000;
 let playheadTime = 0;
@@ -2699,11 +2701,16 @@ function attachExternalStreamAudio(station: ExternalStation): void {
 
   let playStarted = false;
   let bufferWaitTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let bufferCheckIntervalId: ReturnType<typeof setInterval> | null = null;
   let playFallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
   const clearBufferWait = () => {
     if (bufferWaitTimeoutId != null) {
       clearTimeout(bufferWaitTimeoutId);
       bufferWaitTimeoutId = null;
+    }
+    if (bufferCheckIntervalId != null) {
+      clearInterval(bufferCheckIntervalId);
+      bufferCheckIntervalId = null;
     }
     if (playFallbackTimeoutId != null) {
       clearTimeout(playFallbackTimeoutId);
@@ -2723,6 +2730,34 @@ function attachExternalStreamAudio(station: ExternalStation): void {
       updatePlayerStatus("stopped", "Could not start stream");
       markStreamUnavailable(station.streamUrl);
     });
+  };
+
+  /** Start play when we have enough buffer (reduces chop on bursty streams like psyradio.fm) or after max wait. */
+  const schedulePlayWhenReady = () => {
+    if (playStarted || bufferWaitTimeoutId != null || bufferCheckIntervalId != null) return;
+    const minBuffered = EXTERNAL_STREAM_MIN_BUFFERED_SECONDS;
+    const maxWaitMs = Math.min(EXTERNAL_STREAM_BUFFER_WAIT_MS, 3500);
+    bufferCheckIntervalId = setInterval(() => {
+      if (playStarted || !externalAudio || currentExternalStation?.streamUrl !== station.streamUrl) return;
+      try {
+        if (externalAudio.buffered.length > 0) {
+          const start = externalAudio.buffered.start(0);
+          const end = externalAudio.buffered.end(0);
+          if (end - start >= minBuffered) {
+            tryPlay();
+            return;
+          }
+        }
+      } catch (_) { /* buffered can throw in some browsers */ }
+    }, 200);
+    bufferWaitTimeoutId = setTimeout(() => {
+      bufferWaitTimeoutId = null;
+      if (bufferCheckIntervalId != null) {
+        clearInterval(bufferCheckIntervalId);
+        bufferCheckIntervalId = null;
+      }
+      tryPlay();
+    }, maxWaitMs);
   };
 
   externalAudio.onplaying = () => {
@@ -2768,11 +2803,7 @@ function attachExternalStreamAudio(station: ExternalStation): void {
     }
   };
   externalAudio.oncanplaythrough = () => tryPlay();
-  externalAudio.oncanplay = () => {
-    if (playStarted) return;
-    if (bufferWaitTimeoutId != null) return;
-    bufferWaitTimeoutId = setTimeout(tryPlay, EXTERNAL_STREAM_BUFFER_WAIT_MS);
-  };
+  externalAudio.oncanplay = () => schedulePlayWhenReady();
   playFallbackTimeoutId = setTimeout(() => {
     playFallbackTimeoutId = null;
     tryPlay();
