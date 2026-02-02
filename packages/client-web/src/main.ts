@@ -2685,10 +2685,10 @@ function selectExternalStation(station: ExternalStation) {
       playerCover.style.display = "none";
       playerCover.removeAttribute("src");
       playerCoverInitial.classList.add("hidden");
-      playerCoverWrap.classList.remove("placeholder");
+      playerCoverWrap.classList.add("placeholder");
     };
   } else {
-    playerCoverWrap.classList.remove("placeholder");
+    playerCoverWrap.classList.add("placeholder");
     playerCover.removeAttribute("src");
     playerCoverInitial.classList.add("hidden");
   }
