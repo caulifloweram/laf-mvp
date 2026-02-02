@@ -637,7 +637,6 @@
 
       /* Fixed footer player – source: fixed black/white (no CSS variables) so it never follows theme.
          Breakpoints: mobile layout at max-width 768px and 480px; bar stays black at all widths. */
-      #footer-player.footer-player,
       .footer-player {
         position: fixed;
         bottom: 0;
@@ -645,7 +644,6 @@
         right: 0;
         height: 72px;
         background: #000;
-        background-color: #000;
         color: #fff;
         border-top: 1px solid rgba(255,255,255,0.2);
         display: grid;
@@ -679,7 +677,6 @@
       .player-expand-btn:hover { opacity: 1; color: #fff; }
       .player-expand-btn[aria-expanded="true"] { transform: rotate(180deg); opacity: 1; color: #fff; }
       /* Expanded player panel – source: fixed black/white (no CSS variables) */
-      #player-expanded.player-expanded,
       .player-expanded {
         position: fixed;
         bottom: 72px;
@@ -690,7 +687,6 @@
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
         background: #000;
-        background-color: #000;
         color: #fff;
         border-top: 1px solid rgba(255,255,255,0.2);
         padding: 20px 16px;
@@ -978,14 +974,6 @@
       .admin-station-row .admin-btn-play { padding: 6px 10px; font-size: 12px; }
 
       .hidden { display: none !important; }
-
-      /* Player bar: force black background at all viewport widths (IDs win over any variable-based rule). */
-      #footer-player,
-      #player-expanded {
-        background: #000;
-        background-color: #000;
-        color: #fff;
-      }
 
       /* Mobile: less busy topbar + optimized fullscreen player. Breakpoint: viewport width ≤ 768px. */
       @media (max-width: 768px) {
