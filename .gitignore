@@ -8,5 +8,16 @@ packages/*/node_modules
 packages/*/dist
 .railway
 .vercel
-# Resolver output (generated; run resolve-are-na-streams.mjs to regenerate)
+# Script output (generated; do not commit)
 scripts/are-na-resolved-new.json
+scripts/are-na-output.json
+scripts/are-na-radios-discovered.json
+scripts/are-na-links.json
+scripts/are-na-append.txt
+scripts/built-in-stream-urls.json
+scripts/built-in-stream-failures.json
+scripts/resolved-stations.json
+scripts/urd-ts-block.txt
+scripts/urd-new-only.json
+scripts/urd-stations.json
+scripts/urd-working.json

@@ -2400,7 +2400,6 @@ function getStatusLabel(
 
 /** Client timeout for single stream-check API call; API uses 12s so allow enough for slow streams (e.g. Radio Jar). */
 const STREAM_CHECK_TIMEOUT_MS = 10000;
-const STREAM_CHECK_BATCH_SIZE = 6;
 const STREAM_CHECK_BATCH_CHUNK = 25;
 const STREAM_CHECK_BATCH_CONCURRENT = 4;
 /** Batch request waits for API to check many URLs; increased so slow streams (e.g. Radio AlHara) aren't marked error. */
@@ -2409,8 +2408,6 @@ const STREAM_CHECK_BATCH_REQUEST_TIMEOUT_MS = 20000;
 const STREAM_CHECK_MOBILE_CHUNK = 15;
 const STREAM_CHECK_MOBILE_CONCURRENT = 2;
 const STREAM_CHECK_MOBILE_REQUEST_TIMEOUT_MS = 15000;
-/** First batch is larger so "main" stations at top of list get LIVE badges sooner. */
-const STREAM_CHECK_FIRST_BATCH_SIZE = 18;
 /** Long-interval re-check: full research of all radios. Trust API result (no browser verify) so more stations stay LIVE. */
 const STREAM_RECHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 min
 const STREAM_RECHECK_BATCH_TIMEOUT_MS = 18000; // 18s for periodic research so slow streams have time
@@ -2482,52 +2479,6 @@ function markStreamLive(streamUrl: string): void {
   streamStatusCache[streamUrl] = { ok: true, status: "live" };
   scheduleSaveStreamStatusCache();
   updateCardStatus(streamUrl, true, "live");
-}
-
-const VERIFY_TIMEOUT_MS = 12000;
-const VERIFY_RETRY_TIMEOUT_MS = 18000;
-
-/** Single attempt to verify a stream in the browser. Returns true if canplay/playing, false on error or timeout. */
-function verifyStreamInBrowserOnce(streamUrl: string, timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const playbackUrl = getExternalStreamPlaybackUrl(streamUrl);
-    const audio = new Audio();
-    let settled = false;
-    const cleanup = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      audio.src = "";
-      audio.oncanplay = null;
-      audio.onplaying = null;
-      audio.onerror = null;
-    };
-    const timer = setTimeout(() => {
-      cleanup();
-      resolve(false);
-    }, timeoutMs);
-    audio.oncanplay = () => {
-      cleanup();
-      resolve(true);
-    };
-    audio.onplaying = () => {
-      cleanup();
-      resolve(true);
-    };
-    audio.onerror = () => {
-      cleanup();
-      resolve(false);
-    };
-    audio.src = playbackUrl;
-  });
-}
-
-/** Verify stream in browser; retries once with longer timeout if first attempt fails (handles slow/buffering streams). */
-function verifyStreamInBrowser(streamUrl: string): Promise<boolean> {
-  return verifyStreamInBrowserOnce(streamUrl, VERIFY_TIMEOUT_MS).then((ok) => {
-    if (ok) return true;
-    return verifyStreamInBrowserOnce(streamUrl, VERIFY_RETRY_TIMEOUT_MS);
-  });
 }
 
 /** Run one API stream-check attempt with given timeout. Returns { ok, status } or throws on network error. */

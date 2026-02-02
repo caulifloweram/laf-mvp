@@ -163,7 +163,7 @@ curl -L https://fly.io/install.sh | sh
 
 ### 2. Create Dockerfiles
 
-You'll need Dockerfiles for each service. See `DOCKER_SETUP.md` for details.
+You'll need Dockerfiles for each service.
 
 ### 3. Deploy
 ```bash
