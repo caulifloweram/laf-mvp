@@ -4181,46 +4181,6 @@ function getContrastColors(bgHex: string): {
   };
 }
 
-/** Force player bar and expanded player to black background and white text via inline styles with !important. Ensures correct appearance on all devices regardless of CSS variables or media queries. */
-function applyPlayerBarDarkStyles() {
-  const footerEl = document.getElementById("footer-player");
-  const expandedEl = document.getElementById("player-expanded");
-  const setDark = (el: HTMLElement | null) => {
-    if (!el) return;
-    el.style.setProperty("background", "#000", "important");
-    el.style.setProperty("background-color", "#000", "important");
-    el.style.setProperty("color", "#fff", "important");
-  };
-  setDark(footerEl);
-  setDark(expandedEl);
-  const minimizeBar = expandedEl?.querySelector(".player-expanded-minimize");
-  if (minimizeBar instanceof HTMLElement) setDark(minimizeBar);
-  footerEl?.querySelectorAll(".cover-wrap").forEach((node) => {
-    if (node instanceof HTMLElement) {
-      node.style.setProperty("background", "#1a1a1a", "important");
-      node.style.setProperty("background-color", "#1a1a1a", "important");
-    }
-  });
-  expandedEl?.querySelectorAll(".player-expanded-cover-wrap").forEach((node) => {
-    if (node instanceof HTMLElement) {
-      node.style.setProperty("background", "#1a1a1a", "important");
-      node.style.setProperty("background-color", "#1a1a1a", "important");
-    }
-  });
-  footerEl?.querySelectorAll(".player-expand-btn, .info .title, .info .desc, .controls button, .status-text").forEach((node) => {
-    if (node instanceof HTMLElement) {
-      node.style.setProperty("color", "#fff", "important");
-      if ("borderColor" in node.style) node.style.setProperty("border-color", "#fff", "important");
-    }
-  });
-  expandedEl?.querySelectorAll(".player-expanded-title, .player-expanded-location, .player-expanded-desc, .player-expanded-link, .player-expanded-buffer-hint, .player-expanded-controls button, .player-expanded-minimize-btn").forEach((node) => {
-    if (node instanceof HTMLElement) {
-      node.style.setProperty("color", "#fff", "important");
-      node.style.setProperty("border-color", "#fff", "important");
-    }
-  });
-}
-
 function applyBgColor(hex: string) {
   const root = document.documentElement.style;
   const normalized = hex.replace(/^\s+|\s+$/g, "").toLowerCase();
@@ -4253,8 +4213,6 @@ function applyBgColor(hex: string) {
   root.setProperty("--footer-text", "#fff");
   root.setProperty("--topbar-bg", "#000");
   root.setProperty("--topbar-text", "#fff");
-  applyPlayerBarDarkStyles();
-
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", normalized);
   document.querySelectorAll(".color-picker-preview").forEach((el) => {
@@ -4757,44 +4715,7 @@ function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
 }
 
-/** Inject a dedicated stylesheet for the player bar so it always renders black with white text. Runs once at load; the sheet is appended last so it overrides any other CSS (including theme variables). */
-function injectPlayerBarDarkStylesheet(): void {
-  if (typeof document === "undefined" || !document.head) return;
-  const id = "player-bar-dark-styles";
-  if (document.getElementById(id)) return;
-  const css = `
-#footer-player, .footer-player, #player-expanded, .player-expanded,
-.player-expanded.fullscreen-mobile .player-expanded-minimize {
-  background: #000 !important; background-color: #000 !important; color: #fff !important;
-}
-.footer-player .cover-wrap, .footer-player .cover-wrap.placeholder,
-.player-expanded-cover-wrap, .player-expanded-inner .player-expanded-cover-wrap {
-  background: #1a1a1a !important; background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.2) !important;
-}
-.footer-player .player-expand-btn, .footer-player .info .title, .footer-player .info .desc,
-.footer-player .controls button, .footer-player .status-text,
-.player-expanded .player-expanded-title, .player-expanded .player-expanded-location,
-.player-expanded .player-expanded-desc, .player-expanded .player-expanded-link,
-.player-expanded .player-expanded-buffer-hint, .player-expanded-controls button,
-.player-expanded.fullscreen-mobile .player-expanded-minimize-btn {
-  color: #fff !important; border-color: #fff !important;
-}
-.footer-player .controls button:hover, .player-expanded-controls button:hover {
-  background: rgba(255,255,255,0.15) !important; color: #fff !important;
-}
-.footer-player, .player-expanded { border-top-color: rgba(255,255,255,0.2) !important; }
-`;
-  const style = document.createElement("style");
-  style.id = id;
-  style.setAttribute("data-name", "player-bar-dark");
-  style.textContent = css;
-  document.head.appendChild(style);
-}
-
-injectPlayerBarDarkStylesheet();
-
 loadRuntimeConfig().then(() => {
-  applyPlayerBarDarkStyles();
   applyBroadcastLink();
   updateTopBarAuth();
   updateFooterPlayerVisibility();
