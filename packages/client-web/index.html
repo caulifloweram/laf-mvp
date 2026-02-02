@@ -1039,8 +1039,10 @@
           min-height: 112px;
           border-top-width: 1px;
           align-items: center;
+          align-content: center;
         }
-        .footer-player .player-expand-btn { grid-column: 1; grid-row: 1 / -1; align-self: center; width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; }
+        .footer-player .player-bar-tap-area { display: block; position: absolute; inset: 0; z-index: 2; background: transparent; background-color: transparent; border: none; cursor: pointer; }
+        .footer-player .player-expand-btn { grid-column: 1; grid-row: 1 / -1; align-self: center; width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; z-index: 1; }
         .footer-player .cover-wrap { display: none; }
         .footer-player .info {
           min-width: 0;
@@ -1048,12 +1050,13 @@
           grid-row: 1;
           align-self: end;
           overflow: hidden;
+          z-index: 1;
         }
         .footer-player .info .title { font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .footer-player .info .desc,
         .footer-player .info #player-live-badge { display: none !important; }
-        .footer-player .status-text { display: block !important; grid-column: 2; grid-row: 2; align-self: start; font-size: 10px; opacity: 0.85; text-align: left; max-width: none; line-height: 1.2; }
-        .footer-player .controls { grid-column: 3; grid-row: 1 / -1; align-self: center; gap: 6px; }
+        .footer-player .status-text { display: block !important; grid-column: 2; grid-row: 2; align-self: start; font-size: 10px; opacity: 0.85; text-align: left; max-width: none; line-height: 1.2; z-index: 1; }
+        .footer-player .controls { grid-column: 3; grid-row: 1 / -1; align-self: center; gap: 6px; z-index: 3; position: relative; }
         .footer-player .controls button { min-width: 38px; min-height: 38px; padding: 6px; font-size: 12px; }
         .footer-player .play-pause-btn #play-pause-text { display: none !important; }
         .footer-player .play-pause-btn { min-width: 38px; min-height: 38px; padding: 6px; }
@@ -1090,8 +1093,9 @@
           gap: 2px 8px;
           padding: 6px 10px 8px;
           align-items: center;
+          align-content: center;
         }
-        .footer-player .player-bar-tap-area { display: block; position: absolute; inset: 0; z-index: 0; background: transparent; background-color: transparent; border: none; }
+        .footer-player .player-bar-tap-area { display: block; position: absolute; inset: 0; z-index: 2; background: transparent; background-color: transparent; border: none; cursor: pointer; }
         .footer-player .player-expand-btn { z-index: 1; width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; grid-column: 1; grid-row: 1 / -1; align-self: center; }
         .footer-player .cover-wrap { display: none; }
         .footer-player .info { z-index: 1; min-width: 0; grid-column: 2; grid-row: 1; align-self: end; overflow: hidden; }
@@ -1099,7 +1103,7 @@
         .footer-player .info .desc,
         .footer-player .info #player-live-badge { display: none !important; }
         .footer-player .status-text { display: block !important; z-index: 1; grid-column: 2; grid-row: 2; align-self: start; font-size: 10px; opacity: 0.85; text-align: left; max-width: none; line-height: 1.2; }
-        .footer-player .controls { z-index: 1; grid-column: 3; grid-row: 1 / -1; align-self: center; gap: 4px; }
+        .footer-player .controls { z-index: 3; position: relative; grid-column: 3; grid-row: 1 / -1; align-self: center; gap: 4px; }
         .footer-player .controls button { min-width: 36px; min-height: 36px; padding: 6px; font-size: 11px; }
         .footer-player .play-pause-btn #play-pause-text { display: none !important; }
         .footer-player .play-pause-btn { min-width: 36px; min-height: 36px; padding: 6px; }
