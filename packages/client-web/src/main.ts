@@ -4238,7 +4238,9 @@ function initColorPicker() {
   });
 }
 
-/* ── Theme switcher: Mac 1984 ↔ 90s Car Radio ── */
+/* ══════════════════════════════════════════════════════════════
+   Theme switcher: Mac 1984 ↔ Car Radio (full-page head unit)
+   ══════════════════════════════════════════════════════════════ */
 type ThemeId = "mac1984" | "car-radio";
 
 function getStoredTheme(): ThemeId {
@@ -4247,16 +4249,19 @@ function getStoredTheme(): ThemeId {
 
 function applyTheme(theme: ThemeId): void {
   const body = document.body;
+  const carRadioUI = document.getElementById("car-radio-ui");
   if (theme === "car-radio") {
     body.classList.add("theme-car-radio");
+    if (carRadioUI) carRadioUI.style.display = "flex";
+    crUpdateLCD();
+    crPopulatePresets();
   } else {
     body.classList.remove("theme-car-radio");
+    if (carRadioUI) carRadioUI.style.display = "none";
   }
   updateThemeToggleUI(theme);
   /* Re-apply player bar styling so inline overrides match current theme. */
-  if (typeof applyPlayerBarDarkStyle === "function") {
-    try { applyPlayerBarDarkStyle(); } catch (_) { /* player not yet initialized */ }
-  }
+  try { applyPlayerBarDarkStyle(); } catch (_) { /* player not yet initialized */ }
 }
 
 function updateThemeToggleUI(theme: ThemeId): void {
@@ -4272,7 +4277,7 @@ function updateThemeToggleUI(theme: ThemeId): void {
     if (lbl) lbl.textContent = theme === "car-radio" ? "Classic" : "Car Radio";
   }
   for (const ico of icons) {
-    if (ico) ico.textContent = theme === "car-radio" ? "\u{1F4BB}" : "\u{1F4FB}"; // 💻 or 📻
+    if (ico) ico.textContent = theme === "car-radio" ? "\u{1F4BB}" : "\u{1F4FB}";
   }
 }
 
@@ -4283,12 +4288,276 @@ function toggleTheme(): void {
   applyTheme(next);
 }
 
+/* ── Car Radio UI controller ── */
+let crCurrentIndex = -1; // index into the visible stations list
+let crMeterAnimId: number | null = null;
+
+function crGetStations(): ExternalStation[] {
+  return getVisibleExternalStationsForPlayer(false);
+}
+
+/** Update the LCD display with current station info. */
+function crUpdateLCD(): void {
+  const row1 = document.getElementById("cr-lcd-row1");
+  const row2 = document.getElementById("cr-lcd-row2");
+  const freq = document.getElementById("cr-lcd-freq");
+  const status = document.getElementById("cr-lcd-status");
+  const meterFill = document.getElementById("cr-lcd-meter-fill");
+  if (!row1 || !row2 || !freq || !status) return;
+
+  if (currentExternalStation) {
+    row1.textContent = currentExternalStation.name.toUpperCase();
+    row2.textContent = currentExternalStation.location || currentExternalStation.description || "";
+    const stations = crGetStations();
+    const idx = stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl);
+    const stationNum = idx >= 0 ? idx + 1 : 0;
+    freq.textContent = `FM ${stationNum > 0 ? (87.5 + (stationNum * 0.2)).toFixed(1) : "--.-"}`;
+    crCurrentIndex = idx;
+
+    // Status
+    if (externalAudio && !externalAudio.paused) {
+      status.textContent = "PLAYING";
+      status.className = "cr-lcd-status cr-status-playing";
+      if (meterFill) meterFill.style.width = "75%";
+      crStartMeterAnim();
+    } else {
+      status.textContent = "PAUSED";
+      status.className = "cr-lcd-status cr-status-stopped";
+      if (meterFill) meterFill.style.width = "0%";
+      crStopMeterAnim();
+    }
+  } else if (currentChannel) {
+    row1.textContent = currentChannel.title.toUpperCase();
+    row2.textContent = "LAF LIVE CHANNEL";
+    freq.textContent = "LAF";
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      status.textContent = "PLAYING";
+      status.className = "cr-lcd-status cr-status-playing";
+      if (meterFill) meterFill.style.width = "75%";
+      crStartMeterAnim();
+    } else {
+      status.textContent = "STOPPED";
+      status.className = "cr-lcd-status cr-status-stopped";
+      if (meterFill) meterFill.style.width = "0%";
+      crStopMeterAnim();
+    }
+  } else {
+    row1.textContent = "LAF RADIO";
+    row2.textContent = "Select a station";
+    freq.textContent = "FM --.-";
+    status.textContent = "STANDBY";
+    status.className = "cr-lcd-status";
+    if (meterFill) meterFill.style.width = "0%";
+    crStopMeterAnim();
+  }
+
+  // Update preset active states
+  crUpdatePresetActive();
+}
+
+/** Simple animated level meter. */
+function crStartMeterAnim(): void {
+  if (crMeterAnimId != null) return;
+  const fill = document.getElementById("cr-lcd-meter-fill");
+  if (!fill) return;
+  const animate = () => {
+    const base = 50 + Math.random() * 40;
+    fill.style.width = base + "%";
+    crMeterAnimId = window.setTimeout(() => {
+      crMeterAnimId = window.requestAnimationFrame(() => {
+        crMeterAnimId = null;
+        crStartMeterAnim();
+      }) as unknown as number;
+    }, 200 + Math.random() * 300) as unknown as number;
+  };
+  animate();
+}
+
+function crStopMeterAnim(): void {
+  if (crMeterAnimId != null) {
+    clearTimeout(crMeterAnimId);
+    cancelAnimationFrame(crMeterAnimId);
+    crMeterAnimId = null;
+  }
+}
+
+/** Populate preset buttons with the first 6 visible stations. */
+function crPopulatePresets(): void {
+  const stations = crGetStations();
+  for (let i = 0; i < 6; i++) {
+    const label = document.querySelector(`#cr-preset-${i + 1} .cr-preset-label`) as HTMLElement | null;
+    if (label) {
+      const s = stations[i];
+      label.textContent = s ? s.name.substring(0, 10) : "";
+    }
+  }
+  crUpdatePresetActive();
+}
+
+function crUpdatePresetActive(): void {
+  const stations = crGetStations();
+  for (let i = 0; i < 6; i++) {
+    const btn = document.getElementById(`cr-preset-${i + 1}`);
+    if (!btn) continue;
+    const s = stations[i];
+    const isActive = s && currentExternalStation?.streamUrl === s.streamUrl;
+    btn.classList.toggle("cr-preset-active", !!isActive);
+  }
+}
+
+/** Select a station by index in the visible list. */
+function crSelectStation(index: number): void {
+  const stations = crGetStations();
+  if (index < 0 || index >= stations.length) return;
+  crCurrentIndex = index;
+  selectExternalStation(stations[index]);
+  // LCD update happens after selectExternalStation triggers status changes
+  setTimeout(crUpdateLCD, 300);
+}
+
+/** Navigate to next or previous station. */
+function crNextStation(): void {
+  const stations = crGetStations();
+  if (stations.length === 0) return;
+  const next = (crCurrentIndex + 1) % stations.length;
+  crSelectStation(next);
+}
+
+function crPrevStation(): void {
+  const stations = crGetStations();
+  if (stations.length === 0) return;
+  const prev = (crCurrentIndex - 1 + stations.length) % stations.length;
+  crSelectStation(prev);
+}
+
+/** Toggle play / pause from the car radio buttons. */
+function crTogglePlayPause(): void {
+  if (currentExternalStation) {
+    if (externalAudio && !externalAudio.paused) {
+      pauseExternalStream();
+    } else {
+      resumeExternalStream();
+    }
+    setTimeout(crUpdateLCD, 200);
+  } else if (currentChannel) {
+    btnPlayPause.click();
+    setTimeout(crUpdateLCD, 200);
+  } else {
+    // Nothing playing → select first station
+    crSelectStation(0);
+  }
+}
+
+function crStop(): void {
+  if (currentExternalStation) {
+    stopExternalStream();
+    updateFooterPlayerVisibility();
+  } else if (currentChannel) {
+    stopListening();
+    currentChannel = null;
+    updateFooterPlayerVisibility();
+  }
+  setTimeout(crUpdateLCD, 200);
+}
+
+/** Render the station list overlay. */
+function crRenderStationList(): void {
+  const body = document.getElementById("cr-station-list-body");
+  if (!body) return;
+  const stations = crGetStations();
+  body.innerHTML = stations.map((s, i) => {
+    const isActive = currentExternalStation?.streamUrl === s.streamUrl;
+    return `<button type="button" class="cr-station-row ${isActive ? "cr-station-active" : ""}" data-cr-idx="${i}">
+      <span class="cr-station-row-num">${String(i + 1).padStart(2, "0")}</span>
+      <span class="cr-station-row-name">${s.name}</span>
+      <span class="cr-station-row-loc">${s.location || ""}</span>
+    </button>`;
+  }).join("");
+  body.querySelectorAll(".cr-station-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const idx = parseInt((row as HTMLElement).dataset.crIdx || "0", 10);
+      crSelectStation(idx);
+      const listEl = document.getElementById("cr-station-list");
+      if (listEl) listEl.style.display = "none";
+    });
+  });
+}
+
+/** Periodically sync LCD while car radio theme is active. */
+let crSyncInterval: ReturnType<typeof setInterval> | null = null;
+
+function crStartSync(): void {
+  if (crSyncInterval) return;
+  crSyncInterval = setInterval(() => {
+    if (!document.body.classList.contains("theme-car-radio")) {
+      if (crSyncInterval) { clearInterval(crSyncInterval); crSyncInterval = null; }
+      return;
+    }
+    crUpdateLCD();
+  }, 1500);
+}
+
 function initThemeToggle(): void {
   applyTheme(getStoredTheme());
+
+  // Desktop and drawer toggle buttons
   const btn = document.getElementById("theme-toggle-btn");
   const btnDrawer = document.getElementById("theme-toggle-btn-drawer");
   btn?.addEventListener("click", (e) => { e.stopPropagation(); toggleTheme(); });
   btnDrawer?.addEventListener("click", (e) => { e.stopPropagation(); toggleTheme(); closeMobileNav(); });
+
+  // ── Car Radio button wiring ──
+  // Theme button on the radio itself (back to classic)
+  document.getElementById("cr-btn-theme")?.addEventListener("click", () => {
+    localStorage.setItem("laf_theme", "mac1984");
+    applyTheme("mac1984");
+  });
+
+  // Preset buttons 1-6
+  for (let i = 0; i < 6; i++) {
+    document.getElementById(`cr-preset-${i + 1}`)?.addEventListener("click", () => crSelectStation(i));
+  }
+
+  // Nav arrows: left/right = prev/next station
+  document.getElementById("cr-nav-left")?.addEventListener("click", crPrevStation);
+  document.getElementById("cr-nav-right")?.addEventListener("click", crNextStation);
+  document.getElementById("cr-btn-seek-back")?.addEventListener("click", crPrevStation);
+  document.getElementById("cr-btn-seek-fwd")?.addEventListener("click", crNextStation);
+
+  // Nav up/down = scroll through stations (same as left/right for now)
+  document.getElementById("cr-nav-up")?.addEventListener("click", crPrevStation);
+  document.getElementById("cr-nav-down")?.addEventListener("click", crNextStation);
+
+  // Play / Stop
+  document.getElementById("cr-btn-play")?.addEventListener("click", crTogglePlayPause);
+  document.getElementById("cr-btn-stop")?.addEventListener("click", crStop);
+
+  // INFO button = show station list
+  document.getElementById("cr-btn-info")?.addEventListener("click", () => {
+    const listEl = document.getElementById("cr-station-list");
+    if (!listEl) return;
+    if (listEl.style.display === "none") {
+      crRenderStationList();
+      listEl.style.display = "flex";
+    } else {
+      listEl.style.display = "none";
+    }
+  });
+  document.getElementById("cr-station-list-close")?.addEventListener("click", () => {
+    const listEl = document.getElementById("cr-station-list");
+    if (listEl) listEl.style.display = "none";
+  });
+
+  // SRC button = select random station
+  document.getElementById("cr-btn-src")?.addEventListener("click", () => {
+    const stations = crGetStations();
+    if (stations.length === 0) return;
+    const idx = Math.floor(Math.random() * stations.length);
+    crSelectStation(idx);
+  });
+
+  // Start LCD sync
+  crStartSync();
 }
 function closeMobileNav() {
   document.body.classList.remove("nav-open");
