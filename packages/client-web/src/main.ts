@@ -4547,10 +4547,7 @@ function ipodMainMenuItems(): IpodMenuEntry[] {
       setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
     }},
     { label: "About", sub: "LAF Radio" },
-    { label: "Classic Theme", action: () => {
-      localStorage.setItem("laf_theme", "mac1984");
-      applyTheme("mac1984");
-    }},
+    { label: "Switch Theme", sub: "Classic", action: () => { toggleTheme(); } },
   ];
 }
 
@@ -4871,11 +4868,8 @@ function initThemeToggle(): void {
   btnDrawer?.addEventListener("click", (e) => { e.stopPropagation(); toggleTheme(); closeMobileNav(); });
 
   // ── Car Radio button wiring ──
-  // Theme button on the radio itself (back to classic)
-  document.getElementById("cr-btn-theme")?.addEventListener("click", () => {
-    localStorage.setItem("laf_theme", "mac1984");
-    applyTheme("mac1984");
-  });
+  // Theme button on the radio itself → cycle to next theme (iPod)
+  document.getElementById("cr-btn-theme")?.addEventListener("click", toggleTheme);
 
   // Preset buttons 1-6
   for (let i = 0; i < 6; i++) {
