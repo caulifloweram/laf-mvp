@@ -1499,6 +1499,426 @@
         white-space: nowrap;
       }
 
+      /* ──────────────────────────────────────────────────────────
+         iPOD CLASSIC THEME – Full-page skeuomorphic iPod
+         ────────────────────────────────────────────────────────── */
+
+      /* When iPod is active, hide the normal UI */
+      body.theme-ipod { background: #000 !important; padding-bottom: 0 !important; overflow: hidden; }
+      body.theme-ipod .site-topbar,
+      body.theme-ipod .main,
+      body.theme-ipod .footer-player,
+      body.theme-ipod .player-expanded,
+      body.theme-ipod .player-detail,
+      body.theme-ipod .color-picker-dropdown,
+      body.theme-ipod .nav-drawer,
+      body.theme-ipod .nav-backdrop,
+      body.theme-ipod .chat-global-overlay,
+      body.theme-ipod .chat-global-fullscreen,
+      body.theme-ipod .initial-loading-screen { display: none !important; }
+
+      /* ── iPod container ── */
+      .ipod-ui {
+        position: fixed;
+        inset: 0;
+        background: #1a1a1a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      /* ── iPod body (white/silver classic) ── */
+      .ipod-body {
+        width: 320px;
+        max-width: 92vw;
+        background: linear-gradient(180deg, #f0f0f0 0%, #e8e8e8 20%, #e0e0e0 80%, #d4d4d4 100%);
+        border-radius: 24px;
+        border: 1px solid #b0b0b0;
+        box-shadow:
+          0 0 0 1px rgba(255,255,255,0.6) inset,
+          0 12px 40px rgba(0,0,0,0.6),
+          0 2px 8px rgba(0,0,0,0.3);
+        padding: 24px 20px 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+      }
+      /* Subtle metallic sheen */
+      .ipod-body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 30%;
+        right: 30%;
+        height: 50%;
+        background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
+        border-radius: 24px 24px 0 0;
+        pointer-events: none;
+      }
+
+      /* ── iPod Screen ── */
+      .ipod-screen {
+        width: 100%;
+        height: 260px;
+        background: #fff;
+        border: 2px solid #888;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow:
+          inset 0 1px 4px rgba(0,0,0,0.15),
+          0 1px 0 rgba(255,255,255,0.8);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      /* iPod status bar */
+      .ipod-statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 10px;
+        background: linear-gradient(180deg, #b8c6e0, #8fa4c8);
+        font-size: 10px;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-weight: 600;
+        color: #000;
+        flex-shrink: 0;
+      }
+      .ipod-statusbar-title { flex: 1; text-align: center; }
+      .ipod-statusbar-battery {
+        width: 20px;
+        height: 10px;
+        border: 1px solid #555;
+        border-radius: 2px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 1px;
+      }
+      .ipod-statusbar-battery::after {
+        content: '';
+        position: absolute;
+        right: -3px;
+        top: 2px;
+        width: 2px;
+        height: 4px;
+        background: #555;
+        border-radius: 0 1px 1px 0;
+      }
+      .ipod-statusbar-battery-fill {
+        width: 80%;
+        height: 100%;
+        background: linear-gradient(180deg, #4cd964, #34c759);
+        border-radius: 1px;
+      }
+      .ipod-statusbar-play {
+        font-size: 8px;
+        margin-right: 4px;
+      }
+
+      /* iPod screen content area */
+      .ipod-content {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        background: #fff;
+      }
+
+      /* ── iPod Menu view ── */
+      .ipod-menu {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .ipod-menu.ipod-hidden { display: none; }
+      .ipod-menu-header {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 6px 12px;
+        color: #000;
+        border-bottom: 1px solid #ccc;
+        flex-shrink: 0;
+      }
+      .ipod-menu-list {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .ipod-menu-list::-webkit-scrollbar { display: none; }
+      .ipod-menu-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 13px;
+        color: #000;
+        cursor: pointer;
+        border-bottom: 1px solid #e8e8e8;
+        transition: none;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0;
+        text-transform: none;
+        letter-spacing: normal;
+        text-align: left;
+        width: 100%;
+        font-weight: normal;
+      }
+      .ipod-menu-item.ipod-selected {
+        background: linear-gradient(180deg, #4a8de8, #2968c8) !important;
+        color: #fff !important;
+      }
+      .ipod-menu-item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ipod-menu-item-chevron {
+        font-size: 12px;
+        color: #999;
+        margin-left: 8px;
+        flex-shrink: 0;
+      }
+      .ipod-menu-item.ipod-selected .ipod-menu-item-chevron { color: #fff; }
+      .ipod-menu-item-sub {
+        font-size: 11px;
+        color: #888;
+        margin-left: 8px;
+        flex-shrink: 0;
+      }
+      .ipod-menu-item.ipod-selected .ipod-menu-item-sub { color: rgba(255,255,255,0.8); }
+
+      /* ── iPod Now Playing view ── */
+      .ipod-nowplaying {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 10px 14px;
+        background: #fff;
+      }
+      .ipod-nowplaying.ipod-hidden { display: none; }
+      .ipod-np-top {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+        flex-shrink: 0;
+      }
+      .ipod-np-art {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #ddd, #bbb);
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .ipod-np-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .ipod-np-art-initial {
+        font-size: 32px;
+        font-weight: 700;
+        color: #999;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      }
+      .ipod-np-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+      .ipod-np-title {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        color: #000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ipod-np-artist {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 12px;
+        color: #666;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ipod-np-album {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 11px;
+        color: #999;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Progress bar */
+      .ipod-np-progress {
+        margin-top: auto;
+        flex-shrink: 0;
+      }
+      .ipod-np-bar-wrap {
+        height: 6px;
+        background: #ddd;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 4px;
+      }
+      .ipod-np-bar-fill {
+        height: 100%;
+        background: linear-gradient(180deg, #4a8de8, #2968c8);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.5s linear;
+      }
+      .ipod-np-bar-fill.ipod-np-playing {
+        animation: ipod-progress 30s linear infinite;
+      }
+      @keyframes ipod-progress {
+        0% { width: 0%; }
+        100% { width: 100%; }
+      }
+      .ipod-np-times {
+        display: flex;
+        justify-content: space-between;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 9px;
+        color: #999;
+      }
+
+      /* Volume bar */
+      .ipod-np-volume {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        flex-shrink: 0;
+      }
+      .ipod-np-vol-icon { font-size: 10px; color: #888; flex-shrink: 0; }
+      .ipod-np-vol-bar {
+        flex: 1;
+        height: 4px;
+        background: #ddd;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .ipod-np-vol-fill {
+        height: 100%;
+        width: 70%;
+        background: linear-gradient(90deg, #4a8de8, #6aa8f0);
+        border-radius: 2px;
+        transition: width 0.2s;
+      }
+
+      /* ── iPod Click Wheel ── */
+      .ipod-wheel-area {
+        width: 220px;
+        height: 220px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .ipod-wheel {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #e8e8e8, #d0d0d0);
+        border: 1px solid #b8b8b8;
+        box-shadow:
+          inset 0 2px 6px rgba(0,0,0,0.08),
+          0 2px 8px rgba(0,0,0,0.15);
+        position: relative;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Wheel labels */
+      .ipod-wheel-label {
+        position: absolute;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+        pointer-events: none;
+        user-select: none;
+      }
+      .ipod-wheel-label-menu { top: 18px; left: 50%; transform: translateX(-50%); }
+      .ipod-wheel-label-fwd { right: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+      .ipod-wheel-label-back { left: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+      .ipod-wheel-label-play { bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 14px; }
+
+      /* Click zones (invisible buttons on the wheel) */
+      .ipod-wheel-zone {
+        position: absolute;
+        background: transparent;
+        border: none !important;
+        cursor: pointer;
+        z-index: 2;
+        padding: 0;
+        box-shadow: none !important;
+        border-radius: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: transparent !important;
+      }
+      .ipod-wheel-zone:active { background: rgba(0,0,0,0.06) !important; }
+      .ipod-zone-menu { top: 0; left: 25%; width: 50%; height: 28%; border-radius: 50% 50% 0 0; }
+      .ipod-zone-fwd { right: 0; top: 25%; width: 28%; height: 50%; border-radius: 0 50% 50% 0; }
+      .ipod-zone-back { left: 0; top: 25%; width: 28%; height: 50%; border-radius: 50% 0 0 50%; }
+      .ipod-zone-play { bottom: 0; left: 25%; width: 50%; height: 28%; border-radius: 0 0 50% 50%; }
+
+      /* Center select button */
+      .ipod-center-btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #f0f0f0, #ddd);
+        border: 1px solid #c0c0c0 !important;
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.15),
+          inset 0 1px 2px rgba(255,255,255,0.8) !important;
+        cursor: pointer;
+        z-index: 3;
+        padding: 0;
+        color: transparent !important;
+      }
+      .ipod-center-btn:active {
+        background: linear-gradient(145deg, #e0e0e0, #ccc) !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.15) !important;
+      }
+
+      /* ── iPod responsive ── */
+      @media (max-width: 400px) {
+        .ipod-body { padding: 16px 14px 20px; border-radius: 20px; gap: 14px; }
+        .ipod-screen { height: 220px; }
+        .ipod-wheel-area { width: 190px; height: 190px; }
+        .ipod-center-btn { width: 66px; height: 66px; }
+        .ipod-wheel-label { font-size: 10px; }
+        .ipod-wheel-label-menu { top: 14px; }
+        .ipod-wheel-label-play { bottom: 14px; }
+        .ipod-wheel-label-fwd { right: 12px; font-size: 14px; }
+        .ipod-wheel-label-back { left: 12px; font-size: 14px; }
+      }
+      @media (max-height: 600px) {
+        .ipod-body { padding: 12px 14px 16px; gap: 10px; }
+        .ipod-screen { height: 180px; }
+        .ipod-wheel-area { width: 170px; height: 170px; }
+        .ipod-center-btn { width: 60px; height: 60px; }
+      }
+
       /* ── Theme toggle button (works in both themes) ── */
       .theme-toggle-btn {
         background: transparent;
@@ -2061,6 +2481,71 @@
           <button type="button" class="cr-btn cr-btn-small" id="cr-station-list-close">CLOSE</button>
         </div>
         <div class="cr-station-list-body" id="cr-station-list-body"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         iPOD UI – Full-page skeuomorphic iPod Classic
+         Hidden by default; shown when theme-ipod is active
+         ═══════════════════════════════════════════════════════ -->
+    <div id="ipod-ui" class="ipod-ui" aria-label="iPod Interface" style="display:none;">
+      <div class="ipod-body">
+        <!-- Screen -->
+        <div class="ipod-screen">
+          <div class="ipod-statusbar">
+            <span class="ipod-statusbar-play" id="ipod-statusbar-play"></span>
+            <span class="ipod-statusbar-title" id="ipod-statusbar-title">iPod</span>
+            <div class="ipod-statusbar-battery"><div class="ipod-statusbar-battery-fill"></div></div>
+          </div>
+          <div class="ipod-content">
+            <!-- Menu view -->
+            <div class="ipod-menu" id="ipod-menu-view">
+              <div class="ipod-menu-header" id="ipod-menu-header">LAF Radio</div>
+              <div class="ipod-menu-list" id="ipod-menu-list"></div>
+            </div>
+            <!-- Now Playing view -->
+            <div class="ipod-nowplaying ipod-hidden" id="ipod-nowplaying">
+              <div class="ipod-np-top">
+                <div class="ipod-np-art" id="ipod-np-art">
+                  <img id="ipod-np-art-img" alt="" style="display:none;" />
+                  <span class="ipod-np-art-initial" id="ipod-np-art-initial">?</span>
+                </div>
+                <div class="ipod-np-info">
+                  <div class="ipod-np-title" id="ipod-np-title">Not Playing</div>
+                  <div class="ipod-np-artist" id="ipod-np-artist">—</div>
+                  <div class="ipod-np-album" id="ipod-np-album">LAF Radio</div>
+                </div>
+              </div>
+              <div class="ipod-np-progress">
+                <div class="ipod-np-bar-wrap"><div class="ipod-np-bar-fill" id="ipod-np-bar"></div></div>
+                <div class="ipod-np-times">
+                  <span id="ipod-np-time-elapsed">0:00</span>
+                  <span id="ipod-np-time-remain">LIVE</span>
+                </div>
+              </div>
+              <div class="ipod-np-volume">
+                <span class="ipod-np-vol-icon">🔈</span>
+                <div class="ipod-np-vol-bar"><div class="ipod-np-vol-fill" id="ipod-np-vol-fill"></div></div>
+                <span class="ipod-np-vol-icon">🔊</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Click Wheel -->
+        <div class="ipod-wheel-area">
+          <div class="ipod-wheel" id="ipod-wheel">
+            <span class="ipod-wheel-label ipod-wheel-label-menu">MENU</span>
+            <span class="ipod-wheel-label ipod-wheel-label-fwd">▶▶</span>
+            <span class="ipod-wheel-label ipod-wheel-label-back">◀◀</span>
+            <span class="ipod-wheel-label ipod-wheel-label-play">▶❚❚</span>
+            <button type="button" class="ipod-wheel-zone ipod-zone-menu" id="ipod-btn-menu" aria-label="Menu">M</button>
+            <button type="button" class="ipod-wheel-zone ipod-zone-fwd" id="ipod-btn-fwd" aria-label="Next">F</button>
+            <button type="button" class="ipod-wheel-zone ipod-zone-back" id="ipod-btn-back" aria-label="Previous">B</button>
+            <button type="button" class="ipod-wheel-zone ipod-zone-play" id="ipod-btn-play" aria-label="Play/Pause">P</button>
+            <button type="button" class="ipod-center-btn" id="ipod-btn-center" aria-label="Select"></button>
+          </div>
+        </div>
       </div>
     </div>
 

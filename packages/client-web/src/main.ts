@@ -1488,8 +1488,8 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
 function applyPlayerBarDarkStyle(): void {
   const el = footerPlayer as HTMLElement;
   const exp = playerExpanded as HTMLElement;
-  const isCarRadio = document.body.classList.contains("theme-car-radio");
-  if (isCarRadio) {
+  const isCustomTheme = document.body.classList.contains("theme-car-radio") || document.body.classList.contains("theme-ipod");
+  if (isCustomTheme) {
     /* Car radio theme: clear inline overrides so CSS theme rules apply. */
     el.style.removeProperty("background");
     el.style.removeProperty("background-color");
@@ -4241,7 +4241,8 @@ function initColorPicker() {
 /* ══════════════════════════════════════════════════════════════
    Theme switcher: Mac 1984 ↔ Car Radio (full-page head unit)
    ══════════════════════════════════════════════════════════════ */
-type ThemeId = "mac1984" | "car-radio";
+type ThemeId = "mac1984" | "car-radio" | "ipod";
+const THEME_CYCLE: ThemeId[] = ["mac1984", "car-radio", "ipod"];
 
 function getStoredTheme(): ThemeId {
   return (localStorage.getItem("laf_theme") as ThemeId) || "mac1984";
@@ -4250,17 +4251,28 @@ function getStoredTheme(): ThemeId {
 function applyTheme(theme: ThemeId): void {
   const body = document.body;
   const carRadioUI = document.getElementById("car-radio-ui");
+  const ipodUI = document.getElementById("ipod-ui");
+
+  // Remove all theme classes
+  body.classList.remove("theme-car-radio", "theme-ipod");
+
+  // Hide all custom UIs
+  if (carRadioUI) carRadioUI.style.display = "none";
+  if (ipodUI) ipodUI.style.display = "none";
+
   if (theme === "car-radio") {
     body.classList.add("theme-car-radio");
     if (carRadioUI) carRadioUI.style.display = "flex";
     crUpdateLCD();
     crPopulatePresets();
-  } else {
-    body.classList.remove("theme-car-radio");
-    if (carRadioUI) carRadioUI.style.display = "none";
+  } else if (theme === "ipod") {
+    body.classList.add("theme-ipod");
+    if (ipodUI) ipodUI.style.display = "flex";
+    ipodShowMainMenu();
+    ipodUpdateNowPlaying();
   }
+
   updateThemeToggleUI(theme);
-  /* Re-apply player bar styling so inline overrides match current theme. */
   try { applyPlayerBarDarkStyle(); } catch (_) { /* player not yet initialized */ }
 }
 
@@ -4273,17 +4285,20 @@ function updateThemeToggleUI(theme: ThemeId): void {
     document.getElementById("theme-toggle-icon"),
     document.getElementById("theme-toggle-icon-drawer"),
   ];
+  const labelMap: Record<ThemeId, string> = { "mac1984": "Car Radio", "car-radio": "iPod", "ipod": "Classic" };
+  const iconMap: Record<ThemeId, string> = { "mac1984": "\u{1F4FB}", "car-radio": "\u{1F3B5}", "ipod": "\u{1F4BB}" };
   for (const lbl of labels) {
-    if (lbl) lbl.textContent = theme === "car-radio" ? "Classic" : "Car Radio";
+    if (lbl) lbl.textContent = labelMap[theme] || "Theme";
   }
   for (const ico of icons) {
-    if (ico) ico.textContent = theme === "car-radio" ? "\u{1F4BB}" : "\u{1F4FB}";
+    if (ico) ico.textContent = iconMap[theme] || "";
   }
 }
 
 function toggleTheme(): void {
   const current = getStoredTheme();
-  const next: ThemeId = current === "car-radio" ? "mac1984" : "car-radio";
+  const idx = THEME_CYCLE.indexOf(current);
+  const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
   localStorage.setItem("laf_theme", next);
   applyTheme(next);
 }
@@ -4497,6 +4512,355 @@ function crStartSync(): void {
   }, 1500);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   iPod Classic UI controller
+   ══════════════════════════════════════════════════════════════ */
+
+type IpodMenuEntry = {
+  label: string;
+  sub?: string;
+  action?: () => void;
+  submenu?: () => IpodMenuEntry[];
+};
+
+let ipodMenuStack: { title: string; items: IpodMenuEntry[]; selectedIdx: number }[] = [];
+let ipodSelectedIdx = 0;
+let ipodIsNowPlaying = false;
+let ipodElapsed = 0;
+let ipodElapsedInterval: ReturnType<typeof setInterval> | null = null;
+
+function ipodGetStations(): ExternalStation[] {
+  return getVisibleExternalStationsForPlayer(false);
+}
+
+/** Build the main menu. */
+function ipodMainMenuItems(): IpodMenuEntry[] {
+  return [
+    { label: "Now Playing", action: () => { ipodIsNowPlaying = true; ipodUpdateNowPlaying(); ipodRenderScreen(); } },
+    { label: "Stations", submenu: ipodStationsMenuItems },
+    { label: "Shuffle Stations", action: () => {
+      const stations = ipodGetStations();
+      if (stations.length === 0) return;
+      const idx = Math.floor(Math.random() * stations.length);
+      selectExternalStation(stations[idx]);
+      ipodIsNowPlaying = true;
+      setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
+    }},
+    { label: "About", sub: "LAF Radio" },
+    { label: "Classic Theme", action: () => {
+      localStorage.setItem("laf_theme", "mac1984");
+      applyTheme("mac1984");
+    }},
+  ];
+}
+
+/** Build the stations submenu (grouped by first letter). */
+function ipodStationsMenuItems(): IpodMenuEntry[] {
+  const stations = ipodGetStations();
+  return stations.map((s, i) => ({
+    label: s.name,
+    sub: s.location || "",
+    action: () => {
+      selectExternalStation(stations[i]);
+      ipodIsNowPlaying = true;
+      setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
+    },
+  }));
+}
+
+function ipodShowMainMenu(): void {
+  ipodMenuStack = [{ title: "LAF Radio", items: ipodMainMenuItems(), selectedIdx: 0 }];
+  ipodSelectedIdx = 0;
+  ipodIsNowPlaying = false;
+  ipodRenderScreen();
+}
+
+function ipodRenderScreen(): void {
+  const menuView = document.getElementById("ipod-menu-view");
+  const npView = document.getElementById("ipod-nowplaying");
+  const statusTitle = document.getElementById("ipod-statusbar-title");
+  const statusPlay = document.getElementById("ipod-statusbar-play");
+
+  if (!menuView || !npView) return;
+
+  // Status bar play indicator
+  const isPlaying = (currentExternalStation && externalAudio && !externalAudio.paused) ||
+                    (currentChannel && ws && ws.readyState === WebSocket.OPEN);
+  if (statusPlay) statusPlay.textContent = isPlaying ? "▶" : "";
+
+  if (ipodIsNowPlaying) {
+    menuView.classList.add("ipod-hidden");
+    npView.classList.remove("ipod-hidden");
+    if (statusTitle) statusTitle.textContent = "Now Playing";
+    return;
+  }
+
+  npView.classList.add("ipod-hidden");
+  menuView.classList.remove("ipod-hidden");
+
+  const current = ipodMenuStack[ipodMenuStack.length - 1];
+  if (!current) return;
+
+  const header = document.getElementById("ipod-menu-header");
+  const list = document.getElementById("ipod-menu-list");
+  if (header) header.textContent = current.title;
+  if (statusTitle) statusTitle.textContent = current.title;
+  if (!list) return;
+
+  ipodSelectedIdx = current.selectedIdx;
+
+  list.innerHTML = current.items.map((item, i) => {
+    const selected = i === ipodSelectedIdx;
+    const hasChevron = !!item.submenu;
+    return `<button type="button" class="ipod-menu-item ${selected ? "ipod-selected" : ""}" data-ipod-idx="${i}">
+      <span class="ipod-menu-item-label">${item.label}</span>
+      ${item.sub ? `<span class="ipod-menu-item-sub">${item.sub}</span>` : ""}
+      ${hasChevron ? `<span class="ipod-menu-item-chevron">▶</span>` : ""}
+    </button>`;
+  }).join("");
+
+  // Scroll selected into view
+  const selectedEl = list.querySelector(".ipod-selected") as HTMLElement | null;
+  if (selectedEl) selectedEl.scrollIntoView({ block: "nearest" });
+}
+
+/** Update Now Playing screen data. */
+function ipodUpdateNowPlaying(): void {
+  const title = document.getElementById("ipod-np-title");
+  const artist = document.getElementById("ipod-np-artist");
+  const album = document.getElementById("ipod-np-album");
+  const artImg = document.getElementById("ipod-np-art-img") as HTMLImageElement | null;
+  const artInitial = document.getElementById("ipod-np-art-initial");
+  const bar = document.getElementById("ipod-np-bar");
+  const timeElapsed = document.getElementById("ipod-np-time-elapsed");
+  const timeRemain = document.getElementById("ipod-np-time-remain");
+
+  if (currentExternalStation) {
+    if (title) title.textContent = currentExternalStation.name;
+    if (artist) artist.textContent = currentExternalStation.location || "Internet Radio";
+    if (album) album.textContent = "LAF Radio";
+    if (artImg && currentExternalStation.logoUrl) {
+      artImg.src = currentExternalStation.logoUrl;
+      artImg.style.display = "";
+      artImg.onerror = () => { artImg.style.display = "none"; };
+    } else if (artImg) {
+      artImg.style.display = "none";
+    }
+    if (artInitial) {
+      artInitial.textContent = currentExternalStation.name.charAt(0).toUpperCase();
+      artInitial.style.display = (artImg && artImg.style.display !== "none" && currentExternalStation.logoUrl) ? "none" : "";
+    }
+    const playing = externalAudio && !externalAudio.paused;
+    if (bar) {
+      bar.classList.toggle("ipod-np-playing", !!playing);
+      if (!playing) bar.style.width = "0%";
+    }
+    ipodStartElapsed(!!playing);
+    if (timeRemain) timeRemain.textContent = "LIVE";
+  } else if (currentChannel) {
+    if (title) title.textContent = currentChannel.title;
+    if (artist) artist.textContent = "LAF Live";
+    if (album) album.textContent = "LAF Radio";
+    if (artImg) artImg.style.display = "none";
+    if (artInitial) { artInitial.textContent = currentChannel.title.charAt(0).toUpperCase(); artInitial.style.display = ""; }
+    const playing = ws && ws.readyState === WebSocket.OPEN;
+    if (bar) {
+      bar.classList.toggle("ipod-np-playing", !!playing);
+      if (!playing) bar.style.width = "0%";
+    }
+    ipodStartElapsed(!!playing);
+    if (timeRemain) timeRemain.textContent = "LIVE";
+  } else {
+    if (title) title.textContent = "Not Playing";
+    if (artist) artist.textContent = "—";
+    if (album) album.textContent = "LAF Radio";
+    if (artImg) artImg.style.display = "none";
+    if (artInitial) { artInitial.textContent = "?"; artInitial.style.display = ""; }
+    if (bar) { bar.classList.remove("ipod-np-playing"); bar.style.width = "0%"; }
+    ipodStartElapsed(false);
+    if (timeElapsed) timeElapsed.textContent = "0:00";
+    if (timeRemain) timeRemain.textContent = "—";
+  }
+}
+
+function ipodStartElapsed(playing: boolean): void {
+  if (ipodElapsedInterval) { clearInterval(ipodElapsedInterval); ipodElapsedInterval = null; }
+  if (!playing) { ipodElapsed = 0; return; }
+  ipodElapsed = 0;
+  const el = document.getElementById("ipod-np-time-elapsed");
+  ipodElapsedInterval = setInterval(() => {
+    ipodElapsed++;
+    const m = Math.floor(ipodElapsed / 60);
+    const s = ipodElapsed % 60;
+    if (el) el.textContent = `${m}:${String(s).padStart(2, "0")}`;
+  }, 1000);
+}
+
+/** iPod navigation: move selection up/down. */
+function ipodMoveSelection(dir: -1 | 1): void {
+  if (ipodIsNowPlaying) return; // no scroll on now playing
+  const current = ipodMenuStack[ipodMenuStack.length - 1];
+  if (!current || current.items.length === 0) return;
+  current.selectedIdx = (current.selectedIdx + dir + current.items.length) % current.items.length;
+  ipodRenderScreen();
+}
+
+/** iPod: select current item (center button). */
+function ipodSelect(): void {
+  if (ipodIsNowPlaying) return; // on now playing, center does nothing special
+  const current = ipodMenuStack[ipodMenuStack.length - 1];
+  if (!current) return;
+  const item = current.items[current.selectedIdx];
+  if (!item) return;
+  if (item.submenu) {
+    const subItems = item.submenu();
+    ipodMenuStack.push({ title: item.label, items: subItems, selectedIdx: 0 });
+    ipodRenderScreen();
+  } else if (item.action) {
+    item.action();
+  }
+}
+
+/** iPod: Menu button = go back. */
+function ipodMenuBack(): void {
+  if (ipodIsNowPlaying) {
+    ipodIsNowPlaying = false;
+    ipodRenderScreen();
+    return;
+  }
+  if (ipodMenuStack.length > 1) {
+    ipodMenuStack.pop();
+    ipodRenderScreen();
+  }
+}
+
+/** iPod: Forward/Back = next/prev station. */
+function ipodNextStation(): void {
+  const stations = ipodGetStations();
+  if (stations.length === 0) return;
+  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : -1;
+  idx = (idx + 1) % stations.length;
+  selectExternalStation(stations[idx]);
+  ipodIsNowPlaying = true;
+  setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
+}
+
+function ipodPrevStation(): void {
+  const stations = ipodGetStations();
+  if (stations.length === 0) return;
+  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : 0;
+  idx = (idx - 1 + stations.length) % stations.length;
+  selectExternalStation(stations[idx]);
+  ipodIsNowPlaying = true;
+  setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
+}
+
+/** iPod: Play/Pause. */
+function ipodTogglePlayPause(): void {
+  if (currentExternalStation) {
+    if (externalAudio && !externalAudio.paused) {
+      pauseExternalStream();
+    } else {
+      resumeExternalStream();
+    }
+    setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 200);
+  } else if (currentChannel) {
+    btnPlayPause.click();
+    setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 200);
+  } else {
+    // Nothing playing → select first station
+    const stations = ipodGetStations();
+    if (stations.length > 0) {
+      selectExternalStation(stations[0]);
+      ipodIsNowPlaying = true;
+      setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
+    }
+  }
+}
+
+/** iPod sync interval. */
+let ipodSyncInterval: ReturnType<typeof setInterval> | null = null;
+
+function ipodStartSync(): void {
+  if (ipodSyncInterval) return;
+  ipodSyncInterval = setInterval(() => {
+    if (!document.body.classList.contains("theme-ipod")) {
+      if (ipodSyncInterval) { clearInterval(ipodSyncInterval); ipodSyncInterval = null; }
+      return;
+    }
+    if (ipodIsNowPlaying) ipodUpdateNowPlaying();
+    ipodRenderScreen();
+  }, 2000);
+}
+
+/** Wire up click wheel scroll (touch/mouse drag on the wheel surface). */
+function ipodInitWheel(): void {
+  const wheel = document.getElementById("ipod-wheel");
+  if (!wheel) return;
+
+  let lastAngle: number | null = null;
+  let accum = 0;
+  const THRESHOLD = 25; // degrees per scroll step
+
+  function getAngle(e: MouseEvent | Touch, rect: DOMRect): number {
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    return Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
+  }
+
+  function handleMove(angle: number): void {
+    if (lastAngle === null) { lastAngle = angle; return; }
+    let delta = angle - lastAngle;
+    // Handle wrap-around
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    accum += delta;
+    lastAngle = angle;
+    if (Math.abs(accum) >= THRESHOLD) {
+      const dir = accum > 0 ? 1 : -1;
+      ipodMoveSelection(dir as 1 | -1);
+      accum = 0;
+    }
+  }
+
+  // Mouse events
+  wheel.addEventListener("mousedown", (e) => {
+    const rect = wheel.getBoundingClientRect();
+    // Check if click is on the center button area (inner 36%)
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2);
+    if (dist < rect.width * 0.18) return; // center button area
+    lastAngle = getAngle(e, rect);
+    accum = 0;
+    const onMove = (ev: MouseEvent) => handleMove(getAngle(ev, rect));
+    const onUp = () => { lastAngle = null; accum = 0; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+
+  // Touch events
+  wheel.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    const rect = wheel.getBoundingClientRect();
+    const touch = e.touches[0];
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.sqrt((touch.clientX - cx) ** 2 + (touch.clientY - cy) ** 2);
+    if (dist < rect.width * 0.18) return;
+    lastAngle = getAngle(touch, rect);
+    accum = 0;
+    const onMove = (ev: TouchEvent) => {
+      if (ev.touches.length !== 1) return;
+      ev.preventDefault();
+      handleMove(getAngle(ev.touches[0], rect));
+    };
+    const onEnd = () => { lastAngle = null; accum = 0; wheel.removeEventListener("touchmove", onMove); wheel.removeEventListener("touchend", onEnd); };
+    wheel.addEventListener("touchmove", onMove, { passive: false });
+    wheel.addEventListener("touchend", onEnd);
+  }, { passive: true });
+}
+
 function initThemeToggle(): void {
   applyTheme(getStoredTheme());
 
@@ -4558,6 +4922,29 @@ function initThemeToggle(): void {
 
   // Start LCD sync
   crStartSync();
+
+  // ── iPod button wiring ──
+  document.getElementById("ipod-btn-menu")?.addEventListener("click", ipodMenuBack);
+  document.getElementById("ipod-btn-center")?.addEventListener("click", ipodSelect);
+  document.getElementById("ipod-btn-fwd")?.addEventListener("click", ipodNextStation);
+  document.getElementById("ipod-btn-back")?.addEventListener("click", ipodPrevStation);
+  document.getElementById("ipod-btn-play")?.addEventListener("click", ipodTogglePlayPause);
+
+  // Click on menu items
+  document.getElementById("ipod-menu-list")?.addEventListener("click", (e) => {
+    const item = (e.target as HTMLElement).closest(".ipod-menu-item") as HTMLElement | null;
+    if (!item) return;
+    const idx = parseInt(item.dataset.ipodIdx || "0", 10);
+    const current = ipodMenuStack[ipodMenuStack.length - 1];
+    if (current) current.selectedIdx = idx;
+    ipodSelect();
+  });
+
+  // Init scroll wheel
+  ipodInitWheel();
+
+  // Start iPod sync
+  ipodStartSync();
 }
 function closeMobileNav() {
   document.body.classList.remove("nav-open");
