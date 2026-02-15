@@ -1919,6 +1919,56 @@
         .ipod-center-btn { width: 60px; height: 60px; }
       }
 
+      /* ── Popup mini-player button ── */
+      .popup-btn {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.5);
+        color: var(--topbar-text);
+        padding: 6px 8px;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: inherit;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      .popup-btn:hover { background: rgba(255,255,255,0.15); }
+      .popup-btn-icon { font-size: 14px; }
+
+      /* ── Popup window mode: when opened via window.open, compact layout ── */
+      body.popup-mode {
+        padding-bottom: 0 !important;
+        overflow: hidden !important;
+      }
+      /* In popup mode, car radio fits snugly */
+      body.popup-mode .car-radio-ui { background: #1a1a1a; }
+      body.popup-mode .cr-unit {
+        max-width: 100%;
+        width: 100%;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+      /* In popup mode, iPod fits snugly */
+      body.popup-mode .ipod-ui { background: #111; }
+      body.popup-mode .ipod-body {
+        max-width: 100%;
+        border-radius: 12px;
+      }
+      /* Hide POP button when already in popup */
+      body.popup-mode .cr-btn-pop,
+      body.popup-mode .popup-btn { display: none !important; }
+      /* Car radio popup: highlight POP button */
+      .cr-btn-pop {
+        color: #ffcc44 !important;
+        border-color: #555 !important;
+      }
+      .cr-btn-pop:hover {
+        color: #ffe066 !important;
+      }
+
       /* ── Theme toggle button (works in both themes) ── */
       .theme-toggle-btn {
         background: transparent;
@@ -2116,6 +2166,9 @@
           <span class="theme-toggle-icon" id="theme-toggle-icon">📻</span>
           <span id="theme-toggle-label">Car Radio</span>
         </button>
+        <button type="button" class="popup-btn topbar-desktop-only" id="popup-btn" aria-label="Open mini player" title="Open in popup window">
+          <span class="popup-btn-icon">⧉</span>
+        </button>
         <div class="color-picker-wrap topbar-desktop-only" id="color-picker-wrap">
           <button type="button" class="color-picker-btn" id="color-picker-btn" aria-label="Choose background color" aria-expanded="false" aria-haspopup="true">
             <span class="color-picker-preview" id="color-picker-preview" style="background: var(--bg);"></span>
@@ -2143,6 +2196,10 @@
       <button type="button" class="theme-toggle-btn" id="theme-toggle-btn-drawer" aria-label="Switch theme" style="width:100%;justify-content:center;min-height:44px;">
         <span class="theme-toggle-icon" id="theme-toggle-icon-drawer">📻</span>
         <span id="theme-toggle-label-drawer">Car Radio</span>
+      </button>
+      <button type="button" class="theme-toggle-btn" id="popup-btn-drawer" aria-label="Open mini player" style="width:100%;justify-content:center;min-height:44px;">
+        <span class="popup-btn-icon">⧉</span>
+        <span>Mini Player</span>
       </button>
       <button type="button" class="color-picker-btn" id="color-picker-btn-drawer" aria-label="Choose background color">
         <span class="color-picker-preview" style="background: var(--bg);"></span>
@@ -2406,6 +2463,7 @@
             <button type="button" class="cr-btn cr-btn-small" id="cr-btn-seek-back" title="Previous station">&#9664;&#9664;</button>
             <button type="button" class="cr-btn cr-btn-small" id="cr-btn-seek-fwd" title="Next station">&#9654;&#9654;</button>
             <button type="button" class="cr-btn cr-btn-small" id="cr-btn-src" title="Source">SRC</button>
+            <button type="button" class="cr-btn cr-btn-small cr-btn-pop" id="cr-btn-pop" title="Open in mini popup window">POP</button>
           </div>
         </div>
 

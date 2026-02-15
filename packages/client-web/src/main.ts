@@ -4547,6 +4547,10 @@ function ipodMainMenuItems(): IpodMenuEntry[] {
       setTimeout(() => { ipodUpdateNowPlaying(); ipodRenderScreen(); }, 300);
     }},
     { label: "About", sub: "LAF Radio" },
+    { label: "Mini Player", sub: "Popup", action: () => {
+      const openPopupFn = (document as any).__lafOpenPopup;
+      if (openPopupFn) openPopupFn("ipod");
+    }},
     { label: "Switch Theme", sub: "Classic", action: () => { toggleTheme(); } },
   ];
 }
@@ -4939,6 +4943,59 @@ function initThemeToggle(): void {
 
   // Start iPod sync
   ipodStartSync();
+
+  // ── Popup mini-player ──
+  const openPopup = (theme?: ThemeId): void => {
+    // Set the desired theme before opening so the popup inherits it
+    if (theme) {
+      localStorage.setItem("laf_theme", theme);
+    }
+    const w = 420;
+    const h = 520;
+    const left = window.screenX + window.outerWidth - w - 40;
+    const top = window.screenY + 60;
+    const url = window.location.origin + window.location.pathname + "#live";
+    const features = `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`;
+    const popup = window.open(url, "laf_mini_player", features);
+    if (popup) {
+      // Mark the popup window as popup mode once it loads
+      popup.addEventListener("load", () => {
+        popup.document.body.classList.add("popup-mode");
+      });
+      // Fallback: poll for body availability
+      let tries = 0;
+      const markPopup = setInterval(() => {
+        tries++;
+        try {
+          if (popup.document?.body) {
+            popup.document.body.classList.add("popup-mode");
+            clearInterval(markPopup);
+          }
+        } catch (_) { /* cross-origin or not ready */ }
+        if (tries > 30) clearInterval(markPopup);
+      }, 200);
+    }
+  };
+
+  // Expose openPopup so iPod menu can call it
+  (document as any).__lafOpenPopup = openPopup;
+
+  // Topbar popup button (Classic theme) → opens in car-radio theme
+  document.getElementById("popup-btn")?.addEventListener("click", () => openPopup("car-radio"));
+
+  // Car radio POP button → opens popup in car-radio theme
+  document.getElementById("cr-btn-pop")?.addEventListener("click", () => openPopup("car-radio"));
+
+  // Mobile drawer popup button
+  document.getElementById("popup-btn-drawer")?.addEventListener("click", () => { openPopup("car-radio"); closeMobileNav(); });
+
+  // Mobile drawer popup button
+  document.getElementById("popup-btn-drawer")?.addEventListener("click", () => { openPopup("car-radio"); closeMobileNav(); });
+
+  // Detect if WE are the popup window (opened via window.open)
+  if (window.opener) {
+    document.body.classList.add("popup-mode");
+  }
 }
 function closeMobileNav() {
   document.body.classList.remove("nav-open");
