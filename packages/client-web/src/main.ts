@@ -1488,17 +1488,34 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
 function applyPlayerBarDarkStyle(): void {
   const el = footerPlayer as HTMLElement;
   const exp = playerExpanded as HTMLElement;
-  el.style.setProperty("background", "#000", "important");
-  el.style.setProperty("background-color", "#000", "important");
-  el.style.setProperty("color", "#fff", "important");
-  exp.style.setProperty("background", "#000", "important");
-  exp.style.setProperty("background-color", "#000", "important");
-  exp.style.setProperty("color", "#fff", "important");
-  const minBar = playerExpanded.querySelector(".player-expanded-minimize") as HTMLElement | null;
-  if (minBar) {
-    minBar.style.setProperty("background", "#000", "important");
-    minBar.style.setProperty("background-color", "#000", "important");
-    minBar.style.setProperty("color", "#fff", "important");
+  const isCarRadio = document.body.classList.contains("theme-car-radio");
+  if (isCarRadio) {
+    /* Car radio theme: clear inline overrides so CSS theme rules apply. */
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-color");
+    el.style.removeProperty("color");
+    exp.style.removeProperty("background");
+    exp.style.removeProperty("background-color");
+    exp.style.removeProperty("color");
+    const minBar = playerExpanded.querySelector(".player-expanded-minimize") as HTMLElement | null;
+    if (minBar) {
+      minBar.style.removeProperty("background");
+      minBar.style.removeProperty("background-color");
+      minBar.style.removeProperty("color");
+    }
+  } else {
+    el.style.setProperty("background", "#000", "important");
+    el.style.setProperty("background-color", "#000", "important");
+    el.style.setProperty("color", "#fff", "important");
+    exp.style.setProperty("background", "#000", "important");
+    exp.style.setProperty("background-color", "#000", "important");
+    exp.style.setProperty("color", "#fff", "important");
+    const minBar = playerExpanded.querySelector(".player-expanded-minimize") as HTMLElement | null;
+    if (minBar) {
+      minBar.style.setProperty("background", "#000", "important");
+      minBar.style.setProperty("background-color", "#000", "important");
+      minBar.style.setProperty("color", "#fff", "important");
+    }
   }
 }
 
@@ -4220,6 +4237,59 @@ function initColorPicker() {
     if (hex) chooseColor(hex);
   });
 }
+
+/* ── Theme switcher: Mac 1984 ↔ 90s Car Radio ── */
+type ThemeId = "mac1984" | "car-radio";
+
+function getStoredTheme(): ThemeId {
+  return (localStorage.getItem("laf_theme") as ThemeId) || "mac1984";
+}
+
+function applyTheme(theme: ThemeId): void {
+  const body = document.body;
+  if (theme === "car-radio") {
+    body.classList.add("theme-car-radio");
+  } else {
+    body.classList.remove("theme-car-radio");
+  }
+  updateThemeToggleUI(theme);
+  /* Re-apply player bar styling so inline overrides match current theme. */
+  if (typeof applyPlayerBarDarkStyle === "function") {
+    try { applyPlayerBarDarkStyle(); } catch (_) { /* player not yet initialized */ }
+  }
+}
+
+function updateThemeToggleUI(theme: ThemeId): void {
+  const labels = [
+    document.getElementById("theme-toggle-label"),
+    document.getElementById("theme-toggle-label-drawer"),
+  ];
+  const icons = [
+    document.getElementById("theme-toggle-icon"),
+    document.getElementById("theme-toggle-icon-drawer"),
+  ];
+  for (const lbl of labels) {
+    if (lbl) lbl.textContent = theme === "car-radio" ? "Classic" : "Car Radio";
+  }
+  for (const ico of icons) {
+    if (ico) ico.textContent = theme === "car-radio" ? "\u{1F4BB}" : "\u{1F4FB}"; // 💻 or 📻
+  }
+}
+
+function toggleTheme(): void {
+  const current = getStoredTheme();
+  const next: ThemeId = current === "car-radio" ? "mac1984" : "car-radio";
+  localStorage.setItem("laf_theme", next);
+  applyTheme(next);
+}
+
+function initThemeToggle(): void {
+  applyTheme(getStoredTheme());
+  const btn = document.getElementById("theme-toggle-btn");
+  const btnDrawer = document.getElementById("theme-toggle-btn-drawer");
+  btn?.addEventListener("click", (e) => { e.stopPropagation(); toggleTheme(); });
+  btnDrawer?.addEventListener("click", (e) => { e.stopPropagation(); toggleTheme(); closeMobileNav(); });
+}
 function closeMobileNav() {
   document.body.classList.remove("nav-open");
   const menuToggle = document.getElementById("menu-toggle");
@@ -4702,6 +4772,7 @@ loadRuntimeConfig().then(() => {
   applyPlayerBarDarkStyle();
   setPlayPauseIcons(true, "Start");
   initColorPicker();
+  initThemeToggle();
   initTopbarClock();
   initSearchToggle();
   initMobileNav();

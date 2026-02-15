@@ -7,6 +7,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>LAF - Live Stations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -999,6 +1002,682 @@
 
       .hidden { display: none !important; }
 
+      /* ──────────────────────────────────────────────────────────
+         90s CAR RADIO THEME  (body.theme-car-radio)
+         Pioneer / Alpine / Kenwood aesthetic:
+         – dark brushed-metal dashboard background
+         – green LCD text on near-black panels
+         – raised 3D metallic buttons
+         – amber/orange indicator LEDs
+         – segmented-display feel
+         ────────────────────────────────────────────────────────── */
+
+      body.theme-car-radio {
+        --cr-lcd-green: #39ff14;
+        --cr-lcd-green-dim: #1a7a0a;
+        --cr-lcd-amber: #ffb347;
+        --cr-lcd-red: #ff4444;
+        --cr-lcd-bg: #0a0e06;
+        --cr-panel: #1a1a1a;
+        --cr-panel-light: #2a2a2a;
+        --cr-bezel: #3a3a3a;
+        --cr-bezel-highlight: #555;
+        --cr-bezel-shadow: #111;
+        --cr-chrome: linear-gradient(180deg, #666 0%, #444 40%, #333 60%, #222 100%);
+        --cr-btn-face: linear-gradient(180deg, #555 0%, #3a3a3a 50%, #2a2a2a 100%);
+        --cr-btn-pressed: linear-gradient(180deg, #222 0%, #333 100%);
+        --cr-text: #cccccc;
+        --cr-text-muted: #777;
+        --cr-font-lcd: 'Share Tech Mono', 'VT323', 'Courier New', monospace;
+        --cr-font-label: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      }
+
+      body.theme-car-radio {
+        background: #111 linear-gradient(135deg, rgba(60,60,60,0.08) 25%, transparent 25%, transparent 50%, rgba(60,60,60,0.08) 50%, rgba(60,60,60,0.08) 75%, transparent 75%) !important;
+        background-size: 4px 4px !important;
+        color: var(--cr-text);
+        font-family: var(--cr-font-label);
+        -webkit-font-smoothing: auto;
+        font-smoothing: auto;
+      }
+
+      /* ── Car Radio: Top bar (head unit top chrome strip) ── */
+      body.theme-car-radio .site-topbar {
+        background: var(--cr-chrome) !important;
+        border-bottom: 2px solid #111 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+        color: var(--cr-text);
+      }
+      body.theme-car-radio .topbar-logo {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 8px rgba(57,255,20,0.6), 0 0 2px rgba(57,255,20,0.3);
+        letter-spacing: 0.15em;
+        font-size: 16px;
+      }
+      body.theme-car-radio .topbar-nav-item {
+        color: var(--cr-text) !important;
+        font-family: var(--cr-font-label);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        transition: all 0.15s;
+      }
+      body.theme-car-radio .topbar-nav-item:hover {
+        background: rgba(57,255,20,0.1) !important;
+        color: var(--cr-lcd-green) !important;
+        border-color: rgba(57,255,20,0.3);
+      }
+      body.theme-car-radio .topbar-nav-item.active {
+        background: rgba(57,255,20,0.15) !important;
+        color: var(--cr-lcd-green) !important;
+        border-color: rgba(57,255,20,0.4);
+      }
+      body.theme-car-radio .topbar-clock {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 6px rgba(57,255,20,0.5);
+        background: var(--cr-lcd-bg) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        border-radius: 2px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.05);
+        padding: 3px 8px;
+      }
+      body.theme-car-radio .topbar-search {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        border-bottom-color: rgba(57,255,20,0.4) !important;
+      }
+      body.theme-car-radio .topbar-search::placeholder {
+        color: var(--cr-lcd-green-dim) !important;
+      }
+      body.theme-car-radio .topbar-search-toggle,
+      body.theme-car-radio .topbar-chat-toggle {
+        border-color: var(--cr-bezel) !important;
+        background: var(--cr-btn-face) !important;
+        color: var(--cr-text) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.4) !important;
+        border-radius: 3px;
+      }
+      body.theme-car-radio .topbar-search-toggle:hover,
+      body.theme-car-radio .topbar-chat-toggle:hover {
+        background: var(--cr-btn-pressed) !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5) !important;
+      }
+
+      /* ── Car Radio: Color picker button ── */
+      body.theme-car-radio .color-picker-btn {
+        background: var(--cr-btn-face) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.4);
+        border-radius: 3px;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+      }
+      body.theme-car-radio .color-picker-btn:hover {
+        background: var(--cr-btn-pressed) !important;
+      }
+      body.theme-car-radio .color-picker-dropdown {
+        background: var(--cr-panel) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+        border-radius: 4px;
+      }
+
+      /* ── Car Radio: Theme toggle button ── */
+      body.theme-car-radio .theme-toggle-btn {
+        background: var(--cr-btn-face) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        color: var(--cr-lcd-green) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.4);
+        border-radius: 3px;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        font-family: var(--cr-font-label);
+      }
+      body.theme-car-radio .theme-toggle-btn:hover {
+        background: var(--cr-btn-pressed) !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      }
+
+      /* ── Car Radio: Main content area ── */
+      body.theme-car-radio .main {
+        background: transparent;
+      }
+      body.theme-car-radio .page-header {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green);
+        text-shadow: 0 0 8px rgba(57,255,20,0.4);
+        border-bottom-color: var(--cr-bezel) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      body.theme-car-radio .section-title {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-amber);
+        text-shadow: 0 0 6px rgba(255,179,71,0.3);
+        letter-spacing: 0.12em;
+      }
+      body.theme-car-radio .page-content {
+        color: var(--cr-text);
+      }
+      body.theme-car-radio .page-content a {
+        color: var(--cr-lcd-green);
+      }
+
+      /* ── Car Radio: View toolbar ── */
+      body.theme-car-radio .view-mode-btn {
+        background: var(--cr-btn-face) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.3);
+        border-radius: 3px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      body.theme-car-radio .view-mode-btn.active {
+        background: var(--cr-lcd-bg) !important;
+        color: var(--cr-lcd-green) !important;
+        border-color: var(--cr-lcd-green-dim) !important;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.6), 0 0 6px rgba(57,255,20,0.15);
+        text-shadow: 0 0 4px rgba(57,255,20,0.5);
+      }
+      body.theme-car-radio .favorites-filter-wrap {
+        color: var(--cr-text);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* ── Car Radio: Station cards (preset buttons) ── */
+      body.theme-car-radio .external-station-card,
+      body.theme-car-radio .channel-card {
+        background: var(--cr-panel) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        border-radius: 6px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 3px 8px rgba(0,0,0,0.4);
+        transition: all 0.15s;
+        position: relative;
+        overflow: hidden;
+      }
+      body.theme-car-radio .external-station-card::before,
+      body.theme-car-radio .channel-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      }
+      body.theme-car-radio .external-station-card:hover,
+      body.theme-car-radio .channel-card:hover {
+        background: var(--cr-panel-light) !important;
+        border-color: var(--cr-lcd-green-dim) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 12px rgba(0,0,0,0.5), 0 0 8px rgba(57,255,20,0.1);
+      }
+      body.theme-car-radio .external-station-card.now-playing,
+      body.theme-car-radio .channel-card.now-playing {
+        border-color: var(--cr-lcd-green) !important;
+        box-shadow: 0 0 12px rgba(57,255,20,0.25), inset 0 0 20px rgba(57,255,20,0.03);
+      }
+      body.theme-car-radio .external-station-card .ext-name,
+      body.theme-car-radio .channel-card .card-title {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+        letter-spacing: 0.03em;
+      }
+      body.theme-car-radio .channel-card .card-title {
+        border-bottom-color: var(--cr-bezel) !important;
+        background: rgba(0,0,0,0.2);
+      }
+      body.theme-car-radio .external-station-card .ext-station-name-only {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+      }
+      body.theme-car-radio .external-station-card .ext-location,
+      body.theme-car-radio .external-station-card .ext-desc,
+      body.theme-car-radio .channel-desc {
+        color: var(--cr-text-muted) !important;
+        font-family: var(--cr-font-label);
+      }
+      body.theme-car-radio .external-station-card .ext-stream-status.status-live {
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.5);
+      }
+      body.theme-car-radio .external-station-card .ext-stream-status.status-offline,
+      body.theme-car-radio .external-station-card .ext-stream-status.status-error {
+        color: var(--cr-lcd-red) !important;
+      }
+      body.theme-car-radio .external-station-card .ext-stream-status.status-checking,
+      body.theme-car-radio .external-station-card .ext-stream-status.status-unknown {
+        color: var(--cr-lcd-amber) !important;
+      }
+      body.theme-car-radio .external-station-card .ext-station-initial {
+        background: var(--cr-lcd-bg) !important;
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 6px rgba(57,255,20,0.5);
+      }
+      body.theme-car-radio .live-badge {
+        background: var(--cr-lcd-green) !important;
+        color: #000 !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: none;
+        box-shadow: 0 0 6px rgba(57,255,20,0.4);
+        border-radius: 2px;
+      }
+
+      /* ── Car Radio: Station list view ── */
+      body.theme-car-radio .station-list-bar {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .station-list-bar:hover {
+        background: var(--cr-panel-light) !important;
+        border-color: var(--cr-lcd-green-dim) !important;
+      }
+      body.theme-car-radio .station-list-bar.now-playing {
+        border-color: var(--cr-lcd-green) !important;
+      }
+      body.theme-car-radio .station-list-bar .list-bar-name {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+      }
+      body.theme-car-radio .station-list-bar .list-bar-location {
+        color: var(--cr-text-muted) !important;
+      }
+
+      /* ── Car Radio: Suggest card ── */
+      body.theme-car-radio .suggest-card {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text-muted) !important;
+      }
+      body.theme-car-radio .suggest-card:hover {
+        background: var(--cr-panel-light) !important;
+        border-style: solid;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .suggest-card .suggest-card-title {
+        color: var(--cr-lcd-amber) !important;
+      }
+
+      /* ── Car Radio: Multi-channel cards ── */
+      body.theme-car-radio .ext-channels-toggle {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .ext-channels-toggle:hover {
+        background: var(--cr-panel-light) !important;
+      }
+      body.theme-car-radio .ext-channel-row {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .ext-channel-row:hover {
+        background: var(--cr-panel-light) !important;
+      }
+      body.theme-car-radio .ext-channel-row.now-playing {
+        border-color: var(--cr-lcd-green) !important;
+        color: var(--cr-lcd-green) !important;
+      }
+
+      /* ── Car Radio: Buttons (metallic 3D) ── */
+      body.theme-car-radio button {
+        background: var(--cr-btn-face) !important;
+        color: var(--cr-text) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        border-radius: 3px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.3);
+        font-family: var(--cr-font-label);
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        transition: all 0.1s;
+      }
+      body.theme-car-radio button:hover {
+        background: var(--cr-btn-pressed) !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+      }
+      body.theme-car-radio button:active {
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.6) !important;
+        transform: translateY(1px);
+      }
+
+      /* ── Car Radio: Inputs and forms ── */
+      body.theme-car-radio .form-group input,
+      body.theme-car-radio .form-group textarea,
+      body.theme-car-radio .admin-search-input,
+      body.theme-car-radio .admin-select {
+        background: var(--cr-lcd-bg) !important;
+        color: var(--cr-lcd-green) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        font-family: var(--cr-font-lcd) !important;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+        border-radius: 2px;
+      }
+      body.theme-car-radio .form-group input::placeholder,
+      body.theme-car-radio .form-group textarea::placeholder,
+      body.theme-car-radio .admin-search-input::placeholder {
+        color: var(--cr-lcd-green-dim) !important;
+      }
+      body.theme-car-radio .form-group label {
+        color: var(--cr-text) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 10px;
+      }
+
+      /* ── Car Radio: Footer player (LCD display panel) ── */
+      body.theme-car-radio .footer-player {
+        background: var(--cr-chrome) !important;
+        border-top: 2px solid #111 !important;
+        box-shadow: 0 -3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+        color: var(--cr-text);
+      }
+      body.theme-car-radio .footer-player .info .title {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 6px rgba(57,255,20,0.5);
+        letter-spacing: 0.05em;
+      }
+      body.theme-car-radio .footer-player .info .desc {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green-dim) !important;
+        font-size: 10px;
+      }
+      body.theme-car-radio .footer-player .status-text {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-amber) !important;
+        text-shadow: 0 0 4px rgba(255,179,71,0.4);
+        font-size: 10px;
+      }
+      body.theme-car-radio .footer-player .cover-wrap {
+        background: var(--cr-lcd-bg) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        border-radius: 3px;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.8);
+      }
+      body.theme-car-radio .footer-player .cover-initial {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 6px rgba(57,255,20,0.5);
+      }
+      body.theme-car-radio .footer-player .controls button {
+        background: var(--cr-btn-face) !important;
+        color: var(--cr-lcd-green) !important;
+        border: 1px solid var(--cr-bezel) !important;
+        border-radius: 3px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 4px rgba(0,0,0,0.4);
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+        font-family: var(--cr-font-lcd) !important;
+      }
+      body.theme-car-radio .footer-player .controls button:hover {
+        background: var(--cr-btn-pressed) !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        color: var(--cr-lcd-green) !important;
+      }
+      body.theme-car-radio .footer-player .player-expand-btn {
+        color: var(--cr-lcd-amber) !important;
+        opacity: 0.8;
+      }
+      body.theme-car-radio .footer-player .player-expand-btn:hover {
+        color: var(--cr-lcd-amber) !important;
+        opacity: 1;
+      }
+
+      /* ── Car Radio: Expanded player (full LCD panel) ── */
+      body.theme-car-radio .player-expanded {
+        background: var(--cr-panel) !important;
+        border-top: 2px solid var(--cr-bezel) !important;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+        color: var(--cr-text);
+      }
+      body.theme-car-radio .player-expanded-cover-wrap {
+        background: var(--cr-lcd-bg) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        border-radius: 4px;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 0 8px rgba(57,255,20,0.05);
+      }
+      body.theme-car-radio .player-expanded-title {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 8px rgba(57,255,20,0.5);
+        letter-spacing: 0.05em;
+      }
+      body.theme-car-radio .player-expanded-location {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-amber) !important;
+        text-shadow: 0 0 4px rgba(255,179,71,0.3);
+        opacity: 1 !important;
+      }
+      body.theme-car-radio .player-expanded-desc {
+        color: var(--cr-text-muted) !important;
+        opacity: 1 !important;
+      }
+      body.theme-car-radio .player-expanded-link {
+        color: var(--cr-lcd-green) !important;
+      }
+      body.theme-car-radio .player-expanded-buffer-hint {
+        color: var(--cr-lcd-amber) !important;
+        font-family: var(--cr-font-lcd) !important;
+        opacity: 1 !important;
+      }
+      body.theme-car-radio .player-expanded-controls button {
+        background: var(--cr-btn-face) !important;
+        color: var(--cr-lcd-green) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        border-radius: 4px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 6px rgba(0,0,0,0.4);
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+      }
+      body.theme-car-radio .player-expanded-controls button:hover {
+        background: var(--cr-btn-pressed) !important;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.5);
+      }
+      body.theme-car-radio .player-expanded.fullscreen-mobile .player-expanded-minimize {
+        background: var(--cr-panel) !important;
+        border-top: 1px solid var(--cr-bezel) !important;
+      }
+      body.theme-car-radio .player-expanded.fullscreen-mobile .player-expanded-minimize-btn {
+        color: var(--cr-lcd-amber) !important;
+      }
+
+      /* ── Car Radio: Player detail / stats ── */
+      body.theme-car-radio .player-detail {
+        background: var(--cr-panel) !important;
+        border-top-color: var(--cr-bezel) !important;
+      }
+      body.theme-car-radio .player-detail .stat-item {
+        background: var(--cr-lcd-bg) !important;
+        border-color: var(--cr-bezel) !important;
+        border-radius: 2px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+      }
+      body.theme-car-radio .player-detail .stat-label {
+        color: var(--cr-lcd-amber) !important;
+        font-family: var(--cr-font-label);
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      body.theme-car-radio .player-detail .stat-value {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.4);
+      }
+
+      /* ── Car Radio: Chat panels ── */
+      body.theme-car-radio .chat-global-overlay,
+      body.theme-car-radio .chat-global-fullscreen {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+      }
+      body.theme-car-radio .chat-global-overlay .chat-global-header,
+      body.theme-car-radio .chat-global-fullscreen .chat-global-header {
+        border-bottom-color: var(--cr-bezel) !important;
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+      }
+      body.theme-car-radio .chat-messages {
+        background: var(--cr-lcd-bg) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+      }
+      body.theme-car-radio .chat-input {
+        background: var(--cr-lcd-bg) !important;
+        color: var(--cr-lcd-green) !important;
+        border-color: var(--cr-bezel) !important;
+        font-family: var(--cr-font-lcd) !important;
+      }
+
+      /* ── Car Radio: Confirm / auth overlays ── */
+      body.theme-car-radio .confirm-dialog {
+        background: var(--cr-panel) !important;
+        border: 2px solid var(--cr-bezel) !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        border-radius: 4px;
+        color: var(--cr-text);
+      }
+      body.theme-car-radio .confirm-dialog .confirm-title {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 4px rgba(57,255,20,0.3);
+      }
+      body.theme-car-radio .auth-tab {
+        background: var(--cr-btn-face) !important;
+        color: var(--cr-text) !important;
+        border-color: var(--cr-bezel) !important;
+        border-radius: 3px;
+      }
+      body.theme-car-radio .auth-tab.active {
+        background: var(--cr-lcd-bg) !important;
+        color: var(--cr-lcd-green) !important;
+        border-color: var(--cr-lcd-green-dim) !important;
+      }
+      body.theme-car-radio .status.status-error {
+        background: rgba(255,68,68,0.1) !important;
+        color: var(--cr-lcd-red) !important;
+        border-color: var(--cr-lcd-red) !important;
+      }
+
+      /* ── Car Radio: Admin section ── */
+      body.theme-car-radio .admin-station-row {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .admin-station-row .name {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+      }
+      body.theme-car-radio .admin-station-row .stream-url {
+        color: var(--cr-text-muted) !important;
+      }
+      body.theme-car-radio .admin-analytics-stat-value {
+        color: var(--cr-lcd-green) !important;
+        font-family: var(--cr-font-lcd) !important;
+        text-shadow: 0 0 6px rgba(57,255,20,0.4);
+      }
+      body.theme-car-radio .admin-analytics-stat-label {
+        color: var(--cr-text-muted) !important;
+      }
+
+      /* ── Car Radio: Loading screen ── */
+      body.theme-car-radio .initial-loading-screen {
+        background: var(--cr-panel) !important;
+      }
+      body.theme-car-radio .initial-loading-logo {
+        font-family: var(--cr-font-lcd) !important;
+        color: var(--cr-lcd-green) !important;
+        text-shadow: 0 0 12px rgba(57,255,20,0.6);
+        letter-spacing: 0.2em;
+      }
+      body.theme-car-radio .initial-loading-text {
+        color: var(--cr-text-muted) !important;
+        font-family: var(--cr-font-label);
+      }
+      body.theme-car-radio .initial-loading-bar-wrap {
+        background: var(--cr-lcd-bg) !important;
+        border: 1px solid var(--cr-bezel);
+        border-radius: 2px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+      }
+      body.theme-car-radio .initial-loading-bar {
+        background: var(--cr-lcd-green) !important;
+        box-shadow: 0 0 8px rgba(57,255,20,0.5);
+      }
+
+      /* ── Car Radio: Nav drawer (mobile) ── */
+      body.theme-car-radio .nav-drawer {
+        background: var(--cr-panel) !important;
+        border-left-color: var(--cr-bezel) !important;
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .nav-drawer .topbar-nav-item {
+        color: var(--cr-text) !important;
+      }
+      body.theme-car-radio .nav-drawer .topbar-nav-item:hover {
+        color: var(--cr-lcd-green) !important;
+        background: rgba(57,255,20,0.1) !important;
+      }
+
+      /* ── Car Radio: Checking banner ── */
+      body.theme-car-radio .stations-checking-banner {
+        color: var(--cr-lcd-amber) !important;
+        font-family: var(--cr-font-lcd) !important;
+      }
+      body.theme-car-radio .stations-loading-message {
+        color: var(--cr-text-muted) !important;
+      }
+      body.theme-car-radio .stations-loading-rest {
+        background: var(--cr-panel) !important;
+        border-color: var(--cr-bezel) !important;
+        color: var(--cr-text-muted) !important;
+        border-radius: 4px;
+      }
+
+      /* ── Car Radio: Scrollbar ── */
+      body.theme-car-radio ::-webkit-scrollbar { width: 6px; }
+      body.theme-car-radio ::-webkit-scrollbar-track { background: var(--cr-panel); }
+      body.theme-car-radio ::-webkit-scrollbar-thumb { background: var(--cr-bezel); border-radius: 3px; }
+      body.theme-car-radio ::-webkit-scrollbar-thumb:hover { background: var(--cr-bezel-highlight); }
+
+      /* ── Theme toggle button (works in both themes) ── */
+      .theme-toggle-btn {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.5);
+        color: var(--topbar-text);
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: bold;
+        font-family: inherit;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .theme-toggle-btn:hover { background: rgba(255,255,255,0.15); }
+      .theme-toggle-icon { font-size: 14px; line-height: 1; }
+
       /* Mobile: less busy topbar + optimized fullscreen player. Breakpoint: viewport width ≤ 768px.
          S25 Ultra portrait = 480px; ID rule ensures bar stays black when something else overrides. */
       @media (max-width: 768px) {
@@ -1148,6 +1827,10 @@
           </div>
         </div>
         <button type="button" class="topbar-chat-toggle hidden" id="topbar-chat-toggle" aria-label="Open chat" title="Chat"><svg class="chat-icon-retro" viewBox="0 0 16 14" width="16" height="14" aria-hidden="true"><path d="M1 1 L15 1 L15 9 L9 9 L5 13 L5 9 L1 9 Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="theme-toggle-btn topbar-desktop-only" id="theme-toggle-btn" aria-label="Switch theme" title="Switch theme">
+          <span class="theme-toggle-icon" id="theme-toggle-icon">📻</span>
+          <span id="theme-toggle-label">Car Radio</span>
+        </button>
         <div class="color-picker-wrap topbar-desktop-only" id="color-picker-wrap">
           <button type="button" class="color-picker-btn" id="color-picker-btn" aria-label="Choose background color" aria-expanded="false" aria-haspopup="true">
             <span class="color-picker-preview" id="color-picker-preview" style="background: var(--bg);"></span>
@@ -1172,6 +1855,10 @@
       <a href="#about" class="topbar-nav-item" data-nav="about">About</a>
       <a href="/broadcaster/" class="topbar-nav-item" id="drawer-broadcast">Broadcast</a>
       <a href="#admin" class="topbar-nav-item hidden" id="drawer-admin">Admin</a>
+      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn-drawer" aria-label="Switch theme" style="width:100%;justify-content:center;min-height:44px;">
+        <span class="theme-toggle-icon" id="theme-toggle-icon-drawer">📻</span>
+        <span id="theme-toggle-label-drawer">Car Radio</span>
+      </button>
       <button type="button" class="color-picker-btn" id="color-picker-btn-drawer" aria-label="Choose background color">
         <span class="color-picker-preview" style="background: var(--bg);"></span>
         Color
