@@ -1163,40 +1163,42 @@
         position: absolute;
         top: 6px;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translateX(-50%) rotate(0deg);
+        transform-origin: center 20px;
         width: 4px;
         height: 4px;
         border-radius: 50%;
         background: #c8a03c;
+        transition: transform 0.1s ease;
         box-shadow: 0 0 3px rgba(200,160,60,0.6);
       }
 
       /* ── Nav arrows ── */
-      .cr-nav-arrows {
+      /* ── Seek buttons under knob ── */
+      .cr-nav-seek {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
+        gap: 6px;
+        justify-content: center;
       }
-      .cr-nav-lr { display: flex; gap: 2px; }
-      .cr-nav-btn {
-        width: 30px;
-        height: 24px;
-        background: linear-gradient(180deg, #484848 0%, #333 100%) !important;
-        border: 1px solid #222 !important;
-        border-radius: 2px;
-        color: #aaa !important;
-        font-size: 8px;
-        cursor: pointer;
+      .cr-btn-seek {
+        width: 52px;
+        height: 28px;
+        font-size: 10px;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
-        transition: all 0.08s;
-        padding: 0;
       }
-      .cr-nav-btn:hover { background: linear-gradient(180deg, #555 0%, #404040 100%) !important; color: #fff !important; }
-      .cr-nav-btn:active { background: linear-gradient(180deg, #2a2a2a 0%, #333 100%) !important; box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important; }
+      /* ── Volume display ── */
+      .cr-vol-display {
+        font-family: 'Share Tech Mono', 'VT323', 'Courier New', monospace;
+        font-size: 10px;
+        color: #cc7d1e;
+        text-shadow: 0 0 4px rgba(255,157,46,0.3);
+        text-align: center;
+        margin-top: 4px;
+        letter-spacing: 0.1em;
+      }
 
       /* ── Center panel: LCD + slot ── */
       .cr-center-panel {
@@ -2003,7 +2005,7 @@
         }
         .cr-knob { width: 48px; height: 48px; }
         .cr-knob-inner { width: 40px; height: 40px; }
-        .cr-nav-btn { width: 36px; height: 30px; font-size: 10px; }
+        .cr-btn-seek { width: 48px; height: 26px; font-size: 9px; }
         .cr-lcd { min-height: 75px; padding: 10px 12px; }
         .cr-lcd-row1 { font-size: 18px; }
         .cr-right-panel { order: 3; }
@@ -2451,9 +2453,8 @@
         <!-- Top button row -->
         <div class="cr-top-row">
           <div class="cr-btn-group cr-btn-group-left">
-            <button type="button" class="cr-btn cr-btn-small" id="cr-btn-theme" title="Switch to Classic theme">THEME</button>
-            <button type="button" class="cr-btn cr-btn-small" id="cr-btn-eq">EQ</button>
-            <button type="button" class="cr-btn cr-btn-small" id="cr-btn-info" title="Station info">INFO</button>
+            <button type="button" class="cr-btn cr-btn-small" id="cr-btn-theme" title="Switch theme">THEME</button>
+            <button type="button" class="cr-btn cr-btn-small" id="cr-btn-info" title="Browse stations">STATIONS</button>
           </div>
           <div class="cr-top-label">
             <span class="cr-rds-badge">RDS</span>
@@ -2483,14 +2484,11 @@
                 </div>
               </div>
             </div>
-            <div class="cr-nav-arrows">
-              <button type="button" class="cr-nav-btn cr-nav-up" id="cr-nav-up" title="Scroll up">&#9650;</button>
-              <div class="cr-nav-lr">
-                <button type="button" class="cr-nav-btn cr-nav-left" id="cr-nav-left" title="Previous">&#9664;</button>
-                <button type="button" class="cr-nav-btn cr-nav-right" id="cr-nav-right" title="Next">&#9654;</button>
-              </div>
-              <button type="button" class="cr-nav-btn cr-nav-down" id="cr-nav-down" title="Scroll down">&#9660;</button>
+            <div class="cr-nav-seek">
+              <button type="button" class="cr-btn cr-btn-seek" id="cr-nav-left" title="Previous station">&#9664;&#9664;</button>
+              <button type="button" class="cr-btn cr-btn-seek" id="cr-nav-right" title="Next station">&#9654;&#9654;</button>
             </div>
+            <div class="cr-vol-display" id="cr-vol-display">VOL 70</div>
           </div>
 
           <!-- Center: LCD display + slot -->

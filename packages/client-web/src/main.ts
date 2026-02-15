@@ -4306,6 +4306,68 @@ function toggleTheme(): void {
 /* ── Car Radio UI controller ── */
 let crCurrentIndex = -1; // index into the visible stations list
 let crMeterAnimId: number | null = null;
+let crVolume = 70; // 0-100
+
+function crSetVolume(vol: number): void {
+  crVolume = Math.max(0, Math.min(100, vol));
+  // Apply to audio elements
+  const gain = crVolume / 100;
+  if (externalAudio) externalAudio.volume = gain;
+  // Update display
+  const display = document.getElementById("cr-vol-display");
+  if (display) display.textContent = `VOL ${crVolume}`;
+  // Rotate knob dot to reflect volume (0=7 o'clock, 100=5 o'clock → ~300deg sweep)
+  const dot = document.querySelector(".cr-knob-dot") as HTMLElement | null;
+  if (dot) {
+    const angle = -150 + (crVolume / 100) * 300; // -150deg to +150deg
+    dot.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+    dot.style.transformOrigin = "center 26px"; // pivot from knob center
+  }
+}
+
+function crInitVolumeKnob(): void {
+  const knob = document.getElementById("cr-knob");
+  if (!knob) return;
+
+  let dragging = false;
+  let lastY = 0;
+
+  const onMove = (clientY: number) => {
+    if (!dragging) return;
+    const delta = lastY - clientY; // up = increase
+    lastY = clientY;
+    crSetVolume(crVolume + delta * 0.5);
+  };
+
+  knob.addEventListener("mousedown", (e) => {
+    dragging = true;
+    lastY = e.clientY;
+    e.preventDefault();
+    const onMouseMove = (ev: MouseEvent) => onMove(ev.clientY);
+    const onMouseUp = () => { dragging = false; window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseup", onMouseUp); };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  });
+
+  knob.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    dragging = true;
+    lastY = e.touches[0].clientY;
+    const onTouchMove = (ev: TouchEvent) => { ev.preventDefault(); if (ev.touches.length === 1) onMove(ev.touches[0].clientY); };
+    const onTouchEnd = () => { dragging = false; knob.removeEventListener("touchmove", onTouchMove); knob.removeEventListener("touchend", onTouchEnd); };
+    knob.addEventListener("touchmove", onTouchMove, { passive: false });
+    knob.addEventListener("touchend", onTouchEnd);
+  }, { passive: true });
+
+  // Scroll wheel on knob
+  knob.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    crSetVolume(crVolume + (e.deltaY < 0 ? 3 : -3));
+  }, { passive: false });
+
+  // Set initial volume
+  crSetVolume(crVolume);
+}
 
 function crGetStations(): ExternalStation[] {
   return getVisibleExternalStationsForPlayer(false);
@@ -4426,8 +4488,8 @@ function crSelectStation(index: number): void {
   if (index < 0 || index >= stations.length) return;
   crCurrentIndex = index;
   selectExternalStation(stations[index]);
-  // LCD update happens after selectExternalStation triggers status changes
-  setTimeout(crUpdateLCD, 300);
+  // Apply car radio volume to the new audio element once it starts
+  setTimeout(() => { if (externalAudio) externalAudio.volume = crVolume / 100; crUpdateLCD(); }, 300);
 }
 
 /** Navigate to next or previous station. */
@@ -4880,15 +4942,14 @@ function initThemeToggle(): void {
     document.getElementById(`cr-preset-${i + 1}`)?.addEventListener("click", () => crSelectStation(i));
   }
 
-  // Nav arrows: left/right = prev/next station
+  // Seek buttons: prev/next station
   document.getElementById("cr-nav-left")?.addEventListener("click", crPrevStation);
   document.getElementById("cr-nav-right")?.addEventListener("click", crNextStation);
   document.getElementById("cr-btn-seek-back")?.addEventListener("click", crPrevStation);
   document.getElementById("cr-btn-seek-fwd")?.addEventListener("click", crNextStation);
 
-  // Nav up/down = scroll through stations (same as left/right for now)
-  document.getElementById("cr-nav-up")?.addEventListener("click", crPrevStation);
-  document.getElementById("cr-nav-down")?.addEventListener("click", crNextStation);
+  // Volume knob
+  crInitVolumeKnob();
 
   // Play / Stop
   document.getElementById("cr-btn-play")?.addEventListener("click", crTogglePlayPause);
