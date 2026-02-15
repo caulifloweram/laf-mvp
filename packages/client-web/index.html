@@ -1937,6 +1937,9 @@
       body.theme-winamp .chat-global-overlay,
       body.theme-winamp .chat-global-fullscreen,
       body.theme-winamp .initial-loading-screen { display: none !important; }
+      /* Hide Webamp's own DOM when not in winamp theme */
+      body:not(.theme-winamp) #webamp { display: none !important; }
+      body:not(.theme-winamp) .webamp--hovering { display: none !important; }
 
       .winamp-ui {
         position: fixed;
