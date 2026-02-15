@@ -1488,7 +1488,7 @@ function showPlayButton(label: "Start" | "Play" = "Play") {
 function applyPlayerBarDarkStyle(): void {
   const el = footerPlayer as HTMLElement;
   const exp = playerExpanded as HTMLElement;
-  const isCustomTheme = document.body.classList.contains("theme-car-radio") || document.body.classList.contains("theme-ipod");
+  const isCustomTheme = document.body.classList.contains("theme-car-radio") || document.body.classList.contains("theme-ipod") || document.body.classList.contains("theme-winamp");
   if (isCustomTheme) {
     /* Car radio theme: clear inline overrides so CSS theme rules apply. */
     el.style.removeProperty("background");
@@ -4241,8 +4241,8 @@ function initColorPicker() {
 /* ══════════════════════════════════════════════════════════════
    Theme switcher: Mac 1984 ↔ Car Radio (full-page head unit)
    ══════════════════════════════════════════════════════════════ */
-type ThemeId = "mac1984" | "car-radio" | "ipod";
-const THEME_CYCLE: ThemeId[] = ["mac1984", "car-radio", "ipod"];
+type ThemeId = "mac1984" | "car-radio" | "ipod" | "winamp";
+const THEME_CYCLE: ThemeId[] = ["mac1984", "car-radio", "ipod", "winamp"];
 
 function getStoredTheme(): ThemeId {
   return (localStorage.getItem("laf_theme") as ThemeId) || "mac1984";
@@ -4252,13 +4252,15 @@ function applyTheme(theme: ThemeId): void {
   const body = document.body;
   const carRadioUI = document.getElementById("car-radio-ui");
   const ipodUI = document.getElementById("ipod-ui");
+  const winampUI = document.getElementById("winamp-ui");
 
   // Remove all theme classes
-  body.classList.remove("theme-car-radio", "theme-ipod");
+  body.classList.remove("theme-car-radio", "theme-ipod", "theme-winamp");
 
   // Hide all custom UIs
   if (carRadioUI) carRadioUI.style.display = "none";
   if (ipodUI) ipodUI.style.display = "none";
+  if (winampUI) winampUI.style.display = "none";
 
   if (theme === "car-radio") {
     body.classList.add("theme-car-radio");
@@ -4270,6 +4272,12 @@ function applyTheme(theme: ThemeId): void {
     if (ipodUI) ipodUI.style.display = "flex";
     ipodShowMainMenu();
     ipodUpdateNowPlaying();
+  } else if (theme === "winamp") {
+    body.classList.add("theme-winamp");
+    if (winampUI) winampUI.style.display = "flex";
+    waRenderPlaylist();
+    waUpdateDisplay();
+    waStartVisualizer();
   }
 
   updateThemeToggleUI(theme);
@@ -4285,8 +4293,8 @@ function updateThemeToggleUI(theme: ThemeId): void {
     document.getElementById("theme-toggle-icon"),
     document.getElementById("theme-toggle-icon-drawer"),
   ];
-  const labelMap: Record<ThemeId, string> = { "mac1984": "Car Radio", "car-radio": "iPod", "ipod": "Classic" };
-  const iconMap: Record<ThemeId, string> = { "mac1984": "\u{1F4FB}", "car-radio": "\u{1F3B5}", "ipod": "\u{1F4BB}" };
+  const labelMap: Record<ThemeId, string> = { "mac1984": "Car Radio", "car-radio": "iPod", "ipod": "Winamp", "winamp": "Classic" };
+  const iconMap: Record<ThemeId, string> = { "mac1984": "\u{1F4FB}", "car-radio": "\u{1F3B5}", "ipod": "\u{1F3B6}", "winamp": "\u{1F4BB}" };
   for (const lbl of labels) {
     if (lbl) lbl.textContent = labelMap[theme] || "Theme";
   }
@@ -4924,6 +4932,202 @@ function ipodInitWheel(): void {
   }, { passive: true });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Winamp UI controller
+   ══════════════════════════════════════════════════════════════ */
+let waVisAnimId: number | null = null;
+let waElapsed = 0;
+let waElapsedInterval: ReturnType<typeof setInterval> | null = null;
+let waSyncInterval: ReturnType<typeof setInterval> | null = null;
+
+function waGetStations(): ExternalStation[] {
+  return getVisibleExternalStationsForPlayer(false);
+}
+
+function waRenderPlaylist(): void {
+  const list = document.getElementById("wa-pl-list");
+  const count = document.getElementById("wa-pl-count");
+  if (!list) return;
+  const stations = waGetStations();
+  if (count) count.textContent = `${stations.length} stations`;
+  list.innerHTML = stations.map((s, i) => {
+    const active = currentExternalStation?.streamUrl === s.streamUrl;
+    return `<button type="button" class="wa-pl-item ${active ? "wa-pl-active" : ""}" data-wa-idx="${i}">
+      <span class="wa-pl-num">${i + 1}.</span>
+      <span class="wa-pl-name">${s.name}</span>
+      <span class="wa-pl-dur">LIVE</span>
+    </button>`;
+  }).join("");
+  list.querySelectorAll(".wa-pl-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const idx = parseInt((item as HTMLElement).dataset.waIdx || "0", 10);
+      const stations2 = waGetStations();
+      if (stations2[idx]) {
+        selectExternalStation(stations2[idx]);
+        setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
+      }
+    });
+  });
+}
+
+function waUpdateDisplay(): void {
+  const title = document.getElementById("wa-info-title");
+  const meta = document.getElementById("wa-info-meta");
+  const time = document.getElementById("wa-info-time");
+  const titleBar = document.getElementById("wa-title-text");
+  const seekFill = document.getElementById("wa-seek-fill");
+  const playBtn = document.getElementById("wa-btn-play");
+  const pauseBtn = document.getElementById("wa-btn-pause");
+  const stopBtn = document.getElementById("wa-btn-stop");
+
+  if (currentExternalStation) {
+    const name = `${currentExternalStation.name} - ${currentExternalStation.location || "Internet Radio"}`;
+    if (title) { title.textContent = name; title.classList.add("wa-scrolling"); }
+    if (meta) meta.textContent = currentExternalStation.description || "";
+    if (titleBar) titleBar.textContent = `${currentExternalStation.name} - LAF Radio`;
+    const playing = externalAudio && !externalAudio.paused;
+    if (seekFill) seekFill.classList.toggle("wa-playing", !!playing);
+    playBtn?.classList.toggle("wa-active", !!playing);
+    pauseBtn?.classList.remove("wa-active");
+    stopBtn?.classList.remove("wa-active");
+    if (!playing && !externalAudio) stopBtn?.classList.add("wa-active");
+    waStartElapsed(!!playing);
+  } else {
+    if (title) { title.textContent = "LAF Radio"; title.classList.remove("wa-scrolling"); }
+    if (meta) meta.textContent = "Stopped";
+    if (time) time.textContent = "00:00";
+    if (titleBar) titleBar.textContent = "LAF Radio - Winamp";
+    if (seekFill) seekFill.classList.remove("wa-playing");
+    playBtn?.classList.remove("wa-active");
+    pauseBtn?.classList.remove("wa-active");
+    stopBtn?.classList.add("wa-active");
+    waStartElapsed(false);
+  }
+}
+
+function waStartElapsed(playing: boolean): void {
+  if (waElapsedInterval) { clearInterval(waElapsedInterval); waElapsedInterval = null; }
+  if (!playing) { waElapsed = 0; return; }
+  waElapsed = 0;
+  const el = document.getElementById("wa-info-time");
+  waElapsedInterval = setInterval(() => {
+    waElapsed++;
+    const m = Math.floor(waElapsed / 60);
+    const s = waElapsed % 60;
+    if (el) el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }, 1000);
+}
+
+function waStartVisualizer(): void {
+  if (waVisAnimId != null) return;
+  const vis = document.getElementById("wa-vis");
+  if (!vis) return;
+  // Create bars if empty
+  if (!vis.children.length) {
+    for (let i = 0; i < 16; i++) {
+      const bar = document.createElement("div");
+      bar.className = "wa-vis-bar";
+      bar.style.height = "2px";
+      vis.appendChild(bar);
+    }
+  }
+  const bars = Array.from(vis.children) as HTMLElement[];
+  const animate = () => {
+    const playing = (currentExternalStation && externalAudio && !externalAudio.paused);
+    bars.forEach(bar => {
+      const h = playing ? (3 + Math.random() * 28) : 2;
+      bar.style.height = h + "px";
+    });
+    waVisAnimId = requestAnimationFrame(() => {
+      setTimeout(() => { waVisAnimId = null; waStartVisualizer(); }, playing ? 80 : 500);
+    }) as unknown as number;
+  };
+  animate();
+}
+
+function waStopVisualizer(): void {
+  if (waVisAnimId != null) { cancelAnimationFrame(waVisAnimId); waVisAnimId = null; }
+}
+
+function waNextStation(): void {
+  const stations = waGetStations();
+  if (stations.length === 0) return;
+  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : -1;
+  idx = (idx + 1) % stations.length;
+  selectExternalStation(stations[idx]);
+  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
+}
+
+function waPrevStation(): void {
+  const stations = waGetStations();
+  if (stations.length === 0) return;
+  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : 0;
+  idx = (idx - 1 + stations.length) % stations.length;
+  selectExternalStation(stations[idx]);
+  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
+}
+
+function waTogglePlay(): void {
+  if (currentExternalStation) {
+    if (externalAudio && !externalAudio.paused) return; // already playing
+    resumeExternalStream();
+  } else {
+    const stations = waGetStations();
+    if (stations.length > 0) selectExternalStation(stations[0]);
+  }
+  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
+}
+
+function waPause(): void {
+  if (currentExternalStation && externalAudio && !externalAudio.paused) {
+    pauseExternalStream();
+    const pauseBtn = document.getElementById("wa-btn-pause");
+    const playBtn = document.getElementById("wa-btn-play");
+    pauseBtn?.classList.add("wa-active");
+    playBtn?.classList.remove("wa-active");
+  }
+  setTimeout(waUpdateDisplay, 200);
+}
+
+function waStop(): void {
+  if (currentExternalStation) {
+    stopExternalStream();
+    updateFooterPlayerVisibility();
+  }
+  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 200);
+}
+
+function waInitVolume(): void {
+  const slider = document.getElementById("wa-vol-slider");
+  const fill = document.getElementById("wa-vol-fill");
+  if (!slider || !fill) return;
+  const setVol = (e: MouseEvent) => {
+    const rect = slider.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    fill.style.width = pct + "%";
+    if (externalAudio) externalAudio.volume = pct / 100;
+  };
+  slider.addEventListener("mousedown", (e) => {
+    setVol(e);
+    const onMove = (ev: MouseEvent) => setVol(ev);
+    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+}
+
+function waStartSync(): void {
+  if (waSyncInterval) return;
+  waSyncInterval = setInterval(() => {
+    if (!document.body.classList.contains("theme-winamp")) {
+      if (waSyncInterval) { clearInterval(waSyncInterval); waSyncInterval = null; }
+      waStopVisualizer();
+      return;
+    }
+    waUpdateDisplay();
+  }, 2000);
+}
+
 function initThemeToggle(): void {
   applyTheme(getStoredTheme());
 
@@ -5005,6 +5209,22 @@ function initThemeToggle(): void {
   // Start iPod sync
   ipodStartSync();
 
+  // ── Winamp button wiring ──
+  document.getElementById("wa-btn-prev")?.addEventListener("click", waPrevStation);
+  document.getElementById("wa-btn-next")?.addEventListener("click", waNextStation);
+  document.getElementById("wa-btn-play")?.addEventListener("click", waTogglePlay);
+  document.getElementById("wa-btn-pause")?.addEventListener("click", waPause);
+  document.getElementById("wa-btn-stop")?.addEventListener("click", waStop);
+  document.getElementById("wa-btn-theme")?.addEventListener("click", toggleTheme);
+  document.getElementById("wa-btn-shuffle")?.addEventListener("click", () => {
+    const stations = waGetStations();
+    if (stations.length === 0) return;
+    selectExternalStation(stations[Math.floor(Math.random() * stations.length)]);
+    setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
+  });
+  waInitVolume();
+  waStartSync();
+
   // ── Popup mini-player ──
   const openPopup = (theme?: ThemeId): void => {
     // Set the desired theme before opening so the popup inherits it
@@ -5046,6 +5266,7 @@ function initThemeToggle(): void {
 
   // Car radio POP button → opens popup in car-radio theme
   document.getElementById("cr-btn-pop")?.addEventListener("click", () => openPopup("car-radio"));
+  document.getElementById("wa-btn-pop")?.addEventListener("click", () => openPopup("winamp"));
 
   // Mobile drawer popup button
   document.getElementById("popup-btn-drawer")?.addEventListener("click", () => { openPopup("car-radio"); closeMobileNav(); });
