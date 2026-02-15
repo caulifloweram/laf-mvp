@@ -9,10 +9,11 @@
     "serve": "npx --yes serve dist -p $PORT"
   },
   "dependencies": {
-    "opus-decoder": "^0.7.0"
+    "opus-decoder": "^0.7.0",
+    "webamp": "^2.2.0"
   },
   "devDependencies": {
-    "vite": "^5.2.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vite": "^5.2.0"
   }
 }

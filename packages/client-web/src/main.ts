@@ -1,5 +1,6 @@
 import { OpusDecoder } from "opus-decoder";
 import { initRouter, getRoute, type RouteId } from "./router";
+import Webamp from "webamp";
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 let RELAY_BASE = import.meta.env.VITE_LAF_RELAY_URL || "ws://localhost:9000";
@@ -4262,6 +4263,9 @@ function applyTheme(theme: ThemeId): void {
   if (ipodUI) ipodUI.style.display = "none";
   if (winampUI) winampUI.style.display = "none";
 
+  // Stop Webamp audio when switching away
+  if (theme !== "winamp") waStopAudio();
+
   if (theme === "car-radio") {
     body.classList.add("theme-car-radio");
     if (carRadioUI) carRadioUI.style.display = "flex";
@@ -4275,9 +4279,11 @@ function applyTheme(theme: ThemeId): void {
   } else if (theme === "winamp") {
     body.classList.add("theme-winamp");
     if (winampUI) winampUI.style.display = "flex";
-    waRenderPlaylist();
-    waUpdateDisplay();
-    waStartVisualizer();
+    // Stop any regular external audio before Webamp takes over
+    if (externalAudio && !externalAudio.paused) {
+      try { stopExternalStream(); } catch (_) { /* ignore */ }
+    }
+    waCreateWebamp();
   }
 
   updateThemeToggleUI(theme);
@@ -4933,199 +4939,179 @@ function ipodInitWheel(): void {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Winamp UI controller
+   Webamp integration + Skin browser
    ══════════════════════════════════════════════════════════════ */
-let waVisAnimId: number | null = null;
-let waElapsed = 0;
-let waElapsedInterval: ReturnType<typeof setInterval> | null = null;
-let waSyncInterval: ReturnType<typeof setInterval> | null = null;
+let webampInstance: Webamp | null = null;
+let webampMounted = false;
 
 function waGetStations(): ExternalStation[] {
   return getVisibleExternalStationsForPlayer(false);
 }
 
-function waRenderPlaylist(): void {
-  const list = document.getElementById("wa-pl-list");
-  const count = document.getElementById("wa-pl-count");
-  if (!list) return;
+function waGetTracks(): Array<{ url: string; metaData: { artist: string; title: string }; duration: number }> {
   const stations = waGetStations();
-  if (count) count.textContent = `${stations.length} stations`;
-  list.innerHTML = stations.map((s, i) => {
-    const active = currentExternalStation?.streamUrl === s.streamUrl;
-    return `<button type="button" class="wa-pl-item ${active ? "wa-pl-active" : ""}" data-wa-idx="${i}">
-      <span class="wa-pl-num">${i + 1}.</span>
-      <span class="wa-pl-name">${s.name}</span>
-      <span class="wa-pl-dur">LIVE</span>
-    </button>`;
-  }).join("");
-  list.querySelectorAll(".wa-pl-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const idx = parseInt((item as HTMLElement).dataset.waIdx || "0", 10);
-      const stations2 = waGetStations();
-      if (stations2[idx]) {
-        selectExternalStation(stations2[idx]);
-        setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
-      }
-    });
+  return stations.map(s => ({
+    url: s.streamUrl,
+    metaData: { artist: s.location || "Internet Radio", title: s.name },
+    duration: 0,
+  }));
+}
+
+function waCreateWebamp(): void {
+  if (webampInstance) return;
+  const mount = document.getElementById("webamp-mount");
+  if (!mount) return;
+
+  const tracks = waGetTracks();
+  const storedSkin = localStorage.getItem("laf_wa_skin_url");
+
+  webampInstance = new Webamp({
+    initialTracks: tracks.length > 0 ? tracks : [
+      { url: "", metaData: { artist: "LAF Radio", title: "No stations loaded" }, duration: 0 },
+    ],
+    enableDoubleSizeMode: true,
+    enableHotkeys: true,
+    zIndex: 101,
+    initialSkin: storedSkin ? { url: storedSkin } : undefined,
+    windowLayout: {
+      main: { position: { top: 0, left: 0 } },
+      playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 4, extraWidth: 0 } },
+      equalizer: { position: { top: 0, left: 550 } },
+    },
+  });
+
+  webampInstance.renderWhenReady(mount).then(() => {
+    webampMounted = true;
+  });
+
+  // When Webamp close is clicked, switch theme instead
+  webampInstance.onWillClose((cancel: () => void) => {
+    cancel();
+    toggleTheme();
   });
 }
 
-function waUpdateDisplay(): void {
-  const title = document.getElementById("wa-info-title");
-  const meta = document.getElementById("wa-info-meta");
-  const time = document.getElementById("wa-info-time");
-  const titleBar = document.getElementById("wa-title-text");
-  const seekFill = document.getElementById("wa-seek-fill");
-  const playBtn = document.getElementById("wa-btn-play");
-  const pauseBtn = document.getElementById("wa-btn-pause");
-  const stopBtn = document.getElementById("wa-btn-stop");
-
-  if (currentExternalStation) {
-    const name = `${currentExternalStation.name} - ${currentExternalStation.location || "Internet Radio"}`;
-    if (title) { title.textContent = name; title.classList.add("wa-scrolling"); }
-    if (meta) meta.textContent = currentExternalStation.description || "";
-    if (titleBar) titleBar.textContent = `${currentExternalStation.name} - LAF Radio`;
-    const playing = externalAudio && !externalAudio.paused;
-    if (seekFill) seekFill.classList.toggle("wa-playing", !!playing);
-    playBtn?.classList.toggle("wa-active", !!playing);
-    pauseBtn?.classList.remove("wa-active");
-    stopBtn?.classList.remove("wa-active");
-    if (!playing && !externalAudio) stopBtn?.classList.add("wa-active");
-    waStartElapsed(!!playing);
-  } else {
-    if (title) { title.textContent = "LAF Radio"; title.classList.remove("wa-scrolling"); }
-    if (meta) meta.textContent = "Stopped";
-    if (time) time.textContent = "00:00";
-    if (titleBar) titleBar.textContent = "LAF Radio - Winamp";
-    if (seekFill) seekFill.classList.remove("wa-playing");
-    playBtn?.classList.remove("wa-active");
-    pauseBtn?.classList.remove("wa-active");
-    stopBtn?.classList.add("wa-active");
-    waStartElapsed(false);
+function waStopAudio(): void {
+  if (webampInstance) {
+    try { webampInstance.stop(); } catch (_) { /* ignore */ }
   }
 }
 
-function waStartElapsed(playing: boolean): void {
-  if (waElapsedInterval) { clearInterval(waElapsedInterval); waElapsedInterval = null; }
-  if (!playing) { waElapsed = 0; return; }
-  waElapsed = 0;
-  const el = document.getElementById("wa-info-time");
-  waElapsedInterval = setInterval(() => {
-    waElapsed++;
-    const m = Math.floor(waElapsed / 60);
-    const s = waElapsed % 60;
-    if (el) el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }, 1000);
+function waApplySkin(url: string): void {
+  if (!webampInstance) return;
+  localStorage.setItem("laf_wa_skin_url", url);
+  webampInstance.setSkinFromUrl(url);
 }
 
-function waStartVisualizer(): void {
-  if (waVisAnimId != null) return;
-  const vis = document.getElementById("wa-vis");
-  if (!vis) return;
-  // Create bars if empty
-  if (!vis.children.length) {
-    for (let i = 0; i < 16; i++) {
-      const bar = document.createElement("div");
-      bar.className = "wa-vis-bar";
-      bar.style.height = "2px";
-      vis.appendChild(bar);
-    }
-  }
-  const bars = Array.from(vis.children) as HTMLElement[];
-  const animate = () => {
-    const playing = (currentExternalStation && externalAudio && !externalAudio.paused);
-    bars.forEach(bar => {
-      const h = playing ? (3 + Math.random() * 28) : 2;
-      bar.style.height = h + "px";
+/* ── Skin browser ── */
+interface WaSkinEntry { filename: string; download_url: string; screenshot_url: string; }
+let waSkinOffset = 0;
+const WA_SKIN_PAGE_SIZE = 48;
+let waSkinSearchQuery = "";
+let waSkinLoading = false;
+
+async function waFetchSkins(query: string, offset: number, limit: number): Promise<WaSkinEntry[]> {
+  // Use Winamp Skin Museum GraphQL API
+  try {
+    const gql = query
+      ? `{ search_skins(query: "${query.replace(/"/g, '\\"')}", first: ${limit}, offset: ${offset}) { filename download_url screenshot_url } }`
+      : `{ skins(first: ${limit}, offset: ${offset}, sort: MUSEUM_PAGE_VIEWS) { nodes { filename download_url screenshot_url } } }`;
+
+    const res = await fetch("https://api.webamp.org/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: gql }),
     });
-    waVisAnimId = requestAnimationFrame(() => {
-      setTimeout(() => { waVisAnimId = null; waStartVisualizer(); }, playing ? 80 : 500);
-    }) as unknown as number;
-  };
-  animate();
-}
-
-function waStopVisualizer(): void {
-  if (waVisAnimId != null) { cancelAnimationFrame(waVisAnimId); waVisAnimId = null; }
-}
-
-function waNextStation(): void {
-  const stations = waGetStations();
-  if (stations.length === 0) return;
-  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : -1;
-  idx = (idx + 1) % stations.length;
-  selectExternalStation(stations[idx]);
-  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
-}
-
-function waPrevStation(): void {
-  const stations = waGetStations();
-  if (stations.length === 0) return;
-  let idx = currentExternalStation ? stations.findIndex(s => s.streamUrl === currentExternalStation?.streamUrl) : 0;
-  idx = (idx - 1 + stations.length) % stations.length;
-  selectExternalStation(stations[idx]);
-  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
-}
-
-function waTogglePlay(): void {
-  if (currentExternalStation) {
-    if (externalAudio && !externalAudio.paused) return; // already playing
-    resumeExternalStream();
-  } else {
-    const stations = waGetStations();
-    if (stations.length > 0) selectExternalStation(stations[0]);
-  }
-  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
-}
-
-function waPause(): void {
-  if (currentExternalStation && externalAudio && !externalAudio.paused) {
-    pauseExternalStream();
-    const pauseBtn = document.getElementById("wa-btn-pause");
-    const playBtn = document.getElementById("wa-btn-play");
-    pauseBtn?.classList.add("wa-active");
-    playBtn?.classList.remove("wa-active");
-  }
-  setTimeout(waUpdateDisplay, 200);
-}
-
-function waStop(): void {
-  if (currentExternalStation) {
-    stopExternalStream();
-    updateFooterPlayerVisibility();
-  }
-  setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 200);
-}
-
-function waInitVolume(): void {
-  const slider = document.getElementById("wa-vol-slider");
-  const fill = document.getElementById("wa-vol-fill");
-  if (!slider || !fill) return;
-  const setVol = (e: MouseEvent) => {
-    const rect = slider.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    fill.style.width = pct + "%";
-    if (externalAudio) externalAudio.volume = pct / 100;
-  };
-  slider.addEventListener("mousedown", (e) => {
-    setVol(e);
-    const onMove = (ev: MouseEvent) => setVol(ev);
-    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  });
-}
-
-function waStartSync(): void {
-  if (waSyncInterval) return;
-  waSyncInterval = setInterval(() => {
-    if (!document.body.classList.contains("theme-winamp")) {
-      if (waSyncInterval) { clearInterval(waSyncInterval); waSyncInterval = null; }
-      waStopVisualizer();
-      return;
+    const data = await res.json();
+    if (query) {
+      return data?.data?.search_skins || [];
     }
-    waUpdateDisplay();
-  }, 2000);
+    return data?.data?.skins?.nodes || data?.data?.skins || [];
+  } catch (err) {
+    console.warn("Failed to fetch skins from Winamp Museum:", err);
+    return [];
+  }
+}
+
+function waRenderSkins(skins: WaSkinEntry[], append = false): void {
+  const grid = document.getElementById("wa-sb-grid");
+  if (!grid) return;
+  if (!append) grid.innerHTML = "";
+
+  for (const skin of skins) {
+    const card = document.createElement("div");
+    card.className = "wa-sb-skin";
+    const safeName = (skin.filename || "Unknown").replace(/\.wsz$/i, "").replace(/</g, "&lt;");
+    card.innerHTML = `<img src="${skin.screenshot_url}" alt="${safeName}" loading="lazy" /><div class="wa-sb-skin-name">${safeName}</div>`;
+    card.addEventListener("click", () => {
+      waApplySkin(skin.download_url);
+      // Close browser after selection
+      const browser = document.getElementById("wa-skin-browser");
+      if (browser) browser.style.display = "none";
+    });
+    grid.appendChild(card);
+  }
+}
+
+async function waLoadSkins(append = false): Promise<void> {
+  if (waSkinLoading) return;
+  waSkinLoading = true;
+  const loading = document.getElementById("wa-sb-loading");
+  const moreBtn = document.getElementById("wa-sb-more");
+  if (loading) loading.style.display = "block";
+  if (moreBtn) (moreBtn as HTMLButtonElement).disabled = true;
+
+  const skins = await waFetchSkins(waSkinSearchQuery, waSkinOffset, WA_SKIN_PAGE_SIZE);
+  waRenderSkins(skins, append);
+  waSkinOffset += skins.length;
+
+  if (loading) loading.style.display = "none";
+  if (moreBtn) {
+    (moreBtn as HTMLButtonElement).disabled = false;
+    (moreBtn as HTMLButtonElement).style.display = skins.length < WA_SKIN_PAGE_SIZE ? "none" : "";
+  }
+  waSkinLoading = false;
+}
+
+function waOpenSkinBrowser(): void {
+  const browser = document.getElementById("wa-skin-browser");
+  if (!browser) return;
+  browser.style.display = "flex";
+  // Load initial skins if grid is empty
+  const grid = document.getElementById("wa-sb-grid");
+  if (grid && grid.children.length === 0) {
+    waSkinOffset = 0;
+    waSkinSearchQuery = "";
+    waLoadSkins(false);
+  }
+}
+
+function waInitSkinBrowser(): void {
+  const closeBtn = document.getElementById("wa-sb-close");
+  const moreBtn = document.getElementById("wa-sb-more");
+  const searchInput = document.getElementById("wa-sb-search") as HTMLInputElement | null;
+  const skinsBtn = document.getElementById("wa-btn-skins");
+
+  skinsBtn?.addEventListener("click", waOpenSkinBrowser);
+
+  closeBtn?.addEventListener("click", () => {
+    const browser = document.getElementById("wa-skin-browser");
+    if (browser) browser.style.display = "none";
+  });
+
+  moreBtn?.addEventListener("click", () => {
+    waLoadSkins(true);
+  });
+
+  let searchTimer: ReturnType<typeof setTimeout> | null = null;
+  searchInput?.addEventListener("input", () => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      waSkinSearchQuery = searchInput.value.trim();
+      waSkinOffset = 0;
+      waLoadSkins(false);
+    }, 500);
+  });
 }
 
 function initThemeToggle(): void {
@@ -5209,21 +5195,9 @@ function initThemeToggle(): void {
   // Start iPod sync
   ipodStartSync();
 
-  // ── Winamp button wiring ──
-  document.getElementById("wa-btn-prev")?.addEventListener("click", waPrevStation);
-  document.getElementById("wa-btn-next")?.addEventListener("click", waNextStation);
-  document.getElementById("wa-btn-play")?.addEventListener("click", waTogglePlay);
-  document.getElementById("wa-btn-pause")?.addEventListener("click", waPause);
-  document.getElementById("wa-btn-stop")?.addEventListener("click", waStop);
+  // ── Webamp + Skin browser wiring ──
   document.getElementById("wa-btn-theme")?.addEventListener("click", toggleTheme);
-  document.getElementById("wa-btn-shuffle")?.addEventListener("click", () => {
-    const stations = waGetStations();
-    if (stations.length === 0) return;
-    selectExternalStation(stations[Math.floor(Math.random() * stations.length)]);
-    setTimeout(() => { waUpdateDisplay(); waRenderPlaylist(); }, 300);
-  });
-  waInitVolume();
-  waStartSync();
+  waInitSkinBrowser();
 
   // ── Popup mini-player ──
   const openPopup = (theme?: ThemeId): void => {
@@ -5266,7 +5240,6 @@ function initThemeToggle(): void {
 
   // Car radio POP button → opens popup in car-radio theme
   document.getElementById("cr-btn-pop")?.addEventListener("click", () => openPopup("car-radio"));
-  document.getElementById("wa-btn-pop")?.addEventListener("click", () => openPopup("winamp"));
 
   // Mobile drawer popup button
   document.getElementById("popup-btn-drawer")?.addEventListener("click", () => { openPopup("car-radio"); closeMobileNav(); });
